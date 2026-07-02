@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jeswr/full-solid-ecosystem/main/tracking/schema/suite.schema.json",
+  "id": "unite",
+  "kind": "spec",
+  "name": "unite — decentralised participatory-democracy platform (design)",
+  "repo": "https://github.com/jeswr/unite",
+  "category": "social",
+  "maturity": "prototype",
+  "visibility": "public",
+  "stack": {
+    "vocab": "fut: futures sector (planned) under https://w3id.org/jeswr/sectors/futures#, migrating to w3id.org/unite per design/04-governance.md",
+    "federation": "fedapp:/fedreg:/fedtrust: via @jeswr/federation-{client,registry,trust}",
+    "consent": "@jeswr/solid-odrl",
+    "integrity": "@jeswr/solid-vc (Data Integrity signed syntheses)"
+  },
+  "dependsOn": [
+    "solid-federation-vocab",
+    "federation-registry",
+    "federation-trust",
+    "federation-client",
+    "solid-task-model",
+    "solid-odrl",
+    "solid-vc"
+  ],
+  "federation": null
+}
