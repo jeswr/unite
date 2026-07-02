@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>unite — Stage-1 app co-design</title>
+    <script>
+      // No-flash theme bootstrap (app-shell themeScript pattern): apply the
+      // persisted theme before first paint.
+      (() => {
+        try {
+          const k = "app-shell-theme";
+          const stored = localStorage.getItem(k);
+          const dark =
+            stored === "dark" ||
+            (stored !== "light" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.toggle("dark", dark);
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/ui/main.tsx"></script>
+  </body>
+</html>
