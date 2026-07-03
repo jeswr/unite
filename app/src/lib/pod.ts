@@ -10,12 +10,15 @@
 import { parseRdf } from "@jeswr/fetch-rdf";
 import { ContainerDataset } from "@solid/object";
 import { DataFactory } from "n3";
+import { type ConsentPolicy, consentQuads, ODRL_NS } from "./consent.js";
 import {
+  buildNeedQuads,
   isHttpIri,
   type Need,
   type Resonance,
   serializeNeed,
   serializeResonance,
+  serializeTurtle,
 } from "./model.js";
 
 /** The subdirectory each statement type is written under. */
@@ -168,11 +171,20 @@ export async function writeNeed(
   fetchFn: typeof fetch,
   base: string,
   need: Omit<Need, "id">,
+  consent?: ConsentPolicy,
 ): Promise<WriteResult<Need>> {
   const url = childUrl(base, NEEDS_DIR, slug());
   assertWithinBase(base, url); // fail-closed BEFORE serialise/fetch
   const resource: Need = { ...need, id: url };
-  const body = await serializeNeed(resource);
+  let body: string;
+  if (consent) {
+    // Write the need + its inline ODRL consent policy in ONE resource, linked by
+    // odrl:hasPolicy (design/01 — the author's standing consent record).
+    const quads = [...buildNeedQuads(resource), ...consentQuads(url, consent, resource.creator)];
+    body = await serializeTurtle(quads, { odrl: ODRL_NS });
+  } else {
+    body = await serializeNeed(resource);
+  }
   const response = await putTurtle(fetchFn, url, body);
   return { url, resource, response };
 }

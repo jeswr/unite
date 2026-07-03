@@ -4,11 +4,13 @@
 // src/lib (writeNeed uses the session-bound authenticatedFetch — own pod only).
 
 import { useState } from "react";
+import { type ConsentPolicy, DEFAULT_CONSENT } from "../../lib/consent.js";
 import { MAXNEEF_CONCEPTS } from "../../lib/fut.js";
 import { MAX_CONTENT_LENGTH, type Need } from "../../lib/model.js";
 import { writeNeed } from "../../lib/pod.js";
 import { useController } from "../auth.js";
 import type { DeliberationConfig } from "../state.js";
+import { ConsentPanel } from "./ConsentPanel.js";
 
 const FIRST_CONCEPT = MAXNEEF_CONCEPTS[0]?.iri ?? "";
 
@@ -23,6 +25,7 @@ export function Compose({
   const [content, setContent] = useState("");
   const [concept, setConcept] = useState(FIRST_CONCEPT);
   const [intensity, setIntensity] = useState<number | "">("");
+  const [consent, setConsent] = useState<ConsentPolicy>(DEFAULT_CONSENT);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,10 +51,11 @@ export function Compose({
     };
     setSaving(true);
     try {
-      const { url } = await writeNeed(controller.authenticatedFetch, config.ownBase, need);
+      const { url } = await writeNeed(controller.authenticatedFetch, config.ownBase, need, consent);
       setStatus(`Saved to your pod: ${url}`);
       setContent("");
       setIntensity("");
+      setConsent(DEFAULT_CONSENT);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -108,6 +112,8 @@ export function Compose({
           ))}
         </select>
       </label>
+
+      <ConsentPanel value={consent} onChange={setConsent} deliberation={config.deliberation} />
 
       <button type="button" className="primary" onClick={submit} disabled={saving}>
         {saving ? "Saving…" : "Submit need"}

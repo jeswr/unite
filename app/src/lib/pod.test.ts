@@ -109,6 +109,31 @@ describe("writeNeed / writeResonance", () => {
       /412/,
     );
   });
+
+  it("inlines the ODRL consent policy (odrl:hasPolicy) when a consent is given", async () => {
+    const fetchSpy = vi.fn(async () => new Response(null, { status: 201 }));
+    const { url } = await writeNeed(fetchSpy as unknown as typeof fetch, BASE, needBody, {
+      aggregate: true,
+      synthesize: true,
+      quoteVerbatim: false,
+      governmentUse: false,
+      kThreshold: 5,
+    });
+    const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+    const body = init.body as string;
+    // The need + its inline policy ship in ONE Turtle document.
+    expect(body).toContain("odrl");
+    expect(body).toContain(`${url}#consent`);
+    expect(body).toContain("aggregate");
+    expect(body).toContain("kThreshold");
+  });
+
+  it("omits any policy triples when no consent is given (unchanged default write)", async () => {
+    const fetchSpy = vi.fn(async () => new Response(null, { status: 201 }));
+    await writeNeed(fetchSpy as unknown as typeof fetch, BASE, needBody);
+    const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(init.body as string).not.toContain("hasPolicy");
+  });
 });
 
 describe("listContainer", () => {

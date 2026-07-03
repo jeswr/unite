@@ -106,3 +106,22 @@ export const DIMENSIONS = [DIM_SHARE, DIM_ASPIRE, DIM_SUPPORT] as const;
 export type Dimension = (typeof DIMENSIONS)[number];
 const DIMENSION_SET: ReadonlySet<string> = new Set(DIMENSIONS);
 export const isDimension = (v: string): v is Dimension => DIMENSION_SET.has(v);
+
+// ── ODRL consent layer (design/01 "The ODRL consent layer") ──────────────────
+// The `fut:` ODRL-profile actions an author's standing consent policy permits or
+// prohibits over an expression-layer resource (fut:consentActionScheme). These
+// IRIs match the landed futures sector vocabulary exactly (solid-federation-vocab
+// sectors/futures/futures.ttl). Defaults are CONSERVATIVE: aggregate + synthesize
+// permitted; quoteVerbatim + governmentUse prohibited until explicitly granted.
+/** May be included in opinion-space mapping + convergence metrics (k-anonymous). */
+export const CONSENT_AGGREGATE = fut("aggregate");
+/** May be an input to a fut:SharedFuture (prov:wasDerivedFrom). */
+export const CONSENT_SYNTHESIZE = fut("synthesize");
+/** May be quoted verbatim in a synthesis / dissent record. */
+export const CONSENT_QUOTE_VERBATIM = fut("quoteVerbatim");
+/** Derived artifacts may be forwarded into Stage-3 governance reporting. */
+export const CONSENT_GOVERNMENT_USE = fut("governmentUse");
+/** ODRL left operand: the k-anonymity constraint on derivation (unite default k=5). */
+export const CONSENT_K_THRESHOLD = fut("kThreshold");
+/** unite's default k-anonymity threshold for any derived publication (design/01). */
+export const DEFAULT_K_THRESHOLD = 5;

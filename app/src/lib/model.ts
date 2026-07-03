@@ -146,16 +146,28 @@ const WRITER_PREFIXES = {
   xsd: NS.xsd,
 } as const;
 
-function writeTurtle(quads: Quad[]): Promise<string> {
-  const writer = new Writer({ prefixes: WRITER_PREFIXES });
+function writeTurtle(quads: Quad[], extraPrefixes?: Record<string, string>): Promise<string> {
+  const writer = new Writer({ prefixes: { ...WRITER_PREFIXES, ...extraPrefixes } });
   writer.addQuads(quads);
   return new Promise((resolve, reject) => {
     writer.end((err, result) => (err ? reject(err) : resolve(result)));
   });
 }
 
-/** Serialise a {@link Need} to Turtle. Throws on an invalid required IRI. */
-export async function serializeNeed(need: Need): Promise<string> {
+/**
+ * Serialise an arbitrary quad graph to Turtle with the model prefixes (+ any
+ * extras, e.g. `odrl`). Used to write a Need together with its inline consent
+ * policy in ONE resource. Callers own quad validation.
+ */
+export function serializeTurtle(
+  quads: Quad[],
+  extraPrefixes?: Record<string, string>,
+): Promise<string> {
+  return writeTurtle(quads, extraPrefixes);
+}
+
+/** Validate a {@link Need} and build its quads. Throws on an invalid field. */
+export function buildNeedQuads(need: Need): Quad[] {
   for (const iri of [need.id, need.needConcept, need.creator, need.inDeliberation]) {
     if (!isHttpIri(iri)) throw new Error(`serializeNeed: not an http(s) IRI: ${iri}`);
   }
@@ -186,7 +198,12 @@ export async function serializeNeed(need: Need): Promise<string> {
       quad(s, namedNode(FUT_INTENSITY), literal(String(need.intensity), namedNode(XSD_INTEGER))),
     );
   }
-  return writeTurtle(quads);
+  return quads;
+}
+
+/** Serialise a {@link Need} to Turtle. Rejects on an invalid required IRI. */
+export async function serializeNeed(need: Need): Promise<string> {
+  return writeTurtle(buildNeedQuads(need));
 }
 
 /** Serialise a {@link Resonance} to Turtle. Throws on an invalid required IRI. */

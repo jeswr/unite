@@ -48,7 +48,7 @@ the served document. To deploy at a different origin: update `public/clientid.js
 document with `VITE_CLIENT_ID`). In dev, no static `client_id` is used → dynamic
 client registration (the only combination that works from `localhost`).
 
-## What it does (features a–e)
+## What it does (features a–g)
 
 | Feature | View | Data-layer entry |
 |---|---|---|
@@ -57,11 +57,27 @@ client registration (the only combination that works from `localhost`).
 | (c) read the deliberation's aggregated needs | Needs board | `aggregateDeliberation` (`publicFetch`) |
 | (d) express resonance on others' needs (to your pod) | Needs board | `writeResonance` (`authenticatedFetch`) |
 | (e) bridging view: needs ranked by cross-cluster agreement | Bridging | `rankNeeds` |
+| (f) **live updates** — the board re-aggregates when a participant container changes | Needs board / Bridging | `useLiveUpdates` → `watchContainers` (WebSocketChannel2023 + poll fallback) |
+| (g) **ODRL consent** — attach a usage policy to a need (what may be aggregated / synthesized / quoted / forwarded, + k-anonymity) | Compose | `ConsentPanel` → `writeNeed(consent)` → `consentQuads` (`@jeswr/solid-odrl`) |
 
 **Fetch discipline (the credential-leak boundary):** the session-bound
 `authenticatedFetch` is used ONLY for your own pod (writes + own reads); foreign
 participant pods are read with the credential-free `publicFetch`, so a session
-token can never leak cross-origin.
+token can never leak cross-origin. Live-update discovery + subscription use
+`publicFetch` too, and are SSRF-contained to the pod's own host.
+
+**Live updates (f)** are best-effort: each participant's `needs/` + `resonances/`
+container is watched via the Solid Notifications Protocol (`WebSocketChannel2023`),
+falling back to ETag polling where a server advertises no channel or a socket
+drops. `receiveFrom` and the whole discovery chain are host-constrained to the pod.
+
+**ODRL consent (g)** stores an `odrl:hasPolicy` policy INLINE in the need's own pod
+resource, using the `fut:` consent-action profile
+(`fut:aggregate`/`synthesize`/`quoteVerbatim`/`governmentUse` + the `fut:kThreshold`
+k-anonymity constraint) — matching the landed futures sector vocabulary. Defaults
+are conservative (aggregate + synthesize permitted; quote-verbatim + government-use
+prohibited; k=5). Server-side enforcement is a facilitation-service concern (a
+follow-up); this is the author's standing consent record.
 
 ## EXPERT-REVIEW checklist (design/03 — psychology-informed convergence)
 
