@@ -48,6 +48,59 @@ the served document. To deploy at a different origin: update `public/clientid.js
 document with `VITE_CLIENT_ID`). In dev, no static `client_id` is used → dynamic
 client registration (the only combination that works from `localhost`).
 
+## Deploy to Vercel
+
+`vercel.json` (SPA fallback + Client Identifier Document CORS/content-type) is
+committed. The app lives in this `app/` subdirectory of the repo, so the Vercel
+**Root Directory** must be set to `app`.
+
+**Vercel import settings (2-minute import):**
+
+| Setting | Value |
+|---|---|
+| Framework Preset | **Vite** |
+| Root Directory | **`app`** |
+| Build Command | `npm run build` (default) |
+| Output Directory | `dist` (default) |
+| Install Command | `npm ci` (default; keyless — the lockfile is `git+https`, sha-pinned, no `git+ssh`) |
+| Node.js Version | 22.x or 24.x |
+
+`npm ci` needs no npm/GitHub credentials: the five `@jeswr/*` deps resolve over
+public `git+https` at pinned SHAs. `.npmrc` sets `ignore-scripts=true`, so no
+lifecycle hooks run.
+
+**`vercel.json` does two things** (mirrors `solid-access-manager`): (1) an SPA
+rewrite `/((?!assets/).*) → /index.html` so client routes resolve (static files
+like `clientid.jsonld`, `callback.html`, and `assets/*` are served by the
+filesystem first, so the rewrite only catches unknown app routes); (2) serves
+`/clientid.jsonld` as `application/ld+json` with `Access-Control-Allow-Origin: *`
+so a Solid IdP on any origin can fetch the Client Identifier Document.
+
+**Environment variables — two scenarios.** The Client Identifier Document is a
+STATIC file baked to ONE origin (`CANONICAL_ORIGIN = https://unite.jeswr.org`), so
+the deploy origin, `public/clientid.jsonld`, and the derived `client_id` must all
+agree. Pick one:
+
+1. **Custom domain `unite.jeswr.org` (recommended — zero config).** Assign the
+   domain to the Vercel project. `public/clientid.jsonld` already advertises
+   `https://unite.jeswr.org/clientid.jsonld` and `client_id`/callback derive from
+   `CANONICAL_ORIGIN`, so **no env vars are needed** and login works out of the box.
+   *(Domain assignment is a `needs:user` DNS action.)*
+
+2. **Default `<project>.vercel.app` domain.** The baked canonical origin no longer
+   matches, so you MUST both (a) regenerate `public/clientid.jsonld` — set its
+   `client_id`, `client_uri`, `redirect_uris`, `post_logout_redirect_uris` to the
+   `.vercel.app` origin — and (b) set **`VITE_APP_ORIGIN=https://<project>.vercel.app`**
+   in the Vercel project (Production + Preview) so `deriveClientId` /
+   `deriveCallbackUri` point at the same origin. Without both, login fails
+   (`client_id` won't resolve at the served URL). A committed consistency test asserts
+   the doc and the derivations match.
+
+Optional split-topology var (either scenario): `VITE_ALLOWED_ORIGINS` — extra
+resource origins the DPoP token may attach to, only when the pod is served from a
+different host than the WebID + issuer. `VITE_CLIENT_ID` pins a specific Client
+Identifier Document URL verbatim (overrides the origin derivation).
+
 ## What it does (features a–g)
 
 | Feature | View | Data-layer entry |
