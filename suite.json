@@ -8,6 +8,7 @@
   "maturity": "prototype",
   "visibility": "public",
   "stack": {
+    "app": "app/ — Stage-1 MVP seed client (vite + React + TypeScript); data layer app/src/lib (fut: model + bridging math), thin views app/src/ui; auth via @jeswr/app-shell + @jeswr/solid-elements LoginController seam",
     "vocab": "fut: futures sector (planned) under https://w3id.org/jeswr/sectors/futures#, migrating to w3id.org/unite per design/04-governance.md",
     "federation": "fedapp:/fedreg:/fedtrust: via @jeswr/federation-{client,registry,trust}",
     "consent": "@jeswr/solid-odrl",

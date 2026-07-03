@@ -2,10 +2,11 @@
 
 # unite
 
-> ⚠️ **Design stage — nothing here is implemented.** This repository holds the
-> founding *design proposal* for **unite**, a decentralised
-> participatory-democracy platform. It is AI-agent-authored (Claude Fable 5,
-> @jeswr's PSS agent) from the maintainer's brief in
+> ⚠️ **Design + a Stage-1 seed client — under active development, not
+> production-ready.** This repository holds the founding *design proposal* for
+> **unite**, a decentralised participatory-democracy platform, plus an initial
+> **Stage-1 MVP seed client** in [`app/`](app/). It is AI-agent-authored (Claude
+> Fable 5, @jeswr's PSS agent) from the maintainer's brief in
 > [full-solid-ecosystem#15](https://github.com/jeswr/full-solid-ecosystem/issues/15),
 > and is intended to be criticised, forked, and superseded.
 
@@ -54,6 +55,20 @@ Read it in order — each part builds on the previous:
 | [design/04-governance.md](design/04-governance.md) | How the spec itself is stewarded with no single owner |
 | [design/05-stage1-mvp.md](design/05-stage1-mvp.md) | The Stage-1 MVP: the app-co-design instance, screens, flows, and the packages it composes |
 | [design/06-critique.md](design/06-critique.md) | The adversarial self-critique this design was revised against — kept, not deleted |
+
+## The Stage-1 seed client
+
+[`app/`](app/) is the first implementation: a vite + React + TypeScript SPA
+covering the Stage-1 MVP features (a)–(e) — join a deliberation, submit a
+Max-Neef-classified need to your own pod, read the aggregated needs, express
+tri-state resonance, and view needs ranked by cross-cluster (bridging)
+agreement. The data layer (`app/src/lib`) is exhaustively tested (hostile-input
+resilience + a deterministic bridging characterization fixture that seeds the
+design's conformance set). Implementation choices + the answers to the design's
+three open questions are recorded in
+[decisions/0001-stage1-implementation-choices.md](decisions/0001-stage1-implementation-choices.md).
+See [`app/README.md`](app/README.md) for run instructions, the EXPERT-REVIEW
+checklist, and the production-wiring follow-ups.
 
 ## Why this repo exists (and why that's not a contradiction)
 
