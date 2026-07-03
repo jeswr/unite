@@ -16,7 +16,7 @@ layer (`src/lib`); the views (`src/ui`) are thin over it.
 ## Run
 
 ```sh
-npm install          # ignore-scripts install; git deps carry committed dist/
+npm install          # .npmrc sets ignore-scripts=true → no lifecycle scripts run; git deps carry committed dist/
 npm run dev          # vite dev server
 npm run build        # tsc --noEmit + vite build
 npm test             # vitest (the data-layer suite)
