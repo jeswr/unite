@@ -26,9 +26,27 @@ npm run typecheck    # tsc --noEmit
 
 The app talks to a Solid pod through an **injectable `fetch`** (the auth seam),
 so it runs against any Solid server. Login is wired behind a `LoginController`
-(see **Production wiring** below); out of the box a clearly-marked
-`DevLoginController` stub lets you exercise the write/aggregate flows against a
-local dev pod without a real identity provider.
+(the DI seam): a **DEV build** uses a clearly-marked `DevLoginController` stub
+(exercise the write/aggregate flows against a local dev pod, no identity
+provider); a **PRODUCTION build** wires the REAL reactive-auth controller
+(`src/ui/controller.ts` — `@jeswr/solid-elements/auth` over
+`@solid/reactive-authentication` + `@jeswr/solid-session-restore` + DPoP + silent
+restore), loaded by a dynamic import so the browser-only auth stack never loads in
+dev and a broken auth environment fails closed. Nothing in the views changes —
+both paths flow through the injected `LoginController`.
+
+### Client Identifier Document (Solid-OIDC)
+
+`public/clientid.jsonld` is a **static Client Identifier Document**; its
+`client_id` MUST equal its own served URL, so it is baked to a single
+**canonical origin** (`CANONICAL_ORIGIN` in `src/ui/controller.ts`, currently
+`https://unite.jeswr.org`). Production derives BOTH the `client_id` and the
+callback URI from that SAME origin (never the runtime origin, which could diverge
+from the static doc on a preview deploy) — a test asserts the derivations match
+the served document. To deploy at a different origin: update `public/clientid.jsonld`
+(both `client_id` and `redirect_uris`) and set `VITE_APP_ORIGIN` (or pin a specific
+document with `VITE_CLIENT_ID`). In dev, no static `client_id` is used → dynamic
+client registration (the only combination that works from `localhost`).
 
 ## What it does (features a–e)
 
@@ -68,12 +86,11 @@ The recruitment of such experts is an out-of-agent-hands `needs:user` action
 
 The seams are built so production drops in without touching the views:
 
-- **Login:** replace `DevLoginController` (`src/ui/auth.tsx`) with
-  `createReactiveAuthController` from `@jeswr/solid-elements/auth` (browser-only
-  dynamic import) configured with this app's `callbackUri` + a Client Identifier
-  Document. Wires `@solid/reactive-authentication` + `@jeswr/solid-session-restore`
-  + DPoP + silent restore. The `LoginController` is injected via React context, so
-  only that one construction line changes.
+- **Login:** DONE — a production build wires `createReactiveAuthController` from
+  `@jeswr/solid-elements/auth` via `src/ui/controller.ts` (dynamic import; DPoP +
+  silent restore + Client Identifier Document; see the "Client Identifier Document"
+  section above). The `DevLoginController` remains the DEV-only stub. Remaining
+  deploy-time `needs:user`: confirm the canonical origin / domain.
 - **Membership (Q1):** replace `StubMembershipVerifier` with a
   `@jeswr/federation-trust` verifier over `fedtrust:MembershipCredential`
   (community-vouched T1). Tier T2 (ZK personhood) plugs into the SAME

@@ -1,0 +1,12 @@
+{
+  "@context": ["https://www.w3.org/ns/solid/oidc-context.jsonld"],
+  "client_id": "https://unite.jeswr.org/clientid.jsonld",
+  "client_name": "unite — shared-futures deliberation",
+  "client_uri": "https://unite.jeswr.org/",
+  "redirect_uris": ["https://unite.jeswr.org/callback.html"],
+  "post_logout_redirect_uris": ["https://unite.jeswr.org/"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "scope": "openid webid offline_access",
+  "token_endpoint_auth_method": "none"
+}

@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- AUTHORED-BY Claude Fable 5 (PSS agent) -->
+<!-- The reactive-auth popup contract: relay the authorization response back to
+     the opener window, then this popup closes. See @solid/reactive-authentication
+     (<authorization-code-flow> getCode) + the solid-client-id skill. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Signing in…</title>
+  </head>
+  <body>
+    <p>Completing sign-in…</p>
+    <script>
+      if (window.opener) {
+        window.opener.postMessage(location.href);
+      }
+      // The response has been relayed to the opener; close the popup. (The auth
+      // flow may also close it; a redundant close() is harmless.)
+      window.close();
+    </script>
+  </body>
+</html>
