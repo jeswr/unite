@@ -33,7 +33,10 @@ import { createContext, type ReactNode, useContext } from "react";
  */
 export class DevLoginController implements LoginController {
   #webId: string | null;
-  readonly publicFetch: typeof fetch = (input, init) => fetch(input, init);
+  // Credential-free by construction: force `credentials: "omit"` so a foreign
+  // (cross-origin, or same-origin) read can never ride cookies/session state.
+  readonly publicFetch: typeof fetch = (input, init) =>
+    fetch(input, { ...init, credentials: "omit" });
 
   constructor(webId: string | null = null) {
     this.#webId = webId;
@@ -67,6 +70,51 @@ export class DevLoginController implements LoginController {
     this.#webId = null;
     return Promise.resolve();
   }
+}
+
+/**
+ * A FAIL-CLOSED controller for production builds where the real reactive-auth
+ * controller is not yet wired (a Stage-1 follow-up, see app/README.md). It never
+ * appears signed in: `webId` is null, `login()` REJECTS with a clear message, and
+ * both fetches are the plain credential-free fetch. This guarantees a production
+ * build can never fake a session with the dev stub.
+ */
+export class UnconfiguredLoginController implements LoginController {
+  // Credential-free by construction: force `credentials: "omit"` so a foreign
+  // (cross-origin, or same-origin) read can never ride cookies/session state.
+  readonly publicFetch: typeof fetch = (input, init) =>
+    fetch(input, { ...init, credentials: "omit" });
+  get authenticatedFetch(): typeof fetch {
+    return this.publicFetch;
+  }
+  get webId(): string | null {
+    return null;
+  }
+  recentAccounts(): RecentLoginAccount[] {
+    return [];
+  }
+  restore(): Promise<RestoreOutcome> {
+    return Promise.resolve({ outcome: "login" });
+  }
+  login(): Promise<LoginResult> {
+    return Promise.reject(
+      new Error(
+        "Login is not configured in this build — production auth wiring is a follow-up (see app/README.md).",
+      ),
+    );
+  }
+  logout(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+/**
+ * Select the Stage-1 LoginController: the DEV stub in a development build, the
+ * fail-closed unconfigured controller otherwise. Production swaps this for
+ * `createReactiveAuthController` (decisions/0001) — a one-line change.
+ */
+export function makeDefaultController(): LoginController {
+  return import.meta.env.DEV ? new DevLoginController() : new UnconfiguredLoginController();
 }
 
 const AuthContext = createContext<LoginController | null>(null);

@@ -13,10 +13,12 @@ import "@jeswr/app-shell/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
-import { AuthProvider, DevLoginController } from "./auth.js";
+import { AuthProvider, makeDefaultController } from "./auth.js";
 import "../styles.css";
 
-const controller = new DevLoginController();
+// DEV → the dev stub; production build → a FAIL-CLOSED controller that never
+// fakes a session (real reactive-auth wiring is a Stage-1 follow-up).
+const controller = makeDefaultController();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("missing #root");
