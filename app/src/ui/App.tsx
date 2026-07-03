@@ -8,7 +8,7 @@ import { FeedbackButton, ThemeToggle } from "@jeswr/app-shell";
 import { LoginPanel } from "@jeswr/solid-elements/react";
 import { useState } from "react";
 import { useController } from "./auth.js";
-import { useAggregate } from "./hooks.js";
+import { useAggregate, useLiveUpdates } from "./hooks.js";
 import { DEFAULT_CONFIG, type DeliberationConfig } from "./state.js";
 import { Bridging } from "./views/Bridging.js";
 import { Compose } from "./views/Compose.js";
@@ -30,6 +30,9 @@ export function App(): React.JSX.Element {
   const [config, setConfig] = useState<DeliberationConfig>(DEFAULT_CONFIG);
   const [view, setView] = useState<View>("join");
   const aggregate = useAggregate(config, controller);
+  // Live updates: re-aggregate when any participant container changes
+  // (WebSocketChannel2023 with a poll fallback; best-effort).
+  useLiveUpdates(config, controller, aggregate.refresh);
 
   return (
     <div className="app">

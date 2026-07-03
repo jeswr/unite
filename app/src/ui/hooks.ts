@@ -7,6 +7,8 @@
 import type { LoginController } from "@jeswr/solid-elements/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type AggregateResult, aggregateDeliberation } from "../lib/aggregate.js";
+import { watchContainers } from "../lib/notifications.js";
+import { isValidParticipant } from "../lib/registry.js";
 import { buildRegistry, buildVerifier, type DeliberationConfig } from "./state.js";
 
 export interface AggregateState {
@@ -69,4 +71,52 @@ export function useAggregate(
   }, [config]);
 
   return { result, loading, error, refresh };
+}
+
+/**
+ * The needs/ + resonances/ container URLs for every configured participant — the
+ * containers whose changes should re-trigger aggregation. Malformed bases are
+ * skipped (defensive; the write path independently guards its own base).
+ */
+export function deliberationContainers(config: DeliberationConfig): string[] {
+  const out: string[] = [];
+  for (const p of config.participants) {
+    // Only watch VALIDATED participants (https WebID + https base ending "/") — the
+    // same gate StaticRegistry enforces. Prevents live-update HEAD/POST/WebSocket
+    // requests to http/localhost/private/invalid bases before the registry is built.
+    if (!isValidParticipant(p)) continue;
+    for (const dir of ["needs/", "resonances/"]) {
+      out.push(new URL(dir, p.base).toString());
+    }
+  }
+  return out;
+}
+
+/**
+ * Subscribe to live changes across the deliberation's participant containers
+ * (WebSocketChannel2023 with a poll fallback) and invoke `onChange` — the board's
+ * `refresh` — when anything changes. Foreign pods are watched with the
+ * credential-free `publicFetch` (the same boundary the read path uses). Best-effort:
+ * a server with no notifications simply polls. Re-subscribes only when the config
+ * or controller changes; `onChange` is read through a ref so a new callback identity
+ * does not churn the subscriptions.
+ */
+export function useLiveUpdates(
+  config: DeliberationConfig,
+  controller: LoginController,
+  onChange: () => void,
+): void {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    const containers = deliberationContainers(config);
+    if (containers.length === 0) return;
+    const watcher = watchContainers({
+      containers,
+      fetch: controller.publicFetch,
+      onChange: () => onChangeRef.current(),
+    });
+    return () => watcher.close();
+  }, [config, controller]);
 }

@@ -27,7 +27,7 @@ export interface DeliberationRegistry {
 }
 
 /** True for an https container URL that ends in "/" (a valid pod base). */
-function isValidBase(base: string): boolean {
+export function isValidBase(base: string): boolean {
   if (!base.endsWith("/")) return false;
   let u: URL;
   try {
@@ -36,6 +36,16 @@ function isValidBase(base: string): boolean {
     return false;
   }
   return u.protocol === "https:";
+}
+
+/**
+ * True for a participant with a valid https WebID + a valid https base — the same
+ * gate {@link StaticRegistry} enforces on construction. Callers that watch/read a
+ * participant's pod BEFORE the registry is built (e.g. live-update subscriptions)
+ * use this so they never issue requests to an invalid / http / localhost base.
+ */
+export function isValidParticipant(p: { readonly webId: string; readonly base: string }): boolean {
+  return isHttpIri(p.webId) && p.webId.startsWith("https:") && isValidBase(p.base);
 }
 
 /**
