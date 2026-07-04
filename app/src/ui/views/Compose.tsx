@@ -11,7 +11,7 @@ import { MAXNEEF_CONCEPTS } from "../../lib/fut.js";
 import { MAX_CONTENT_LENGTH, type Need } from "../../lib/model.js";
 import { writeNeed } from "../../lib/pod.js";
 import { meetsTier } from "../../lib/trust.js";
-import type { ScopeConfig } from "../../scope/scopes.js";
+import { type ScopeConfig, scopeHref } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
 import type { SessionTrust } from "../hooks.js";
 import { writeSessionFor } from "../hooks.js";
@@ -113,8 +113,17 @@ export function Compose({
             {config.mode === "demo" && (
               <p className="muted small">
                 In this demo scope you are deliberately an unvouched visitor, so you can see the
-                locked state for real. Switch to the <a href="?scope=apps">apps scope</a> — there
-                you hold a steward role and everything unlocks.
+                locked state for real. Switch to the{" "}
+                <a
+                  href={scopeHref(
+                    "apps",
+                    typeof window === "undefined" ? null : window.location.search,
+                    typeof window === "undefined" ? null : window.location.hash,
+                  )}
+                >
+                  apps scope
+                </a>{" "}
+                — there you hold a steward role and everything unlocks.
               </p>
             )}
           </div>

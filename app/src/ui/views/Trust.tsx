@@ -16,6 +16,7 @@ import {
   meetsTier,
   writeCredentialDoc,
 } from "../../lib/trust.js";
+import { scopeHref } from "../../scope/scopes.js";
 import { avatarColor, initials } from "../format.js";
 import type { SessionTrust } from "../hooks.js";
 import { displayName } from "../hooks.js";
@@ -307,8 +308,17 @@ export function Trust({
             {stewardNames.length > 0 && (
               <> Stewards of this community: {stewardNames.join(", ")}.</>
             )}{" "}
-            In the <a href="?scope=apps">apps scope</a> you hold a steward role and can try issuance
-            live.
+            In the{" "}
+            <a
+              href={scopeHref(
+                "apps",
+                typeof window === "undefined" ? null : window.location.search,
+                typeof window === "undefined" ? null : window.location.hash,
+              )}
+            >
+              apps scope
+            </a>{" "}
+            you hold a steward role and can try issuance live.
           </p>
         ) : (
           <p className="muted">
