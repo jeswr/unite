@@ -108,7 +108,16 @@ called), `hosts` (hostname prefixes that select it), `buildLayer` (whether the
 agentic build surface exists), `minTierToPropose` (the §4.1 participant floor —
 ENFORCED since Phase 2 by the Compose/reaction gates + the aggregation-side
 `TierParticipationGate`; a `minRoleToBuild` hook arrives with the Phase-3 build
-layer), `defaultDeliberation` (seed community per scope).
+layer) — plus, since S0 of the scope-differentiation build
+(docs/SCOPE-DIFFERENTIATION.md §5.3), the differentiation seams:
+`composeFlow` (which compose wizard mounts), `artifactKinds` (statement kinds
+the aggregator collects), `cohortLenses` (bridging partitions computed),
+`outputKind` (which output pipeline the Convergence Room hands an endorsed
+candidate to), `views` (extra scope-enabled views — an enabled-but-unbuilt
+view renders an honest phase-labelled preview), and `endorsementGate`
+(cross-cohort/reviewer/steward floors, composing the Phase-2 roles as
+interfaces). The per-scope seed deliberation comes from `ui/state.ts`
+(`demoConfig` / `scopedDefaultConfig`), not the scope record.
 
 ## 3. Hosting — Vercel, one project, per-scope subdomains
 

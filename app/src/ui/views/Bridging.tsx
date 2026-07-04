@@ -16,6 +16,7 @@ import { characterizeReception, topForCluster } from "../../lib/insights.js";
 import type { Need } from "../../lib/model.js";
 import { projectParticipants } from "../../lib/projection.js";
 import { type ClusterDistribution, rankNeeds } from "../../lib/ranking.js";
+import type { ScopeConfig } from "../../scope/scopes.js";
 import type { AggregateState } from "../hooks.js";
 import { displayName } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
@@ -57,10 +58,12 @@ function DistributionBar({
 }
 
 export function Bridging({
+  scope,
   config,
   webId,
   aggregate,
 }: {
+  scope: ScopeConfig;
   config: DeliberationConfig;
   webId: string | null;
   aggregate: AggregateState;
@@ -121,6 +124,23 @@ export function Bridging({
             — cross-group agreement, not engagement. The actual distribution is always shown, and
             disagreement is labelled, never hidden.
           </p>
+          {/* The cohortLenses seam (S0): only the computed-opinion partition is
+              built; a scope whose extra lens hasn't landed says so honestly. */}
+          {scope.cohortLenses.includes("role") && (
+            <p className="notice info">
+              This scope additionally requires the <strong>stakeholder-role lens</strong>{" "}
+              (implementers / operators / participants — the same bridging math over the declared
+              role partition). It arrives in <strong>S3</strong>; today the map shows computed
+              opinion groups only.
+            </p>
+          )}
+          {scope.cohortLenses.includes("tier") && (
+            <p className="notice info">
+              This scope additionally shows <strong>identity-tier stratified distributions</strong>{" "}
+              on every ranked statement (T0/T1/T2 — stratify-and-disclose). They arrive in{" "}
+              <strong>S4</strong>; today the map shows computed opinion groups only.
+            </p>
+          )}
         </div>
         <div className="field">
           <span className="muted small">Opinion groups</span>

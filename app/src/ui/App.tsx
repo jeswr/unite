@@ -11,12 +11,13 @@ import { useState } from "react";
 import { resolveScope, SCOPE_ORDER, SCOPES, scopeHref } from "../scope/scopes.js";
 import { useController } from "./auth.js";
 import { useAggregate, useLiveUpdates, useTrustProfile } from "./hooks.js";
-import { useHashView, type View } from "./route.js";
+import { DEFAULT_VIEW, useHashView, type View } from "./route.js";
 import { type DeliberationConfig, scopedDefaultConfig } from "./state.js";
 import { Bridging } from "./views/Bridging.js";
 import { Compose } from "./views/Compose.js";
 import { NeedsBoard } from "./views/NeedsBoard.js";
 import { Overview } from "./views/Overview.js";
+import { enabledViews, isViewEnabled, PreviewView, VIEW_LABELS } from "./views/registry.js";
 import { Trust } from "./views/Trust.js";
 
 // One codebase, three nested scope modes (docs/PLATFORM-PLAN.md §1–2).
@@ -27,13 +28,12 @@ const SCOPE = resolveScope({
   env: import.meta.env.VITE_UNITE_SCOPE as string | undefined,
 });
 
-const TABS: { id: View; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "compose", label: "Compose" },
-  { id: "board", label: "Needs board" },
-  { id: "bridge", label: "Common ground" },
-  { id: "trust", label: "Trust" },
-];
+// The scope's tab strip: base views ∪ the scope-enabled extras, in the
+// registry's canonical order (the S0 view seam — SCOPE-DIFFERENTIATION §5.3).
+const TABS: { id: View; label: string }[] = enabledViews(SCOPE).map((id) => ({
+  id,
+  label: VIEW_LABELS[id],
+}));
 
 /** The Venn brand mark — the intersection is the point (common ground). */
 function BrandMark(): React.JSX.Element {
@@ -50,7 +50,10 @@ export function App(): React.JSX.Element {
   const controller = useController();
   const [webId, setWebId] = useState<string | null>(controller.webId);
   const [config, setConfig] = useState<DeliberationConfig>(() => scopedDefaultConfig(SCOPE));
-  const [view, navigate] = useHashView();
+  const [routedView, navigate] = useHashView();
+  // Fail-closed scope guard: a parseable view id NOT enabled for this scope
+  // (e.g. #/deck under apps) renders the default view, never a blank surface.
+  const view = isViewEnabled(SCOPE, routedView) ? routedView : DEFAULT_VIEW;
   const aggregate = useAggregate(config, controller);
   // The session's verified standing (tier × roles) — resolved once here, and
   // every view gates off the same profile (Phase 2, PLATFORM-PLAN §4).
@@ -170,8 +173,18 @@ export function App(): React.JSX.Element {
             aggregate={aggregate}
           />
         )}
-        {view === "bridge" && <Bridging config={config} webId={webId} aggregate={aggregate} />}
+        {view === "bridge" && (
+          <Bridging scope={SCOPE} config={config} webId={webId} aggregate={aggregate} />
+        )}
         {view === "trust" && <Trust config={config} webId={webId} trust={trust} />}
+        {/* Scope-enabled extra views not yet built render the honest,
+            phase-labelled preview (never a relabelled apps surface). */}
+        {(view === "proposals" ||
+          view === "room" ||
+          view === "adoption-board" ||
+          view === "deck" ||
+          view === "futures-gallery" ||
+          view === "published-futures") && <PreviewView view={view} scope={SCOPE} />}
       </main>
 
       <p className="footer-note">

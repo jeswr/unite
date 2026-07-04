@@ -14,6 +14,77 @@ export type ScopeId = "apps" | "infrastructure" | "society";
 /** Identity tiers from design/02 §5 — canonically defined in lib/trust.ts. */
 export type { IdentityTier } from "../lib/trust.js";
 
+// ── The S0 scope-differentiation seams (docs/SCOPE-DIFFERENTIATION.md §5.3) ──
+// Differentiation stays CONFIGURATION + a small set of pluggable pipelines,
+// never view forks (PLATFORM-PLAN §2). Every field has a safe default — the
+// apps values — and resolution stays pure + fail-closed.
+
+/**
+ * Which compose wizard the Compose view mounts (SCOPE-DIFFERENTIATION §1 row 1
+ * — the compose grammar). Only "need-first" is implemented today; the
+ * structured-infra wizard lands in S2 and the narrative-decompose wizard in S4
+ * — until then Compose falls back to need-first with an honest phase note.
+ */
+export type ComposeFlow = "need-first" | "structured-infra" | "narrative-decompose";
+
+/**
+ * A statement kind the aggregator collects and the board renders
+ * (SCOPE-DIFFERENTIATION §5.3). "need" is universal; "app-proposal" is scope
+ * A's proposal layer (S1); the rest flip on with their scopes (S2 / S4).
+ */
+export type ArtifactKind =
+  | "need"
+  | "app-proposal"
+  | "infra-proposal"
+  | "vision"
+  | "claim"
+  | "value";
+
+/**
+ * A bridging partition the Common-ground view computes/requires
+ * (SCOPE-DIFFERENTIATION §3.4). "opinion" (computed clusters) is always on;
+ * "role" is scope B's declared-stakeholder lens (S3); "tier" is scope C's
+ * identity-tier stratification (S4).
+ */
+export type CohortLens = "opinion" | "role" | "tier";
+
+/**
+ * Which output pipeline the Convergence Room hands an endorsed candidate to
+ * (SCOPE-DIFFERENTIATION §1 row 5): A commissions a build; B recommends a
+ * spec version whose ratification is MEASURED adoption on the wire; C
+ * publishes an advisory synthesis with a mandatory dissent annex.
+ */
+export type OutputKind = "build-commission" | "adoption-decision" | "advisory-synthesis";
+
+/**
+ * The extra (non-base) views a scope enables (SCOPE-DIFFERENTIATION §5.3).
+ * The base five (overview/compose/board/bridge/trust) are in every scope; an
+ * enabled extra view that is not yet built renders an HONEST phase-labelled
+ * preview (ui/views/registry), never a silently-missing tab.
+ */
+export type ScopeViewId =
+  | "proposals"
+  | "room"
+  | "adoption-board"
+  | "deck"
+  | "futures-gallery"
+  | "published-futures";
+
+/**
+ * The endorsement-gate floors for the Convergence Room's output stage
+ * (SCOPE-DIFFERENTIATION §5.3; PLATFORM-PLAN §4.4 — communities may raise
+ * floors, never lower them). Composes the Phase-2 roles strictly as
+ * interfaces: nothing here re-specifies issuance or vouching.
+ */
+export interface EndorsementGate {
+  /** Partitions that must EACH clear the bridging threshold (§3.4). */
+  readonly crossCohort: readonly ("opinion" | "role")[];
+  /** Whether moving a candidate into endorsement needs a reviewer role (B). */
+  readonly reviewerRoleRequired: boolean;
+  /** Steward signatures required on the published output (floor 2). */
+  readonly stewardSignatures: number;
+}
+
 /** One scope mode's configuration (PLATFORM-PLAN §2). */
 export interface ScopeConfig {
   readonly id: ScopeId;
@@ -43,6 +114,18 @@ export interface ScopeConfig {
    * Scope C keeps floor 0 (pseudonymous voice is a G3 requirement).
    */
   readonly minTierToPropose: IdentityTier;
+  /** Which compose wizard Compose mounts (§5.3 seam). */
+  readonly composeFlow: ComposeFlow;
+  /** Statement kinds the aggregator collects + the board renders (§5.3 seam). */
+  readonly artifactKinds: readonly ArtifactKind[];
+  /** Bridging partitions computed/required — "opinion" is always on (§5.3 seam). */
+  readonly cohortLenses: readonly CohortLens[];
+  /** Which output pipeline the Convergence Room hands an endorsed candidate to. */
+  readonly outputKind: OutputKind;
+  /** Extra views this scope enables (adoption-board, futures-gallery, deck, …). */
+  readonly views: readonly ScopeViewId[];
+  /** Endorsement gate floors (composes Phase-2 roles; communities may raise). */
+  readonly endorsementGate: EndorsementGate;
 }
 
 /** The default scope — the live Stage-1 instance (PLATFORM-PLAN §3). */
@@ -63,6 +146,18 @@ export const SCOPES: Readonly<Record<ScopeId, ScopeConfig>> = {
     buildLayer: true,
     status: "live",
     minTierToPropose: 1,
+    // The reference lifecycle (SCOPE-DIFFERENTIATION §2): the S0 seams resolve
+    // to the live Stage-1 behaviour — the safe defaults every scope falls back to.
+    composeFlow: "need-first",
+    artifactKinds: ["need"],
+    cohortLenses: ["opinion"],
+    outputKind: "build-commission",
+    views: [],
+    endorsementGate: {
+      crossCohort: ["opinion"],
+      reviewerRoleRequired: false,
+      stewardSignatures: 2,
+    },
   },
   infrastructure: {
     id: "infrastructure",
@@ -77,6 +172,20 @@ export const SCOPES: Readonly<Record<ScopeId, ScopeConfig>> = {
     buildLayer: true,
     status: "preview",
     minTierToPropose: 1,
+    // Scope B (SCOPE-DIFFERENTIATION §3): the structured wizard, the
+    // infra-proposal artifact and the role lens flip on in S2/S3 — until then
+    // the config names the target honestly and the UI renders phase-labelled
+    // previews (never a silently relabelled apps surface).
+    composeFlow: "structured-infra",
+    artifactKinds: ["need"], // + "infra-proposal" when S2 lands the model
+    cohortLenses: ["opinion", "role"],
+    outputKind: "adoption-decision",
+    views: ["adoption-board"],
+    endorsementGate: {
+      crossCohort: ["opinion", "role"], // §3.4 — both partitions must clear
+      reviewerRoleRequired: true, // spec-review is the reviewer role's scope-B meaning
+      stewardSignatures: 2,
+    },
   },
   society: {
     id: "society",
@@ -92,6 +201,19 @@ export const SCOPES: Readonly<Record<ScopeId, ScopeConfig>> = {
     buildLayer: false,
     status: "preview",
     minTierToPropose: 0,
+    // Scope C (SCOPE-DIFFERENTIATION §4): the narrative→decompose→adopt
+    // wizard, the vision/claim/value artifacts and the tier lens land in
+    // S4/S5 — the config names the target; the UI renders honest previews.
+    composeFlow: "narrative-decompose",
+    artifactKinds: ["need"], // + "vision"/"claim"/"value" when S4 lands the layer
+    cohortLenses: ["opinion", "tier"],
+    outputKind: "advisory-synthesis",
+    views: ["deck", "futures-gallery", "published-futures"],
+    endorsementGate: {
+      crossCohort: ["opinion"],
+      reviewerRoleRequired: false,
+      stewardSignatures: 2,
+    },
   },
 };
 

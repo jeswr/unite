@@ -187,6 +187,25 @@ export function Compose({
         your identity, with your consent policy attached. Others read it only because you let them.
       </p>
 
+      {/* The composeFlow seam (S0): only the need-first wizard is built; a scope
+          whose own grammar hasn't landed says so honestly instead of silently
+          rendering the apps form as if it were the scope's own machinery. */}
+      {scope.composeFlow === "structured-infra" && (
+        <p className="notice info">
+          This scope's <strong>structured proposal wizard</strong> (target system → change kind →
+          blast radius by role → breaking/migration → running code) arrives in <strong>S2</strong>{" "}
+          of the scope build plan. Until then, infrastructure needs are composed with the shared
+          needs form below.
+        </p>
+      )}
+      {scope.composeFlow === "narrative-decompose" && (
+        <p className="notice info">
+          This scope's <strong>narrative-first compose</strong> (tell the whole story → split it
+          into voteable claims, needs and values → adopt each) arrives in <strong>S4</strong> of the
+          scope build plan. Until then, visions are composed as single need statements below.
+        </p>
+      )}
+
       <label className="field">
         <span>
           {copy.prompt}{" "}
