@@ -120,16 +120,28 @@ export function Room({
     return m;
   }, [result]);
 
-  const inputPool = useMemo(
-    () => [
-      ...(result?.proposals ?? []).map((p) => ({ id: p.id, label: `proposal · ${p.title}` })),
-      ...(result?.needs ?? []).map((n) => ({
-        id: n.id,
-        label: `need · ${n.content.length > 60 ? `${n.content.slice(0, 57)}…` : n.content}`,
-      })),
-    ],
-    [result],
-  );
+  // The derivable inputs: ONLY statements whose author's ODRL consent permits
+  // fut:synthesize (the aggregate's fail-closed set — design/01: deriving a
+  // synthesis is exactly the act the consent layer governs). Statements the
+  // authors did NOT consent to synthesis for are never offered, and the count
+  // withheld is surfaced honestly below.
+  const inputPool = useMemo(() => {
+    const ok = result?.synthesizable ?? new Set<string>();
+    return [
+      ...(result?.proposals ?? [])
+        .filter((p) => ok.has(p.id))
+        .map((p) => ({ id: p.id, label: `proposal · ${p.title}` })),
+      ...(result?.needs ?? [])
+        .filter((n) => ok.has(n.id))
+        .map((n) => ({
+          id: n.id,
+          label: `need · ${n.content.length > 60 ? `${n.content.slice(0, 57)}…` : n.content}`,
+        })),
+    ];
+  }, [result]);
+
+  const withheldCount =
+    (result ? result.proposals.length + result.needs.length : 0) - inputPool.length;
 
   function toggleInput(id: string): void {
     setDraftInputs((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -152,6 +164,15 @@ export function Room({
     if (draftInputs.length === 0) {
       setFormError(
         "Select at least one input — a synthesis must name what it derives from (prov:wasDerivedFrom), so its lineage is checkable.",
+      );
+      return;
+    }
+    // Defence in depth (fail-closed): every input must STILL be consented to
+    // synthesis at submit time — a stale selection (e.g. the author revoked
+    // consent and the aggregate refreshed) must never be derived from.
+    if (!draftInputs.every((id) => result?.synthesizable.has(id))) {
+      setFormError(
+        "A selected input's author has not consented to synthesis (fut:synthesize) — deselect it; only consented statements may be derived from.",
       );
       return;
     }
@@ -356,8 +377,11 @@ export function Room({
             </span>
             {inputPool.length === 0 ? (
               <p className="muted small">
-                Nothing to derive from yet — the deliberation needs shared{" "}
-                <a href="#/board">needs</a> first.
+                Nothing to derive from yet —{" "}
+                {withheldCount > 0
+                  ? "the shared statements here do not carry consent to synthesis (fut:synthesize), so none may be derived from."
+                  : "the deliberation needs shared statements first."}{" "}
+                <a href="#/board">See the needs board</a>.
               </p>
             ) : (
               <fieldset className="chip-row" aria-label="synthesis inputs">
@@ -373,6 +397,13 @@ export function Room({
                   </button>
                 ))}
               </fieldset>
+            )}
+            {inputPool.length > 0 && withheldCount > 0 && (
+              <p className="muted small">
+                {withheldCount} statement{withheldCount === 1 ? " is" : "s are"} not offered: their
+                authors' consent does not permit synthesis (fut:synthesize) — consent gates
+                derivation, fail-closed.
+              </p>
             )}
           </div>
           {active && (

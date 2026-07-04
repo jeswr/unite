@@ -50,6 +50,14 @@ describe("the seeded S1 artifact spine through the REAL pipeline", () => {
     expect(result.errors).toEqual([]);
   });
 
+  it("every seeded need + proposal is synthesizable (all carry DEFAULT_CONSENT)", async () => {
+    const { result } = await aggregateApps();
+    for (const n of result.needs) expect(result.synthesizable.has(n.id)).toBe(true);
+    for (const p of result.proposals) expect(result.synthesizable.has(p.id)).toBe(true);
+    // Candidates are process-layer artifacts — never in the derivable set.
+    for (const c of result.candidates) expect(result.synthesizable.has(c.id)).toBe(false);
+  });
+
   it("every proposal's needs trace resolves to seeded needs (satisfier → needs)", async () => {
     const { result } = await aggregateApps();
     const needIds = new Set(result.needs.map((n) => n.id));

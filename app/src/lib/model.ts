@@ -523,6 +523,7 @@ export function parseProposals(ds: DatasetCore): AppProposal[] {
     const motivatedBy = readIris(ds, s, FUT_MOTIVATED_BY);
     if (
       title === undefined ||
+      title.length === 0 || // mirrors buildProposalQuads: a title is 1–200 chars
       content === undefined ||
       created === undefined ||
       creator === undefined ||
@@ -663,6 +664,7 @@ export function parseCritiques(ds: DatasetCore): Critique[] {
     const inDeliberation = readIri(ds, s, FUT_IN_DELIBERATION);
     if (
       content === undefined ||
+      content.length === 0 || // mirrors buildCritiqueQuads: a critique carries text
       onStatement === undefined ||
       created === undefined ||
       creator === undefined ||

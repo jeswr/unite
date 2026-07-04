@@ -73,6 +73,7 @@ const result: AggregateResult = {
   ],
   candidates: [],
   critiques: [],
+  synthesizable: new Set<string>([NEED_OFFLINE, NEED_LOGIN]),
   verified: [],
   unverified: [],
   errors: [],

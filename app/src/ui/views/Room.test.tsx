@@ -86,6 +86,7 @@ function resultWith(candidateVotes: Resonance[]): AggregateResult {
         inDeliberation: DELIB,
       },
     ],
+    synthesizable: new Set<string>([NEED_A, NEED_B]),
     verified: P.map((webId) => ({ webId, base: `${webId}/u/`, tier: "T1" as const })),
     unverified: [],
     errors: [],
@@ -174,6 +175,24 @@ describe("Convergence Room", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Put it to the room" }));
     expect(screen.getByText(/Select at least one input/)).toBeTruthy();
+  });
+
+  it("offers ONLY synthesis-consented inputs, and says how many are withheld (fail-closed)", () => {
+    const r = { ...resultWith([]), synthesizable: new Set<string>([NEED_A]) };
+    renderRoom(asTrust({ tier: 1, roles: [] }), r);
+    fireEvent.click(screen.getByRole("button", { name: "Draft a candidate" }));
+    // Need A is offered; Need B (no synthesize consent) is NOT.
+    expect(screen.getByRole("button", { name: /need · Need A content/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /need · Need B content/ })).toBeNull();
+    expect(screen.getByText(/1 statement is not offered/)).toBeTruthy();
+  });
+
+  it("offers NO inputs when nothing carries synthesis consent — with the honest reason", () => {
+    const r = { ...resultWith([]), synthesizable: new Set<string>() };
+    renderRoom(asTrust({ tier: 1, roles: [] }), r);
+    fireEvent.click(screen.getByRole("button", { name: "Draft a candidate" }));
+    expect(screen.queryByRole("button", { name: /need ·/ })).toBeNull();
+    expect(screen.getByText(/do not carry consent to synthesis/)).toBeTruthy();
   });
 
   it("shows the empty state (with the draft CTA for members) when no candidate exists", () => {

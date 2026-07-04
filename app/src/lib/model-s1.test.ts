@@ -131,6 +131,14 @@ describe("AppProposal round-trip", () => {
     expect(got?.motivatedBy).toEqual([...(got?.motivatedBy ?? [])].sort());
   });
 
+  it("drops a proposal with an EMPTY title (read mirrors the write-side 1–200 rule)", async () => {
+    const blank = `<${BASE}proposals/blank.ttl> a fut:AppProposal ;
+      dct:title "" ; as:content "x" ; fut:motivatedBy <${NEED_1}> ;
+      dct:created "2026-07-01T00:00:00Z"^^xsd:dateTime ;
+      dct:creator <${WEBID}> ; fut:inDeliberation <${DELIB}> .`;
+    expect(await roundTripProposals(`${PREFIX} ${blank}`)).toEqual([]);
+  });
+
   it("drops a proposal with a missing/oversized title (required field)", async () => {
     const noTitle = `<${BASE}proposals/t.ttl> a fut:AppProposal ;
       as:content "x" ; fut:motivatedBy <${NEED_1}> ;
@@ -225,6 +233,14 @@ describe("Critique round-trip", () => {
   it("REFUSES an empty critique or a non-http target", async () => {
     await expect(serializeCritique({ ...full, content: "" })).rejects.toThrow(/carry text/);
     await expect(serializeCritique({ ...full, onStatement: "data:x" })).rejects.toThrow();
+  });
+
+  it("DROPS a critique with EMPTY content (read mirrors the write-side carry-text rule)", async () => {
+    const blank = `<${BASE}critiques/blank.ttl> a fut:Critique ;
+      as:content "" ; fut:onStatement <${BASE}syntheses/s1.ttl> ;
+      dct:created "2026-07-03T00:00:00Z"^^xsd:dateTime ;
+      dct:creator <${WEBID}> ; fut:inDeliberation <${DELIB}> .`;
+    expect(await roundTripCritiques(`${PREFIX} ${blank}`)).toEqual([]);
   });
 
   it("DROPS a critique with a missing/non-http onStatement; keeps siblings", async () => {

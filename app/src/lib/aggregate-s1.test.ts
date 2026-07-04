@@ -9,7 +9,9 @@
 
 import { describe, expect, it } from "vitest";
 import { aggregateDeliberation, DEFAULT_KINDS, type StatementKind } from "./aggregate.js";
+import { consentQuads, DEFAULT_CONSENT, ODRL_NS } from "./consent.js";
 import { StubMembershipVerifier } from "./membership.js";
+import { buildNeedQuads, buildProposalQuads, serializeTurtle } from "./model.js";
 import { StaticRegistry } from "./registry.js";
 
 const DELIB = "https://community.example/d1";
@@ -165,5 +167,64 @@ describe("aggregation kinds seam (S1)", () => {
     expect(result.critiques).toHaveLength(1);
     expect(result.candidates).toEqual([]);
     expect(result.errors.map((e) => e.stage)).toEqual(["syntheses"]);
+  });
+});
+
+// ── The synthesize-consent gate (roborev High on ff18a63) ─────────────────────
+// The room may only derive a candidate from statements whose author's inline
+// ODRL policy PERMITS fut:synthesize. The aggregate computes that set here,
+// FAIL-CLOSED: an explicit prohibition OR a missing policy both exclude.
+// Docs are produced by the PRODUCTION builders (buildNeedQuads + consentQuads),
+// so the gate is tested against exactly what Compose writes.
+
+describe("synthesizable (the fut:synthesize consent gate)", () => {
+  const needDoc = async (url: string, consent?: typeof DEFAULT_CONSENT): Promise<string> => {
+    const quads = buildNeedQuads({
+      id: url,
+      content: "n",
+      needConcept: CONCEPT,
+      created: "2026-07-01T00:00:00.000Z",
+      creator: ALICE,
+      inDeliberation: DELIB,
+    });
+    if (consent) quads.push(...consentQuads(url, consent, ALICE));
+    return serializeTurtle(quads, consent ? { odrl: ODRL_NS } : undefined);
+  };
+
+  it("includes consented, excludes synthesize-prohibited AND policy-less (fail-closed)", async () => {
+    const nOk = `${ALICE_BASE}needs/n-ok.ttl`;
+    const nDenied = `${ALICE_BASE}needs/n-denied.ttl`;
+    const nBare = `${ALICE_BASE}needs/n-bare.ttl`;
+    const pOk = `${ALICE_BASE}proposals/p-ok.ttl`;
+    const proposalQuads = buildProposalQuads({
+      id: pOk,
+      title: "p",
+      content: "p",
+      motivatedBy: [nOk],
+      created: "2026-07-01T00:00:00.000Z",
+      creator: ALICE,
+      inDeliberation: DELIB,
+    });
+    proposalQuads.push(...consentQuads(pOk, DEFAULT_CONSENT, ALICE));
+    const pod: Record<string, string> = {
+      [`${ALICE_BASE}needs/`]: containerTtl(`${ALICE_BASE}needs/`, [nOk, nDenied, nBare]),
+      [nOk]: await needDoc(nOk, DEFAULT_CONSENT),
+      [nDenied]: await needDoc(nDenied, { ...DEFAULT_CONSENT, synthesize: false }),
+      [nBare]: await needDoc(nBare), // NO policy at all → fail-closed excluded
+      [`${ALICE_BASE}proposals/`]: containerTtl(`${ALICE_BASE}proposals/`, [pOk]),
+      [pOk]: await serializeTurtle(proposalQuads, { odrl: ODRL_NS }),
+      [`${ALICE_BASE}resonances/`]: containerTtl(`${ALICE_BASE}resonances/`, []),
+    };
+    const result = await run(pod, ["need", "app-proposal"]);
+    // Collection is NOT consent-gated (consent governs DERIVATION, not reading):
+    expect(result.needs).toHaveLength(3);
+    expect(result.proposals).toHaveLength(1);
+    // …but the derivable set is, fail-closed:
+    expect([...result.synthesizable].sort()).toEqual([nOk, pOk].sort());
+  });
+
+  it("is empty for the default needs-only aggregation over policy-less docs", async () => {
+    const result = await run(alicePod()); // fixture docs carry no ODRL policy
+    expect(result.synthesizable.size).toBe(0);
   });
 });
