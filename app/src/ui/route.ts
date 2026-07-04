@@ -36,6 +36,7 @@ export function useHashView(): [View, (v: View) => void] {
   );
 
   useEffect(() => {
+    if (typeof window === "undefined") return; // non-browser render (SSR/test)
     const onHashChange = () => setView(parseViewHash(window.location.hash));
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
