@@ -26,16 +26,28 @@ export interface DeliberationRegistry {
   listParticipants(): Promise<Participant[]>;
 }
 
-/** True for an https container URL that ends in "/" (a valid pod base). */
+/**
+ * True for an https container URL that ends in "/" (a valid pod base).
+ *
+ * Checked on the PARSED `pathname`, not the raw string — a raw-string
+ * `base.endsWith("/")` check is fooled by a slashless path whose query or
+ * fragment happens to end in "/" (e.g. `https://alice.example/mal?x=/`: the
+ * string ends in "/" but the actual container path does not). This gates
+ * which containers get HEAD-polled / WebSocket-watched (a participant-editable
+ * value via the Join form), so a query/hash on `base` is rejected outright
+ * rather than silently ignored. Mirrors the fix `assertWithinBase` got in
+ * `pod.ts` (7c0af10) for the same bug class.
+ */
 export function isValidBase(base: string): boolean {
-  if (!base.endsWith("/")) return false;
   let u: URL;
   try {
     u = new URL(base);
   } catch {
     return false;
   }
-  return u.protocol === "https:";
+  if (u.protocol !== "https:") return false;
+  if (u.search !== "" || u.hash !== "") return false;
+  return u.pathname.endsWith("/");
 }
 
 /**
