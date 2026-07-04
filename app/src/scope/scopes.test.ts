@@ -153,3 +153,77 @@ describe("resolveScope hostname matching", () => {
     }
   });
 });
+
+// ── The S0 scope-differentiation seams (docs/SCOPE-DIFFERENTIATION.md §5.3) ──
+
+describe("scope seams (S0)", () => {
+  it("apps carries the reference (safe-default) seam values", () => {
+    const a = SCOPES.apps;
+    expect(a.composeFlow).toBe("need-first");
+    expect(a.artifactKinds).toContain("need");
+    expect(a.outputKind).toBe("build-commission");
+    expect(a.endorsementGate.reviewerRoleRequired).toBe(false);
+  });
+
+  it("every scope collects needs — the universal artifact kind", () => {
+    for (const id of SCOPE_ORDER) expect(SCOPES[id].artifactKinds).toContain("need");
+  });
+
+  it("the opinion lens is always on, and always first", () => {
+    for (const id of SCOPE_ORDER) expect(SCOPES[id].cohortLenses[0]).toBe("opinion");
+  });
+
+  it("compose grammars differ per scope (the §1 differentiation thesis)", () => {
+    expect(SCOPES.apps.composeFlow).toBe("need-first");
+    expect(SCOPES.infrastructure.composeFlow).toBe("structured-infra");
+    expect(SCOPES.society.composeFlow).toBe("narrative-decompose");
+  });
+
+  it("output pipelines differ per scope (§1 row 5)", () => {
+    expect(SCOPES.apps.outputKind).toBe("build-commission");
+    expect(SCOPES.infrastructure.outputKind).toBe("adoption-decision");
+    expect(SCOPES.society.outputKind).toBe("advisory-synthesis");
+  });
+
+  it("B's endorsement gate requires BOTH partitions + a reviewer (§3.4/§3.5)", () => {
+    const g = SCOPES.infrastructure.endorsementGate;
+    expect([...g.crossCohort].sort()).toEqual(["opinion", "role"]);
+    expect(g.reviewerRoleRequired).toBe(true);
+  });
+
+  it("B computes the role lens; C the tier lens (§3.4 / §4.4)", () => {
+    expect(SCOPES.infrastructure.cohortLenses).toContain("role");
+    expect(SCOPES.infrastructure.cohortLenses).not.toContain("tier");
+    expect(SCOPES.society.cohortLenses).toContain("tier");
+    expect(SCOPES.society.cohortLenses).not.toContain("role");
+  });
+
+  it("steward-signature floor is ≥2 everywhere (PLATFORM-PLAN §4.4 — never lowered)", () => {
+    for (const id of SCOPE_ORDER) {
+      expect(SCOPES[id].endorsementGate.stewardSignatures).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("every crossCohort partition is also a computed lens (endorsement can't gate on an uncomputed partition)", () => {
+    for (const id of SCOPE_ORDER) {
+      const s = SCOPES[id];
+      for (const c of s.endorsementGate.crossCohort) {
+        expect(s.cohortLenses).toContain(c);
+      }
+    }
+  });
+
+  it("B and C name their signature views (honest previews until built)", () => {
+    expect(SCOPES.infrastructure.views).toContain("adoption-board");
+    expect(SCOPES.society.views).toEqual(
+      expect.arrayContaining(["deck", "futures-gallery", "published-futures"]),
+    );
+  });
+
+  it("extra views are unique within a scope", () => {
+    for (const id of SCOPE_ORDER) {
+      const v = SCOPES[id].views;
+      expect(new Set(v).size).toBe(v.length);
+    }
+  });
+});

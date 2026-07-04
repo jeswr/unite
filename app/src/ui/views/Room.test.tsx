@@ -1,0 +1,247 @@
+// @vitest-environment jsdom
+// AUTHORED-BY Claude Fable 5 (PSS agent)
+//
+// Convergence Room v1 (S1): the outcome badge is COMPUTED from the votes
+// (endorsed / disagreement / open), the lineage and standing critiques render,
+// drafting/critiquing is tier-gated fail-closed, and the ≥1-input invariant is
+// enforced in the draft form before any write. The vote fixtures mirror
+// convergence.test.ts: two clean opinion clusters over two needs.
+
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AggregateResult } from "../../lib/aggregate.js";
+import { STANCE_CONFLICTS, STANCE_RESONATES } from "../../lib/fut.js";
+import type { Resonance } from "../../lib/model.js";
+import type { TrustProfile } from "../../lib/trust.js";
+import { SCOPES } from "../../scope/scopes.js";
+import { AuthProvider, DevLoginController } from "../auth.js";
+import type { AggregateState, SessionTrust } from "../hooks.js";
+import { demoConfig } from "../state.js";
+import { Room } from "./Room.js";
+
+const DELIB = "https://demo.unite.example/deliberations/apps";
+const NEED_A = "https://a.example/needs/a.ttl";
+const NEED_B = "https://b.example/needs/b.ttl";
+const CAND = "https://h.example/syntheses/s1.ttl";
+const P = [1, 2, 3, 4].map((n) => `https://p${n}.example/#me`);
+
+let seq = 0;
+const vote = (creator: string, on: string, stance: string): Resonance => {
+  seq += 1;
+  return {
+    id: `https://r.example/${seq}`,
+    onStatement: on,
+    stance,
+    created: "2026-06-20T00:00:00Z",
+    creator,
+    inDeliberation: DELIB,
+  };
+};
+
+// Two clean clusters: {p1,p2} pro-A/anti-B; {p3,p4} the reverse.
+const clusterVotes: Resonance[] = [
+  vote(P[0] as string, NEED_A, STANCE_RESONATES),
+  vote(P[1] as string, NEED_A, STANCE_RESONATES),
+  vote(P[2] as string, NEED_A, STANCE_CONFLICTS),
+  vote(P[3] as string, NEED_A, STANCE_CONFLICTS),
+  vote(P[0] as string, NEED_B, STANCE_CONFLICTS),
+  vote(P[1] as string, NEED_B, STANCE_CONFLICTS),
+  vote(P[2] as string, NEED_B, STANCE_RESONATES),
+  vote(P[3] as string, NEED_B, STANCE_RESONATES),
+];
+
+const need = (id: string, content: string) => ({
+  id,
+  content,
+  needConcept: "https://w3id.org/jeswr/sectors/futures#maxneef-subsistence",
+  created: "2026-06-01T00:00:00Z",
+  creator: P[0] as string,
+  inDeliberation: DELIB,
+});
+
+function resultWith(candidateVotes: Resonance[]): AggregateResult {
+  return {
+    deliberation: DELIB,
+    needs: [need(NEED_A, "Need A content."), need(NEED_B, "Need B content.")],
+    resonances: [...clusterVotes, ...candidateVotes],
+    proposals: [],
+    candidates: [
+      {
+        id: CAND,
+        title: "The spine",
+        content: "One text carrying both groups.",
+        derivedFrom: [NEED_A, NEED_B],
+        created: "2026-06-21T00:00:00Z",
+        creator: P[0] as string,
+        inDeliberation: DELIB,
+      },
+    ],
+    critiques: [
+      {
+        id: "https://p3.example/critiques/c1.ttl",
+        content: "It trades away the lockdown entirely.",
+        onStatement: CAND,
+        created: "2026-06-22T00:00:00Z",
+        creator: P[2] as string,
+        inDeliberation: DELIB,
+      },
+    ],
+    synthesizable: new Set<string>([NEED_A, NEED_B]),
+    verified: P.map((webId) => ({ webId, base: `${webId}/u/`, tier: "T1" as const })),
+    unverified: [],
+    errors: [],
+  };
+}
+
+const asTrust = (profile: TrustProfile | null): SessionTrust => ({
+  profile,
+  refresh: () => Promise.resolve(),
+});
+const asAggregate = (r: AggregateResult | null): AggregateState => ({
+  result: r,
+  loading: false,
+  error: null,
+  refresh: vi.fn(async () => {}),
+});
+
+function renderRoom(trust: SessionTrust, r: AggregateResult | null) {
+  return render(
+    <AuthProvider controller={new DevLoginController()}>
+      <Room
+        scope={SCOPES.apps}
+        config={demoConfig("apps")}
+        webId={null}
+        trust={trust}
+        aggregate={asAggregate(r)}
+      />
+    </AuthProvider>,
+  );
+}
+
+afterEach(cleanup);
+
+describe("Convergence Room", () => {
+  it("computes ENDORSED when every group leans positive — and names the output pipeline", () => {
+    const r = resultWith([
+      vote(P[0] as string, CAND, STANCE_RESONATES),
+      vote(P[1] as string, CAND, STANCE_RESONATES),
+      vote(P[2] as string, CAND, STANCE_RESONATES),
+      vote(P[3] as string, CAND, STANCE_RESONATES),
+    ]);
+    renderRoom(asTrust({ tier: 1, roles: [] }), r);
+    expect(screen.getByText(/endorsed — every group leans positive/)).toBeTruthy();
+    // The apps outputKind: an endorsed synthesis feeds the build commission.
+    expect(screen.getByText(/build commission/)).toBeTruthy();
+  });
+
+  it("computes a DISAGREEMENT map when the groups divide — a first-class outcome", () => {
+    const r = resultWith([
+      vote(P[0] as string, CAND, STANCE_RESONATES),
+      vote(P[1] as string, CAND, STANCE_RESONATES),
+      vote(P[2] as string, CAND, STANCE_CONFLICTS),
+      vote(P[3] as string, CAND, STANCE_CONFLICTS),
+    ]);
+    renderRoom(asTrust({ tier: 1, roles: [] }), r);
+    expect(screen.getByText(/disagreement map — the groups divide here/)).toBeTruthy();
+    expect(screen.getByText(/first-class outcome/)).toBeTruthy();
+  });
+
+  it("stays OPEN on thin cross-group signal", () => {
+    const r = resultWith([vote(P[0] as string, CAND, STANCE_RESONATES)]);
+    renderRoom(asTrust({ tier: 1, roles: [] }), r);
+    expect(screen.getByText(/round open/)).toBeTruthy();
+  });
+
+  it("renders the checkable lineage and the standing critiques", () => {
+    const r = resultWith([]);
+    renderRoom(asTrust({ tier: 1, roles: [] }), r);
+    expect(screen.getByText(/Derived from 2 inputs/)).toBeTruthy();
+    expect(screen.getByText(/It trades away the lockdown entirely/)).toBeTruthy();
+    expect(screen.getByText(/dissent-annex material/)).toBeTruthy();
+  });
+
+  it("LOCKS drafting/critiquing below the floor with the explanatory notice", () => {
+    renderRoom(asTrust({ tier: 0, roles: [] }), resultWith([]));
+    expect(screen.queryByRole("button", { name: /Draft a candidate/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Stand this critique/ })).toBeNull();
+    expect(screen.getByText(/requires a vouched membership/)).toBeTruthy();
+  });
+
+  it("enforces the ≥1-input invariant in the draft form BEFORE any write", () => {
+    renderRoom(asTrust({ tier: 1, roles: [] }), resultWith([]));
+    fireEvent.click(screen.getByRole("button", { name: "Draft a candidate" }));
+    fireEvent.change(screen.getByPlaceholderText(/One text that tries to carry/), {
+      target: { value: "A draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Put it to the room" }));
+    expect(screen.getByText(/Select at least one input/)).toBeTruthy();
+  });
+
+  it("offers ONLY synthesis-consented inputs, and says how many are withheld (fail-closed)", () => {
+    const r = { ...resultWith([]), synthesizable: new Set<string>([NEED_A]) };
+    renderRoom(asTrust({ tier: 1, roles: [] }), r);
+    fireEvent.click(screen.getByRole("button", { name: "Draft a candidate" }));
+    // Need A is offered; Need B (no synthesize consent) is NOT.
+    expect(screen.getByRole("button", { name: /need · Need A content/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /need · Need B content/ })).toBeNull();
+    expect(screen.getByText(/1 statement is not offered/)).toBeTruthy();
+  });
+
+  it("PRUNES a stale draft selection when a fresh aggregate revokes its consent", () => {
+    const before = resultWith([]);
+    const { rerender } = render(
+      <AuthProvider controller={new DevLoginController()}>
+        <Room
+          scope={SCOPES.apps}
+          config={demoConfig("apps")}
+          webId={null}
+          trust={asTrust({ tier: 1, roles: [] })}
+          aggregate={asAggregate(before)}
+        />
+      </AuthProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Draft a candidate" }));
+    fireEvent.click(screen.getByRole("button", { name: /need · Need B content/ }));
+    expect(
+      screen.getByRole("button", { name: /need · Need B content/ }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    // A refresh lands in which Need B's author revoked synthesize consent:
+    const after = { ...resultWith([]), synthesizable: new Set<string>([NEED_A]) };
+    rerender(
+      <AuthProvider controller={new DevLoginController()}>
+        <Room
+          scope={SCOPES.apps}
+          config={demoConfig("apps")}
+          webId={null}
+          trust={asTrust({ tier: 1, roles: [] })}
+          aggregate={asAggregate(after)}
+        />
+      </AuthProvider>,
+    );
+    // Need B is no longer offered AND the stale selection was pruned — the
+    // submit-time consent guard can never trap an un-deselectable input.
+    expect(screen.queryByRole("button", { name: /need · Need B content/ })).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText(/One text that tries to carry/), {
+      target: { value: "A draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Put it to the room" }));
+    // The pruned state fails the >=1-inputs check — NOT the consent trap.
+    expect(screen.getByText(/Select at least one input/)).toBeTruthy();
+    expect(screen.queryByText(/has not consented to synthesis/)).toBeNull();
+  });
+
+  it("offers NO inputs when nothing carries synthesis consent — with the honest reason", () => {
+    const r = { ...resultWith([]), synthesizable: new Set<string>() };
+    renderRoom(asTrust({ tier: 1, roles: [] }), r);
+    fireEvent.click(screen.getByRole("button", { name: "Draft a candidate" }));
+    expect(screen.queryByRole("button", { name: /need ·/ })).toBeNull();
+    expect(screen.getByText(/do not carry consent to synthesis/)).toBeTruthy();
+  });
+
+  it("shows the empty state (with the draft CTA for members) when no candidate exists", () => {
+    const empty = { ...resultWith([]), candidates: [], critiques: [] };
+    renderRoom(asTrust({ tier: 1, roles: [] }), empty);
+    expect(screen.getByText("No candidate synthesis yet")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Draft the first candidate" })).toBeTruthy();
+  });
+});

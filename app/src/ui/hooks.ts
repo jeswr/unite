@@ -9,7 +9,11 @@
 import type { LoginController } from "@jeswr/solid-elements/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { demoDisplayName, demoForDeliberation } from "../demo/pods.js";
-import { type AggregateResult, aggregateDeliberation } from "../lib/aggregate.js";
+import {
+  type AggregateResult,
+  aggregateDeliberation,
+  type StatementKind,
+} from "../lib/aggregate.js";
 import { watchContainers } from "../lib/notifications.js";
 import { isValidParticipant } from "../lib/registry.js";
 import { type TrustProfile, UNTRUSTED } from "../lib/trust.js";
@@ -88,6 +92,8 @@ export function displayName(webId: string): string {
 export function useAggregate(
   config: DeliberationConfig,
   controller: LoginController,
+  /** Statement kinds to collect (default: the aggregator's needs-only set). */
+  kinds?: readonly StatementKind[],
 ): AggregateState {
   const [result, setResult] = useState<AggregateResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -123,7 +129,12 @@ export function useAggregate(
       // seeded credentials; pod mode keeps the configured-list decision.
       const { gate } = await deliberationTrust(config);
       const fetchFn = await readFetchFor(config, controller);
-      const next = await aggregateDeliberation({ registry, verifier: gate, fetch: fetchFn });
+      const next = await aggregateDeliberation({
+        registry,
+        verifier: gate,
+        fetch: fetchFn,
+        ...(kinds ? { kinds } : {}),
+      });
       if (!isCurrent()) return; // superseded (newer refresh or config change)
       setResult(next);
     } catch (e) {
@@ -132,7 +143,7 @@ export function useAggregate(
     } finally {
       if (isCurrent()) setLoading(false);
     }
-  }, [config, controller]);
+  }, [config, controller, kinds]);
 
   // A config change invalidates any in-flight request (bumping reqId) and clears
   // the loading flag — a superseded request's `finally` no longer owns the id, so
@@ -152,21 +163,40 @@ export function useAggregate(
   return { result, loading, error, refresh };
 }
 
+/** The statement-container subdirectory each collectable kind lives under. */
+const KIND_DIRS: Partial<Record<StatementKind, string>> = {
+  need: "needs/",
+  "app-proposal": "proposals/",
+  synthesis: "syntheses/",
+  critique: "critiques/",
+  // Kinds without landed machinery ("infra-proposal", "vision", "claim",
+  // "value") have no container to watch yet — honest no-ops, like aggregation.
+};
+
 /**
- * The needs/ + resonances/ container URLs for every configured participant — the
- * containers whose changes should re-trigger aggregation. Malformed bases are
- * skipped (defensive; the write path independently guards its own base).
+ * The statement + resonances container URLs for every configured participant —
+ * the containers whose changes should re-trigger aggregation. Follows the
+ * collected `kinds` (default: needs only — the pre-S1 watch surface).
+ * Malformed bases are skipped (defensive; the write path independently guards
+ * its own base).
  */
-export function deliberationContainers(config: DeliberationConfig): string[] {
+export function deliberationContainers(
+  config: DeliberationConfig,
+  kinds: readonly StatementKind[] = ["need"],
+): string[] {
   // Demo pods are in-memory: nothing to poll or subscribe to.
   if (config.mode === "demo") return [];
+  const dirs = [
+    ...new Set([...kinds.map((k) => KIND_DIRS[k]).filter((d): d is string => d !== undefined)]),
+    "resonances/",
+  ];
   const out: string[] = [];
   for (const p of config.participants) {
     // Only watch VALIDATED participants (https WebID + https base ending "/") — the
     // same gate StaticRegistry enforces. Prevents live-update HEAD/POST/WebSocket
     // requests to http/localhost/private/invalid bases before the registry is built.
     if (!isValidParticipant(p)) continue;
-    for (const dir of ["needs/", "resonances/"]) {
+    for (const dir of dirs) {
       out.push(new URL(dir, p.base).toString());
     }
   }
@@ -262,12 +292,14 @@ export function useLiveUpdates(
   config: DeliberationConfig,
   controller: LoginController,
   onChange: () => void,
+  /** The kinds being aggregated — their containers are what gets watched. */
+  kinds?: readonly StatementKind[],
 ): void {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
   useEffect(() => {
-    const containers = deliberationContainers(config);
+    const containers = deliberationContainers(config, kinds);
     if (containers.length === 0) return;
     const watcher = watchContainers({
       containers,
@@ -275,5 +307,5 @@ export function useLiveUpdates(
       onChange: () => onChangeRef.current(),
     });
     return () => watcher.close();
-  }, [config, controller]);
+  }, [config, controller, kinds]);
 }

@@ -509,6 +509,201 @@ export const DEMO_NEEDS: Readonly<Record<ScopeId, readonly NeedSpec[]>> = {
   society: SOCIETY_NEEDS,
 };
 
+// ── The S1 artifact spine seed (SCOPE-DIFFERENTIATION §2): proposals, the
+//    Convergence Room's candidates + critiques — apps scope only until the
+//    S2 (infrastructure) / S4 (society) layers land their own artifacts. ──────
+
+/** One seeded proposal + the votes it received. */
+export interface ProposalSpec {
+  readonly slug: string;
+  readonly author: string;
+  readonly title: string;
+  readonly content: string;
+  /** Need SLUGS this proposal serves (resolved to IRIs at seed time; ≥1). */
+  readonly serves: readonly string[];
+  /** The VSD indirect-stakeholders prompt (optional). */
+  readonly stakeholders?: string;
+  readonly created: string;
+  readonly votes: Readonly<Record<string, VoteCode>>;
+}
+
+/** One seeded Convergence-Room candidate + its endorsement votes. */
+export interface CandidateSpec {
+  readonly slug: string;
+  readonly author: string;
+  readonly title?: string;
+  readonly content: string;
+  /** Input refs: `need:<slug>` or `proposal:<slug>` (resolved at seed time; ≥1). */
+  readonly derivedFrom: readonly string[];
+  readonly created: string;
+  readonly votes: Readonly<Record<string, VoteCode>>;
+}
+
+/** One seeded standing critique on a candidate. */
+export interface CritiqueSpec {
+  readonly slug: string;
+  readonly author: string;
+  readonly content: string;
+  /** The candidate SLUG this critique stands on. */
+  readonly on: string;
+  readonly created: string;
+}
+
+// The apps proposals demonstrate the PORTFOLIO framing: two rival proposals
+// both answering offline-first, presented as answers to the need — plus a
+// usability-cluster favourite that the privacy cluster is lukewarm on.
+const APPS_PROPOSALS: readonly ProposalSpec[] = [
+  {
+    slug: "pocket-pod-notes",
+    author: "amara",
+    title: "Pocket Pod Notes",
+    content:
+      "An offline-first notes app: everything you write lands in your pod and keeps working with no signal — sync is a background detail, never a gate.",
+    serves: ["offline-first", "data-portability-check"],
+    stakeholders:
+      "People on unreliable rural connections; anyone whose commute cuts through tunnels.",
+    created: "2026-06-18T10:20:00Z",
+    votes: {
+      amara: "r",
+      ben: "r",
+      chidi: "r",
+      dana: "u",
+      efe: "r",
+      farah: "r",
+      hana: "r",
+      you: "r",
+    },
+  },
+  {
+    slug: "one-key-suite",
+    author: "dana",
+    title: "One-Key Suite Login",
+    content:
+      "A shared sign-in shell for the whole app suite: one WebID entry, one passkey, and every app inherits the session silently.",
+    serves: ["one-login", "forever-session"],
+    created: "2026-06-19T09:05:00Z",
+    votes: {
+      amara: "u",
+      ben: "r",
+      chidi: "c",
+      dana: "r",
+      efe: "u",
+      farah: "r",
+      gus: "r",
+      hana: "u",
+      you: "r",
+    },
+  },
+  {
+    slug: "tunnel-docs",
+    author: "ben",
+    title: "Tunnel-proof Docs",
+    content:
+      "A collaborative docs app with a local-first CRDT core, so edits made offline merge cleanly whenever the pod is reachable again.",
+    serves: ["offline-first"],
+    created: "2026-06-20T15:45:00Z",
+    votes: { amara: "r", ben: "r", efe: "u", farah: "r", hana: "u" },
+  },
+];
+
+// Two candidates so BOTH room outcomes demo honestly: one broad synthesis the
+// whole room endorses, one protection-first candidate the clusters divide on
+// (the disagreement map as a first-class outcome, with standing critiques).
+const APPS_CANDIDATES: readonly CandidateSpec[] = [
+  {
+    slug: "spine-v1",
+    author: "hana",
+    title: "The offline-first common spine",
+    content:
+      "Every suite app ships offline-first on a shared local cache, signs in once through one shared login shell, and asks for pod access in plain language. Three needs both groups endorsed, folded into one buildable spine — Pocket Pod Notes is its first proving ground.",
+    derivedFrom: [
+      "need:offline-first",
+      "need:one-login",
+      "need:plain-language-access",
+      "proposal:pocket-pod-notes",
+    ],
+    created: "2026-06-21T11:00:00Z",
+    votes: {
+      amara: "r",
+      ben: "r",
+      chidi: "r",
+      dana: "r",
+      efe: "r",
+      farah: "r",
+      gus: "u",
+      hana: "r",
+      you: "r",
+    },
+  },
+  {
+    slug: "lockdown-default",
+    author: "chidi",
+    title: "Lockdown by default",
+    content:
+      "All suite apps ship with every network destination blocked except the user's own pod; each external call needs an explicit, audited allow. Protection first — convenience is negotiated per destination, never assumed.",
+    derivedFrom: ["need:network-lockdown", "need:read-audit-log"],
+    created: "2026-06-22T14:30:00Z",
+    votes: {
+      amara: "r",
+      ben: "c",
+      chidi: "r",
+      dana: "c",
+      efe: "r",
+      farah: "c",
+      gus: "c",
+      hana: "r",
+    },
+  },
+];
+
+const APPS_CRITIQUES: readonly CritiqueSpec[] = [
+  {
+    slug: "cr-lockdown-calendar",
+    author: "dana",
+    content:
+      "A blanket block breaks the household calendar and the photo backup this same board asked for. Ship allowlists with sane defaults, or ordinary people lose the tools they came here to get.",
+    on: "lockdown-default",
+    created: "2026-06-23T09:10:00Z",
+  },
+  {
+    slug: "cr-lockdown-onboarding",
+    author: "farah",
+    content:
+      "Every “allow this destination?” prompt is a wall for a non-technical person. If the default posture is fear, the suite stays a hobbyist toy.",
+    on: "lockdown-default",
+    created: "2026-06-23T16:40:00Z",
+  },
+  {
+    slug: "cr-spine-session",
+    author: "gus",
+    content:
+      "The spine says nothing about staying signed in. If my session dies every day, offline-first is theatre — fold the forever-session need in before this is commissioned.",
+    on: "spine-v1",
+    created: "2026-06-24T08:25:00Z",
+  },
+];
+
+/** The seeded proposals per scope (S1: apps only). */
+export const DEMO_PROPOSALS: Readonly<Record<ScopeId, readonly ProposalSpec[]>> = {
+  apps: APPS_PROPOSALS,
+  infrastructure: [],
+  society: [],
+};
+
+/** The seeded Convergence-Room candidates per scope (S1: apps only). */
+export const DEMO_CANDIDATES: Readonly<Record<ScopeId, readonly CandidateSpec[]>> = {
+  apps: APPS_CANDIDATES,
+  infrastructure: [],
+  society: [],
+};
+
+/** The seeded standing critiques per scope (S1: apps only). */
+export const DEMO_CRITIQUES: Readonly<Record<ScopeId, readonly CritiqueSpec[]>> = {
+  apps: APPS_CRITIQUES,
+  infrastructure: [],
+  society: [],
+};
+
 // ── The Phase-2 governance seed (docs/PLATFORM-PLAN.md §4) ────────────────────
 
 /** The seeded trust standing for one scope's demo community. */

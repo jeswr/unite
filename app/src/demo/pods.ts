@@ -16,29 +16,42 @@ import { consentQuads, DEFAULT_CONSENT, ODRL_NS } from "../lib/consent.js";
 import {
   fut,
   MAXNEEF_CONCEPTS,
+  NS,
   STANCE_CONFLICTS,
   STANCE_RESONATES,
   STANCE_UNSURE,
   type Stance,
 } from "../lib/fut.js";
 import {
+  type AppProposal,
+  buildCandidateQuads,
+  buildCritiqueQuads,
   buildNeedQuads,
+  buildProposalQuads,
+  type Critique,
   type Need,
   type Resonance,
+  type SynthesisCandidate,
   serializeResonance,
   serializeTurtle,
 } from "../lib/model.js";
 import type { ScopeId } from "../scope/scopes.js";
 import {
+  type CandidateSpec,
+  type CritiqueSpec,
+  DEMO_CANDIDATES,
+  DEMO_CRITIQUES,
   DEMO_NAMES,
   DEMO_NEEDS,
   DEMO_ORIGIN,
   DEMO_PEOPLE,
+  DEMO_PROPOSALS,
   DEMO_YOU_KEY,
   demoBase,
   demoDeliberationIri,
   demoWebId,
   type NeedSpec,
+  type ProposalSpec,
   type VoteCode,
 } from "./fixtures.js";
 import { type DemoTrust, seedDemoTrust } from "./trust.js";
@@ -197,12 +210,39 @@ function voteCreated(needCreated: string, voterIndex: number): string {
   return new Date(t).toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
+/** Seed each voter's resonance on `statementUrl` (their own pod, own voice). */
+async function seedVotes(
+  pods: MemoryPods,
+  scope: ScopeId,
+  slug: string,
+  statementUrl: string,
+  statementCreated: string,
+  votes: Readonly<Record<string, VoteCode>>,
+  deliberation: string,
+): Promise<void> {
+  for (const [voter, code] of Object.entries(votes)) {
+    const voterIndex = DEMO_PEOPLE.findIndex((p) => p.key === voter);
+    if (voterIndex < 0) throw new Error(`demo fixture ${slug}: unknown voter ${voter}`);
+    const vBase = demoBase(voter, scope);
+    const vUrl = new URL(`resonances/re-${slug}.ttl`, vBase).toString();
+    const resonance: Resonance = {
+      id: vUrl,
+      onStatement: statementUrl,
+      stance: STANCE_OF[code],
+      created: voteCreated(statementCreated, voterIndex),
+      creator: demoWebId(voter),
+      inDeliberation: deliberation,
+    };
+    pods.set(vUrl, await serializeResonance(resonance));
+  }
+}
+
 async function seedNeed(
   pods: MemoryPods,
   scope: ScopeId,
   spec: NeedSpec,
   deliberation: string,
-): Promise<void> {
+): Promise<string> {
   if (!CONCEPT_NAMES.has(spec.concept)) {
     throw new Error(`demo fixture ${spec.slug}: unknown Max-Neef concept ${spec.concept}`);
   }
@@ -220,30 +260,123 @@ async function seedNeed(
   // Same shape a live Compose writes: the need + its ODRL consent policy.
   const quads = [...buildNeedQuads(need), ...consentQuads(url, DEFAULT_CONSENT, need.creator)];
   pods.set(url, await serializeTurtle(quads, { odrl: ODRL_NS }));
+  await seedVotes(pods, scope, spec.slug, url, spec.created, spec.votes, deliberation);
+  return url;
+}
 
-  const voters = Object.entries(spec.votes);
-  for (const [voter, code] of voters) {
-    const voterIndex = DEMO_PEOPLE.findIndex((p) => p.key === voter);
-    if (voterIndex < 0) throw new Error(`demo fixture ${spec.slug}: unknown voter ${voter}`);
-    const vBase = demoBase(voter, scope);
-    const vUrl = new URL(`resonances/re-${spec.slug}.ttl`, vBase).toString();
-    const resonance: Resonance = {
-      id: vUrl,
-      onStatement: url,
-      stance: STANCE_OF[code],
-      created: voteCreated(spec.created, voterIndex),
-      creator: demoWebId(voter),
-      inDeliberation: deliberation,
-    };
-    pods.set(vUrl, await serializeResonance(resonance));
-  }
+/** Seed one proposal (same shape the Proposals board writes) + its votes. */
+async function seedProposal(
+  pods: MemoryPods,
+  scope: ScopeId,
+  spec: ProposalSpec,
+  deliberation: string,
+  needUrls: ReadonlyMap<string, string>,
+): Promise<string> {
+  const base = demoBase(spec.author, scope);
+  const url = new URL(`proposals/${spec.slug}.ttl`, base).toString();
+  const serves = spec.serves.map((slug) => {
+    const needUrl = needUrls.get(slug);
+    if (!needUrl) throw new Error(`demo fixture ${spec.slug}: unknown need slug ${slug}`);
+    return needUrl;
+  });
+  const proposal: AppProposal = {
+    id: url,
+    title: spec.title,
+    content: spec.content,
+    motivatedBy: serves,
+    created: spec.created,
+    creator: demoWebId(spec.author),
+    inDeliberation: deliberation,
+    ...(spec.stakeholders !== undefined ? { indirectStakeholders: spec.stakeholders } : {}),
+  };
+  const quads = [
+    ...buildProposalQuads(proposal),
+    ...consentQuads(url, DEFAULT_CONSENT, proposal.creator),
+  ];
+  pods.set(url, await serializeTurtle(quads, { wf: NS.wf, odrl: ODRL_NS }));
+  await seedVotes(pods, scope, spec.slug, url, spec.created, spec.votes, deliberation);
+  return url;
+}
+
+/** Seed one Convergence-Room candidate + its endorsement votes. */
+async function seedCandidate(
+  pods: MemoryPods,
+  scope: ScopeId,
+  spec: CandidateSpec,
+  deliberation: string,
+  statementUrls: ReadonlyMap<string, string>,
+): Promise<string> {
+  const base = demoBase(spec.author, scope);
+  const url = new URL(`syntheses/${spec.slug}.ttl`, base).toString();
+  const derivedFrom = spec.derivedFrom.map((ref) => {
+    const resolved = statementUrls.get(ref);
+    if (!resolved) throw new Error(`demo fixture ${spec.slug}: unknown input ref ${ref}`);
+    return resolved;
+  });
+  const candidate: SynthesisCandidate = {
+    id: url,
+    content: spec.content,
+    derivedFrom,
+    created: spec.created,
+    creator: demoWebId(spec.author),
+    inDeliberation: deliberation,
+    ...(spec.title !== undefined ? { title: spec.title } : {}),
+  };
+  // A candidate is a DERIVED process-layer artifact: no consent policy of its
+  // own (its inputs' policies gate what may derive into it) — writeCandidate's shape.
+  pods.set(url, await serializeTurtle(buildCandidateQuads(candidate), { prov: NS.prov }));
+  await seedVotes(pods, scope, spec.slug, url, spec.created, spec.votes, deliberation);
+  return url;
+}
+
+/** Seed one standing critique on a candidate (the Room's writeCritique shape). */
+async function seedCritique(
+  pods: MemoryPods,
+  scope: ScopeId,
+  spec: CritiqueSpec,
+  deliberation: string,
+  candidateUrls: ReadonlyMap<string, string>,
+): Promise<void> {
+  const base = demoBase(spec.author, scope);
+  const url = new URL(`critiques/${spec.slug}.ttl`, base).toString();
+  const on = candidateUrls.get(spec.on);
+  if (!on) throw new Error(`demo fixture ${spec.slug}: unknown candidate slug ${spec.on}`);
+  const critique: Critique = {
+    id: url,
+    content: spec.content,
+    onStatement: on,
+    created: spec.created,
+    creator: demoWebId(spec.author),
+    inDeliberation: deliberation,
+  };
+  pods.set(url, await serializeTurtle(buildCritiqueQuads(critique)));
 }
 
 async function buildDemo(scope: ScopeId): Promise<DemoDeliberation> {
   const pods = new MemoryPods();
   const deliberation = demoDeliberationIri(scope);
+  const needUrls = new Map<string, string>();
   for (const spec of DEMO_NEEDS[scope]) {
-    await seedNeed(pods, scope, spec, deliberation);
+    needUrls.set(spec.slug, await seedNeed(pods, scope, spec, deliberation));
+  }
+  // The S1 artifact spine: proposals answer seeded needs; candidates derive
+  // from needs/proposals; critiques stand on candidates. Refs resolve against
+  // what was actually seeded — an unknown slug is a fixture bug, fail-loud.
+  const statementUrls = new Map<string, string>();
+  for (const [slug, url] of needUrls) statementUrls.set(`need:${slug}`, url);
+  for (const spec of DEMO_PROPOSALS[scope]) {
+    const url = await seedProposal(pods, scope, spec, deliberation, needUrls);
+    statementUrls.set(`proposal:${spec.slug}`, url);
+  }
+  const candidateUrls = new Map<string, string>();
+  for (const spec of DEMO_CANDIDATES[scope]) {
+    candidateUrls.set(
+      spec.slug,
+      await seedCandidate(pods, scope, spec, deliberation, statementUrls),
+    );
+  }
+  for (const spec of DEMO_CRITIQUES[scope]) {
+    await seedCritique(pods, scope, spec, deliberation, candidateUrls);
   }
   // The governance layer: real steward keys + real signed credentials, written
   // through the same sandboxed fetch the statements use (src/demo/trust.ts).

@@ -115,3 +115,24 @@ describe("useLiveUpdates", () => {
     expect(watchContainers).not.toHaveBeenCalled();
   });
 });
+
+describe("deliberationContainers with the S1 kinds seam", () => {
+  it("adds proposals/ + syntheses/ + critiques/ for the room kinds", () => {
+    const one = { ...config, participants: config.participants.slice(0, 1) };
+    expect(deliberationContainers(one, ["need", "app-proposal", "synthesis", "critique"])).toEqual([
+      "https://alice.example/unite/d/needs/",
+      "https://alice.example/unite/d/proposals/",
+      "https://alice.example/unite/d/syntheses/",
+      "https://alice.example/unite/d/critiques/",
+      "https://alice.example/unite/d/resonances/",
+    ]);
+  });
+
+  it("a not-yet-landed kind maps to NO container (honest no-op, like aggregation)", () => {
+    const one = { ...config, participants: config.participants.slice(0, 1) };
+    expect(deliberationContainers(one, ["need", "infra-proposal", "vision"])).toEqual([
+      "https://alice.example/unite/d/needs/",
+      "https://alice.example/unite/d/resonances/",
+    ]);
+  });
+});

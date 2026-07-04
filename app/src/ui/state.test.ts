@@ -10,6 +10,7 @@ import { demoDeliberationIri, demoWebId } from "../demo/fixtures.js";
 import { SCOPE_ORDER, SCOPES } from "../scope/scopes.js";
 import {
   buildRegistry,
+  collectionKinds,
   configReady,
   deliberationTrust,
   podConfig,
@@ -96,5 +97,22 @@ describe("sessionIdentity", () => {
     const pod = podConfig(SCOPES.apps);
     expect(sessionIdentity(pod, null)).toBeNull();
     expect(sessionIdentity(pod, "https://real.example/#me")).toBe("https://real.example/#me");
+  });
+});
+
+// ── The S1 kinds seam (SCOPE-DIFFERENTIATION §5.1) ───────────────────────────
+
+describe("collectionKinds", () => {
+  it("apps collects its board artifacts PLUS the room's candidates + critiques", () => {
+    expect(collectionKinds(SCOPES.apps)).toEqual(["need", "app-proposal", "synthesis", "critique"]);
+  });
+
+  it("a scope without the room collects only its board artifacts (no dead fetches)", () => {
+    expect(collectionKinds(SCOPES.infrastructure)).toEqual(["need"]);
+    expect(collectionKinds(SCOPES.society)).toEqual(["need"]);
+  });
+
+  it("every scope's collection includes the universal kind", () => {
+    for (const id of SCOPE_ORDER) expect(collectionKinds(SCOPES[id])).toContain("need");
   });
 });

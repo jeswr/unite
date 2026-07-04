@@ -15,7 +15,7 @@ import { StubMembershipVerifier } from "../lib/membership.js";
 import { writeNeed, writeResonance } from "../lib/pod.js";
 import { rankNeeds } from "../lib/ranking.js";
 import { StaticRegistry } from "../lib/registry.js";
-import { DEMO_NEEDS, DEMO_PEOPLE, demoWebId } from "./fixtures.js";
+import { DEMO_CANDIDATES, DEMO_NEEDS, DEMO_PEOPLE, DEMO_PROPOSALS, demoWebId } from "./fixtures.js";
 import {
   demoForDeliberation,
   getDemoDeliberation,
@@ -41,7 +41,14 @@ describe("the seeded demo deliberation through the REAL aggregation pipeline", (
   it("aggregates every seeded need + resonance, all participants verified, no errors", async () => {
     const { result } = await aggregate("apps");
     expect(result.needs).toHaveLength(DEMO_NEEDS.apps.length);
-    const expectedVotes = DEMO_NEEDS.apps.reduce((n, s) => n + Object.keys(s.votes).length, 0);
+    // Votes are seeded on needs AND on the S1 artifacts (proposals + room
+    // candidates) — all land in the same resonances/ containers.
+    const countVotes = (specs: readonly { votes: Readonly<Record<string, unknown>> }[]) =>
+      specs.reduce((n, s) => n + Object.keys(s.votes).length, 0);
+    const expectedVotes =
+      countVotes(DEMO_NEEDS.apps) +
+      countVotes(DEMO_PROPOSALS.apps) +
+      countVotes(DEMO_CANDIDATES.apps);
     expect(result.resonances).toHaveLength(expectedVotes); // dedupe keeps all (one vote per person/statement seeded)
     expect(result.verified).toHaveLength(DEMO_PEOPLE.length);
     expect(result.unverified).toEqual([]);
