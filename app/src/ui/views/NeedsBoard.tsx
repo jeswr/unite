@@ -98,9 +98,15 @@ export function NeedsBoard({
     return [...m.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   }, [result]);
 
+  // The EFFECTIVE filter: a stale selection (its concept vanished from the live
+  // data) is treated as no-filter, so the board can never stick on an
+  // un-clearable "Nothing matches" after a live update removes a concept.
+  const activeFilter =
+    conceptFilter && concepts.some(([iri]) => iri === conceptFilter) ? conceptFilter : null;
+
   const visible = useMemo(() => {
     let needs = [...(result?.needs ?? [])];
-    if (conceptFilter) needs = needs.filter((n) => n.needConcept === conceptFilter);
+    if (activeFilter) needs = needs.filter((n) => n.needConcept === activeFilter);
     const q = query.trim().toLowerCase();
     if (q) needs = needs.filter((n) => n.content.toLowerCase().includes(q));
     needs.sort((a, b) => {
@@ -121,7 +127,7 @@ export function NeedsBoard({
       return a.id < b.id ? -1 : 1;
     });
     return needs;
-  }, [result, conceptFilter, query, sort, tallies]);
+  }, [result, activeFilter, query, sort, tallies]);
 
   async function resonate(need: Need, stance: Stance): Promise<void> {
     setWriteError(null);
@@ -192,7 +198,7 @@ export function NeedsBoard({
           <button
             type="button"
             className="chip"
-            aria-pressed={conceptFilter === null}
+            aria-pressed={activeFilter === null}
             onClick={() => setConceptFilter(null)}
           >
             All <span className="count">{result?.needs.length ?? 0}</span>
@@ -202,8 +208,8 @@ export function NeedsBoard({
               type="button"
               key={iri}
               className="chip"
-              aria-pressed={conceptFilter === iri}
-              onClick={() => setConceptFilter(conceptFilter === iri ? null : iri)}
+              aria-pressed={activeFilter === iri}
+              onClick={() => setConceptFilter(activeFilter === iri ? null : iri)}
             >
               {conceptLabel(iri)} <span className="count">{count}</span>
             </button>
@@ -238,7 +244,9 @@ export function NeedsBoard({
         </ul>
       )}
 
-      {!showSkeletons && result && !configReady(config) && (
+      {/* An incomplete pod config clears `result` to null (fail-closed refresh),
+          so this guidance must NOT require an aggregate result to render. */}
+      {!showSkeletons && !configReady(config) && (
         <div className="empty">
           <span className="empty-title">Not connected yet</span>
           <p>

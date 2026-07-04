@@ -115,8 +115,20 @@ describe("the seeded demo deliberation through the REAL aggregation pipeline", (
       });
     expect((await put("<a> <b> <c> .")).status).toBe(201);
     expect((await put("<a> <b> <d> .")).status).toBe(412);
-    // Out-of-sandbox URLs 404 — the demo fetch NEVER touches the network.
-    expect((await demo.fetch("https://example.org/elsewhere")).status).toBe(404);
+  });
+
+  it("refuses ANY out-of-sandbox origin — reads AND writes (403, never network)", async () => {
+    const demo = await getDemoDeliberation("apps");
+    expect((await demo.fetch("https://example.org/elsewhere")).status).toBe(403);
+    // A hostile PUT cannot smuggle a foreign-origin resource into the store…
+    const put = await demo.fetch("https://example.org/elsewhere", {
+      method: "PUT",
+      headers: { "content-type": "text/turtle" },
+      body: "<a> <b> <c> .",
+    });
+    expect(put.status).toBe(403);
+    // …so it can never be served back either.
+    expect((await demo.fetch("https://example.org/elsewhere")).status).toBe(403);
   });
 });
 

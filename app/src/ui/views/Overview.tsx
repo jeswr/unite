@@ -6,7 +6,7 @@
 // membership check), and a plain-language "how unite works" strip. Thin over
 // src/lib (buildVerifier / MembershipVerifier / the shared aggregate).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { MembershipResult } from "../../lib/membership.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { avatarColor, initials } from "../format.js";
@@ -51,7 +51,12 @@ export function Overview({
   const [checkError, setCheckError] = useState<string | null>(null);
   const { result, loading } = aggregate;
 
+  // CONTROLLED participants text, re-synced whenever the config's participants
+  // change (e.g. a demo↔pod mode switch) — an uncontrolled defaultValue would
+  // keep showing stale text and a later blur could write it into the new config.
   const participantsText = config.participants.map((p) => `${p.webId} ${p.base}`).join("\n");
+  const [participantsDraft, setParticipantsDraft] = useState(participantsText);
+  useEffect(() => setParticipantsDraft(participantsText), [participantsText]);
 
   async function runCheck(): Promise<void> {
     setCheckError(null);
@@ -187,7 +192,8 @@ export function Overview({
                   </span>
                   <textarea
                     rows={4}
-                    defaultValue={participantsText}
+                    value={participantsDraft}
+                    onChange={(e) => setParticipantsDraft(e.target.value)}
                     onBlur={(e) =>
                       onChange({ ...config, participants: parseParticipants(e.target.value) })
                     }

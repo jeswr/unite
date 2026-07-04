@@ -76,6 +76,22 @@ describe("useAggregate", () => {
     expect(result.current.loading).toBe(false);
   });
 
+  it("FAILS CLOSED when a demo config names a non-demo deliberation (never network)", async () => {
+    const controller = new DevLoginController();
+    const bad: DeliberationConfig = {
+      mode: "demo",
+      deliberation: "https://evil.example/deliberations/apps",
+      ownBase: "https://evil.example/unite/apps/",
+      participants: [
+        { webId: "https://evil.example/#me", base: "https://evil.example/unite/apps/" },
+      ],
+    };
+    const { result } = renderHook(() => useAggregate(bad, controller));
+    await waitFor(() => expect(result.current.error).toMatch(/demo mode requires/));
+    // aggregateDeliberation was NEVER invoked — no fetch fell through to the network.
+    expect(resolvers).toHaveLength(0);
+  });
+
   it("drops an out-of-order (older) response, keeps the newer one", async () => {
     const controller = new DevLoginController();
     const { result } = renderHook(() => useAggregate(configA, controller));

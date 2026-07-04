@@ -133,6 +133,12 @@ class MemoryPods {
     } catch {
       return new Response("bad request", { status: 400 });
     }
+    // Sandbox boundary: ONLY the reserved demo origin is served or writable —
+    // a request for any other origin is refused before any method handling, so
+    // out-of-sandbox URLs can neither be stored (PUT) nor served back (GET).
+    if (new URL(url).origin !== DEMO_ORIGIN) {
+      return new Response("outside the demo sandbox", { status: 403 });
+    }
     const method = (
       init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET")
     ).toUpperCase();

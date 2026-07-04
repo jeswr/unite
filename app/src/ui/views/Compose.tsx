@@ -65,7 +65,7 @@ export function Compose({
   scope: ScopeConfig;
   config: DeliberationConfig;
   webId: string | null;
-  onComposed?: () => void;
+  onComposed?: () => Promise<void> | void;
 }): React.JSX.Element {
   const controller = useController();
   const [content, setContent] = useState("");
@@ -106,7 +106,12 @@ export function Compose({
       setContent("");
       setIntensity("");
       setConsent(DEFAULT_CONSENT);
-      onComposed?.();
+      try {
+        await onComposed?.(); // board refresh — the write itself already succeeded
+      } catch {
+        // A refresh failure must not report the (successful) save as an error;
+        // the board's own error surface reports aggregation problems.
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

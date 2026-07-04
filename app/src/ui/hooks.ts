@@ -21,14 +21,22 @@ export interface AggregateState {
   readonly refresh: () => Promise<void>;
 }
 
-/** The read fetch for a config: the demo pod fetch, or the credential-free one. */
+/**
+ * The read fetch for a config: the demo pod fetch, or the credential-free one.
+ * FAIL-CLOSED in demo mode: a demo config whose deliberation is NOT a known
+ * demo IRI throws rather than falling through to a real network fetch — the
+ * sandbox boundary must not depend on the config being well-formed.
+ */
 async function readFetchFor(
   config: DeliberationConfig,
   controller: LoginController,
 ): Promise<typeof fetch> {
   if (config.mode === "demo") {
     const demo = await demoForDeliberation(config.deliberation);
-    if (demo) return demo.fetch;
+    if (!demo) {
+      throw new Error(`demo mode requires a demo deliberation IRI: ${config.deliberation}`);
+    }
+    return demo.fetch;
   }
   return controller.publicFetch;
 }
@@ -46,7 +54,11 @@ export async function writeSessionFor(
 ): Promise<{ fetch: typeof fetch; identity: string | null; ownBase: string }> {
   if (config.mode === "demo") {
     const demo = await demoForDeliberation(config.deliberation);
-    if (demo) return { fetch: demo.fetch, identity: demo.you.webId, ownBase: demo.you.base };
+    if (!demo) {
+      // Fail closed — never fall through to the real session-bound fetch.
+      throw new Error(`demo mode requires a demo deliberation IRI: ${config.deliberation}`);
+    }
+    return { fetch: demo.fetch, identity: demo.you.webId, ownBase: demo.you.base };
   }
   return { fetch: controller.authenticatedFetch, identity: webId, ownBase: config.ownBase };
 }
