@@ -2,16 +2,31 @@
 
 # unite — Stage-1 MVP seed client
 
-> **Under active development.** This is the Stage-1 app-co-design seed client for
-> [unite](../README.md) — NOT a finished product, and explicitly not
-> "production-ready". It implements features (a)–(e) of the Stage-1 MVP
-> (`design/05-stage1-mvp.md`): join a deliberation, submit a Max-Neef-classified
-> need to your own pod, read the deliberation's aggregated needs, express
-> tri-state resonance, and view needs ranked by cross-cluster (bridging)
-> agreement. No synthesis / Habermas-machine / opinion-map machinery yet.
+> **Under active development.** This is the Stage-1 app-co-design client for
+> [unite](../README.md) — explicitly not "production-ready". It implements the
+> Stage-1 MVP (`design/05-stage1-mvp.md`): join a deliberation, submit a
+> Max-Neef-classified need to your own pod (with its ODRL consent policy), read
+> the deliberation's aggregated needs live, express tri-state resonance, and see
+> needs ranked by cross-cluster (bridging) agreement — including a Pol.is-style
+> **opinion map** of participants (deterministic PCA over the resonance matrix).
+> No synthesis / Habermas-machine machinery yet.
 
 A vite + React + TypeScript SPA. All logic lives in the exhaustively-tested data
-layer (`src/lib`); the views (`src/ui`) are thin over it.
+layer (`src/lib`); the views (`src/ui`) are thin over it. Views are hash-routed
+(`#/overview`, `#/compose`, `#/board`, `#/bridge`).
+
+## The demo deliberation (the default on load)
+
+The app opens on a **seeded demo deliberation** per scope: `src/demo` is an
+in-memory LDP-shaped pod federation (containers, `If-None-Match` create-only
+PUTs) behind a `fetch` facade, seeded with nine voices and a crafted two-cluster
+vote pattern. Everything above that fetch is the REAL production pipeline —
+`listContainer` → guarded parse → membership gate → dedupe → `rankNeeds` — and
+demo composes/reactions go through the production `writeNeed`/`writeResonance`.
+It is sandboxed to the reserved `demo.unite.example` origin and never touches
+the network; nothing leaves the browser. Switching to **"Your own
+deliberation"** (Overview) points the identical machinery at real participant
+pods, fail-closed until the deliberation IRI + participants validate.
 
 ## Run
 
@@ -105,12 +120,12 @@ Identifier Document URL verbatim (overrides the origin derivation).
 
 | Feature | View | Data-layer entry |
 |---|---|---|
-| (a) join a deliberation (membership-gated via the seam) | Join | `StubMembershipVerifier` / `StaticRegistry` |
+| (a) join a deliberation (membership-gated via the seam) | Overview | `StubMembershipVerifier` / `StaticRegistry` |
 | (b) submit a need (Max-Neef-classified, to your OWN pod) | Compose | `writeNeed` (`authenticatedFetch`) |
 | (c) read the deliberation's aggregated needs | Needs board | `aggregateDeliberation` (`publicFetch`) |
 | (d) express resonance on others' needs (to your pod) | Needs board | `writeResonance` (`authenticatedFetch`) |
-| (e) bridging view: needs ranked by cross-cluster agreement | Bridging | `rankNeeds` |
-| (f) **live updates** — the board re-aggregates when a participant container changes | Needs board / Bridging | `useLiveUpdates` → `watchContainers` (WebSocketChannel2023 + poll fallback) |
+| (e) bridging: needs ranked by cross-cluster agreement, with the opinion map + per-group cluster cards | Common ground | `rankNeeds` / `projectParticipants` / `insights` |
+| (f) **live updates** — the board re-aggregates when a participant container changes (pod mode; demo pods are in-memory) | Needs board / Common ground | `useLiveUpdates` → `watchContainers` (WebSocketChannel2023 + poll fallback) |
 | (g) **ODRL consent** — attach a usage policy to a need (what may be aggregated / synthesized / quoted / forwarded, + k-anonymity) | Compose | `ConsentPanel` → `writeNeed(consent)` → `consentQuads` (`@jeswr/solid-odrl`) |
 
 **Fetch discipline (the credential-leak boundary):** the session-bound
@@ -143,7 +158,7 @@ social-psychology expert should judge each against its open validation question.
 |---|---|---|
 | **Max-Neef need scheme** as the elicitation frame (Compose concept picker; `fut.ts` nine concepts) | `design/03` §2 (Max-Neef needs/satisfiers) | Do the nine fundamental needs, presented as the classification frame, actually surface *shared needs beneath divergent satisfiers* for real participants — or do they feel abstract / mis-map onto lived concerns? |
 | **Tri-state resonance** (resonates / conflicts / unsure), optional dimension qualifier (share / aspire / support) | `design/03` §3 (Pol.is agree/disagree/pass); `design/01` reaction layer | Is tri-state (vs binary) the right granularity, and is the *dimension* qualifier (present condition vs aspiration vs willingness-to-support) understood by participants and worth its added friction? |
-| **Distribution always shown** (Bridging view renders the per-cluster resonates/conflicts/unsure bars for every ranked need, never a bare rank) | `design/03` §2 (false polarisation / perception gap — showing the real distribution shrinks the gap) | Does surfacing the *actual* cross-cluster distribution measurably reduce the perception gap in this UI, and is the bar presentation legible / non-misleading? |
+| **Distribution always shown** (the Common-ground view renders the per-group resonates/conflicts/unsure bars for every ranked need, never a bare rank) | `design/03` §2 (false polarisation / perception gap — showing the real distribution shrinks the gap) | Does surfacing the *actual* cross-cluster distribution measurably reduce the perception gap in this UI, and is the bar presentation legible / non-misleading? |
 | **Bridging ranking** (needs ranked by cross-cluster reception via the Laplace-smoothed group-informed-consensus product, not engagement) | `design/03` §0 (bridging-based ranking; Community Notes) | Does the product-over-clusters bridging objective select genuinely common-ground needs, and are its failure modes (e.g. sparse/under-voted needs pulled toward the neutral prior) acceptable for co-design? |
 | **No replies** at the resonance layer (the board has reactions only; no threaded discussion) | `design/03` §3 (Pol.is removes the flame-war surface) | Does removing the reply surface preserve constructive signal while avoiding polarisation, and where do participants feel the *lack* of discussion most? |
 | **Per-tier participation** (membership tiers T1/T2; the aggregate reports the vouching tier per participant) | `design/02` §5 / `design/03` §6 (participation stratified by verification tier) | Is honest per-tier labelling sufficient for Stage-1 legitimacy, and what does an expert need to see before a T1-only cohort's output is trustworthy? |
@@ -167,11 +182,6 @@ The seams are built so production drops in without touching the views:
   track).
 - **Registry:** replace `StaticRegistry` with a `@jeswr/federation-registry`
   `fedreg:Registry` participant listing.
-- **Live updates:** subscribe to pod changes via `solid-notifications`
-  (WebSocketChannel2023) so the board / bridging view refresh without a manual
-  Refresh.
-- **Consent:** an `@jeswr/solid-odrl` consent panel on Compose (design/01 consent
-  layer). Stage-1 writes conservative defaults implicitly.
 - **Vocabulary:** author `futures.shacl.ttl` + the OWL sector and PR into
   `solid-federation-vocab/sectors/futures/`; pin via `fedreg:acceptsSpec`.
 
