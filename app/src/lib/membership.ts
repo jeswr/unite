@@ -12,8 +12,14 @@
 //
 // Fail-closed everywhere: an unknown WebID is REJECTED, never defaulted in.
 
-/** The verification tier that vouched a participant (design/02 §5 stratifies). */
-export type MembershipTier = "T1" | "T2";
+/**
+ * The verification tier that vouched a participant (design/02 §5 stratifies).
+ * "T0" is pseudonymous voice — it is only ever ADMITTED by a floor-0
+ * participation gate (scope C, design/04 §4.1's participant row); a T1-floor
+ * gate rejects it. Outputs stratify by tier, so a T0 admit is honestly
+ * labelled, never silently upgraded.
+ */
+export type MembershipTier = "T0" | "T1" | "T2";
 
 /** The result of a membership check — a discriminated union, fail-closed. */
 export type MembershipResult =

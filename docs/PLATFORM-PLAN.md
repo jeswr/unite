@@ -102,11 +102,13 @@ app/src/
                 view over trackers) — enabled only where scope.buildLayer
 ```
 
-`ScopeConfig` (shipped in this branch, `app/src/scope/scopes.ts`):
+`ScopeConfig` (shipped, `app/src/scope/scopes.ts`):
 `id`, `name`, `tagline`, `description`, `artifactNoun` (what a proposal is
 called), `hosts` (hostname prefixes that select it), `buildLayer` (whether the
-agentic build surface exists), `minTierToPropose` / `minRoleToBuild`
-(governance hooks, §4), `defaultDeliberation` (seed community per scope).
+agentic build surface exists), `minTierToPropose` (the §4.1 participant floor —
+ENFORCED since Phase 2 by the Compose/reaction gates + the aggregation-side
+`TierParticipationGate`; a `minRoleToBuild` hook arrives with the Phase-3 build
+layer), `defaultDeliberation` (seed community per scope).
 
 ## 3. Hosting — Vercel, one project, per-scope subdomains
 
@@ -340,7 +342,7 @@ differentiator: the build layer is *that stack with a chat UI*.
 | Phase | Work | Depends on |
 |---|---|---|
 | 1 | Vercel project + domains live; clientid.jsonld origins; landing polish | maintainer: DNS + domain pick (§9) |
-| 2 | Role credentials: extend the membership verifier seam to role verification (builder/reviewer/steward VCs via federation-trust); steward issuance UI (My-pod surface) | nothing (packages shipped) |
+| 2 | **SHIPPED** — Role credentials: the membership-verifier seam extended to tier + role resolution (`app/src/lib/trust.ts` — builder/reviewer/steward as federation-trust VCs scoped to `<community>/roles/<role>`, fail-closed, exhaustively tested); `minTierToPropose` enforced in Compose/reactions with explanatory locked states; steward issuance UI (`#/trust`); tier-spanning demo personas verify real seeded credentials | nothing (packages shipped) |
 | 3 | Build-layer read-only channel view (tracker+tasks+messages over task-model + chat-interop) | Phase 2 for labels |
 | 4 | Posting + commission drafting; signed commissions + audit walk | 2, 3 |
 | 5 | Scope B machinery: spec-change proposal type + adoption-rule status surface (`fedreg:acceptsSpec` reading) | 2 |

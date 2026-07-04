@@ -13,7 +13,7 @@
 
 A vite + React + TypeScript SPA. All logic lives in the exhaustively-tested data
 layer (`src/lib`); the views (`src/ui`) are thin over it. Views are hash-routed
-(`#/overview`, `#/compose`, `#/board`, `#/bridge`).
+(`#/overview`, `#/compose`, `#/board`, `#/bridge`, `#/trust`).
 
 ## The demo deliberation (the default on load)
 
@@ -27,6 +27,16 @@ It is sandboxed to the reserved `demo.unite.example` origin and never touches
 the network; nothing leaves the browser. Switching to **"Your own
 deliberation"** (Overview) points the identical machinery at real participant
 pods, fail-closed until the deliberation IRI + participants validate.
+
+The demo also seeds the **governance layer** (`src/demo/trust.ts`) with real
+cryptography: fresh in-memory Ed25519 steward keys become the community's trust
+anchors, and genuine `@jeswr/federation-trust` Verifiable Credentials (Data
+Integrity over RDFC-1.0) are written into the holders' demo pods and verified
+back through the production pipeline. The personas deliberately span the tiers
+so every trust path demos live — in **apps** you hold a steward role (try
+issuing a credential on the Trust view); in **infrastructure** you are an
+unvouched visitor and see the locked Compose state for real; in **society**
+you participate as honestly-labelled pseudonymous voice (floor 0).
 
 ## Run
 
@@ -80,7 +90,7 @@ committed. The app lives in this `app/` subdirectory of the repo, so the Vercel
 | Install Command | `npm ci` (default; keyless — the lockfile is `git+https`, sha-pinned, no `git+ssh`) |
 | Node.js Version | 22.x or 24.x |
 
-`npm ci` needs no npm/GitHub credentials: the five `@jeswr/*` deps resolve over
+`npm ci` needs no npm/GitHub credentials: the six `@jeswr/*` deps resolve over
 public `git+https` at pinned SHAs. `.npmrc` sets `ignore-scripts=true`, so no
 lifecycle hooks run.
 
@@ -120,13 +130,14 @@ Identifier Document URL verbatim (overrides the origin derivation).
 
 | Feature | View | Data-layer entry |
 |---|---|---|
-| (a) join a deliberation (membership-gated via the seam) | Overview | `StubMembershipVerifier` / `StaticRegistry` |
+| (a) join a deliberation (membership-gated via the seam) | Overview | `deliberationTrust` → `TierParticipationGate` / `StaticRegistry` |
 | (b) submit a need (Max-Neef-classified, to your OWN pod) | Compose | `writeNeed` (`authenticatedFetch`) |
 | (c) read the deliberation's aggregated needs | Needs board | `aggregateDeliberation` (`publicFetch`) |
 | (d) express resonance on others' needs (to your pod) | Needs board | `writeResonance` (`authenticatedFetch`) |
 | (e) bridging: needs ranked by cross-cluster agreement, with the opinion map + per-group cluster cards | Common ground | `rankNeeds` / `projectParticipants` / `insights` |
 | (f) **live updates** — the board re-aggregates when a participant container changes (pod mode; demo pods are in-memory) | Needs board / Common ground | `useLiveUpdates` → `watchContainers` (WebSocketChannel2023 + poll fallback) |
 | (g) **ODRL consent** — attach a usage policy to a need (what may be aggregated / synthesized / quoted / forwarded, + k-anonymity) | Compose | `ConsentPanel` → `writeNeed(consent)` → `consentQuads` (`@jeswr/solid-odrl`) |
+| (h) **governance + trust (Phase 2)** — identity tiers × community-scoped role credentials (builder / reviewer / steward) verified fail-closed from `@jeswr/federation-trust` VCs; `minTierToPropose` enforced on Compose + reactions with explanatory locked states; steward issuance UI (signs a real credential into the holder's pod) | Trust (+ gates in Compose / Needs board) | `src/lib/trust.ts` — `CredentialTrustResolver` / `TierParticipationGate` / `issueRoleCredential` / `PodCredentialSource` |
 
 **Fetch discipline (the credential-leak boundary):** the session-bound
 `authenticatedFetch` is used ONLY for your own pod (writes + own reads); foreign
@@ -161,7 +172,7 @@ social-psychology expert should judge each against its open validation question.
 | **Distribution always shown** (the Common-ground view renders the per-group resonates/conflicts/unsure bars for every ranked need, never a bare rank) | `design/03` §2 (false polarisation / perception gap — showing the real distribution shrinks the gap) | Does surfacing the *actual* cross-cluster distribution measurably reduce the perception gap in this UI, and is the bar presentation legible / non-misleading? |
 | **Bridging ranking** (needs ranked by cross-cluster reception via the Laplace-smoothed group-informed-consensus product, not engagement) | `design/03` §0 (bridging-based ranking; Community Notes) | Does the product-over-clusters bridging objective select genuinely common-ground needs, and are its failure modes (e.g. sparse/under-voted needs pulled toward the neutral prior) acceptable for co-design? |
 | **No replies** at the resonance layer (the board has reactions only; no threaded discussion) | `design/03` §3 (Pol.is removes the flame-war surface) | Does removing the reply surface preserve constructive signal while avoiding polarisation, and where do participants feel the *lack* of discussion most? |
-| **Per-tier participation** (membership tiers T1/T2; the aggregate reports the vouching tier per participant) | `design/02` §5 / `design/03` §6 (participation stratified by verification tier) | Is honest per-tier labelling sufficient for Stage-1 legitimacy, and what does an expert need to see before a T1-only cohort's output is trustworthy? |
+| **Per-tier participation** (identity tiers T0/T1/T2 with per-scope floors — scope C admits honestly-labelled pseudonymous voice, A/B require a vouched membership; the aggregate reports each participant's tier) | `design/02` §5 / `design/03` §6 / `design/04` §4.1 (participation stratified by verification tier) | Is honest per-tier labelling sufficient for Stage-1 legitimacy, and what does an expert need to see before a T1-only cohort's output is trustworthy? |
 
 The recruitment of such experts is an out-of-agent-hands `needs:user` action
 (`decisions/0001` Q2).
@@ -175,13 +186,19 @@ The seams are built so production drops in without touching the views:
   silent restore + Client Identifier Document; see the "Client Identifier Document"
   section above). The `DevLoginController` remains the DEV-only stub. Remaining
   deploy-time `needs:user`: confirm the canonical origin / domain.
-- **Membership (Q1):** replace `StubMembershipVerifier` with a
-  `@jeswr/federation-trust` verifier over `fedtrust:MembershipCredential`
-  (community-vouched T1). Tier T2 (ZK personhood) plugs into the SAME
-  `MembershipVerifier` seam via the `@jeswr/solid-vc` proof-suite (the SPARQ ZK
-  track).
+- **Membership + roles (Q1 / Phase 2):** DONE for the trust layer —
+  `src/lib/trust.ts` resolves tier + roles from `@jeswr/federation-trust`
+  `fedtrust:MembershipCredential`s (role credentials are the SAME machinery
+  scoped to `<community>/roles/<role>` IRIs), fail-closed, exhaustively tested;
+  the demo verifies real seeded credentials end-to-end. Remaining for pod mode:
+  **published steward anchors** — a live community must advertise its stewards'
+  keys (the fedreg registry wiring) before `CredentialTrustResolver` replaces
+  the hand-typed-participants `AllowlistTrustResolver` there. Tier T2 (ZK
+  personhood) plugs into the SAME `TrustResolver` seam via the
+  `@jeswr/solid-vc` proof-suite (the SPARQ ZK track).
 - **Registry:** replace `StaticRegistry` with a `@jeswr/federation-registry`
-  `fedreg:Registry` participant listing.
+  `fedreg:Registry` participant listing (this also carries the steward anchors
+  above).
 - **Vocabulary:** author `futures.shacl.ttl` + the OWL sector and PR into
   `solid-federation-vocab/sectors/futures/`; pin via `fedreg:acceptsSpec`.
 

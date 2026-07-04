@@ -11,6 +11,7 @@
 //     user to configure the deliberation IRI, their own container, and the
 //     participant registry (until the fedreg registry wiring lands).
 
+import type { KeyPair } from "@jeswr/federation-trust";
 import {
   DEMO_PEOPLE,
   DEMO_YOU_KEY,
@@ -18,10 +19,12 @@ import {
   demoDeliberationIri,
   demoWebId,
 } from "../demo/fixtures.js";
-import { type MembershipVerifier, StubMembershipVerifier } from "../lib/membership.js";
+import { demoForDeliberation } from "../demo/pods.js";
+import type { MembershipVerifier } from "../lib/membership.js";
 import { isHttpIri } from "../lib/model.js";
 import { type DeliberationRegistry, isValidParticipant, StaticRegistry } from "../lib/registry.js";
-import type { ScopeConfig, ScopeId } from "../scope/scopes.js";
+import { AllowlistTrustResolver, TierParticipationGate, type TrustResolver } from "../lib/trust.js";
+import { type IdentityTier, SCOPES, type ScopeConfig, type ScopeId } from "../scope/scopes.js";
 
 /** A participant row as edited in the Overview form. */
 export interface ParticipantConfig {
@@ -41,6 +44,13 @@ export interface DeliberationConfig {
   readonly ownBase: string;
   /** The registry of participants (webId + their unite container base). */
   readonly participants: readonly ParticipantConfig[];
+  /**
+   * The design/04 §4.1 participant floor for this deliberation (from the
+   * scope's `minTierToPropose`): the minimum identity tier to compose AND
+   * react. Enforced by the view gates and the aggregation-side
+   * TierParticipationGate; floor 0 = pseudonymous voice admitted (scope C).
+   */
+  readonly participationFloor: IdentityTier;
 }
 
 /** The seeded demo deliberation for a scope (the default on load). */
@@ -53,12 +63,19 @@ export function demoConfig(scopeId: ScopeId): DeliberationConfig {
       webId: demoWebId(p.key),
       base: demoBase(p.key, scopeId),
     })),
+    participationFloor: SCOPES[scopeId].minTierToPropose,
   };
 }
 
 /** An empty pod-mode config — the Overview view guides the user to fill it. */
-export function podConfig(): DeliberationConfig {
-  return { mode: "pod", deliberation: "", ownBase: "", participants: [] };
+export function podConfig(scope: ScopeConfig): DeliberationConfig {
+  return {
+    mode: "pod",
+    deliberation: "",
+    ownBase: "",
+    participants: [],
+    participationFloor: scope.minTierToPropose,
+  };
 }
 
 /**
@@ -99,10 +116,71 @@ export function buildRegistry(config: DeliberationConfig): DeliberationRegistry 
 }
 
 /**
- * Build the membership verifier: the allowlist stub vouches every configured
- * participant WebID (tier T1), fail-closed for anyone else. Production swaps in
- * a @jeswr/federation-trust credential verifier (see decisions/0001).
+ * The steward-issuance seam surfaced to the Trust view. Present only when the
+ * session identity actually holds a steward signing key (the demo sandbox
+ * today; a live steward console once the community-registry wiring lands) —
+ * absent means the UI shows its fail-closed locked state.
  */
-export function buildVerifier(config: DeliberationConfig): MembershipVerifier {
-  return new StubMembershipVerifier(config.participants.map((p) => p.webId));
+export interface StewardIssuance {
+  /** The issuing steward's WebID (the session identity). */
+  readonly steward: string;
+  /** The steward's signing key. */
+  readonly key: KeyPair;
+  /** The write fetch reaching the holders' credential containers. */
+  readonly writeFetch: typeof fetch;
+  /** WebID → the holder's pod base (where the credential is written). */
+  readonly baseFor: (webId: string) => string | undefined;
+  /** Drop cached trust for a holder after issuing to them. */
+  readonly invalidate: (webId: string) => void;
+}
+
+/** The trust machinery resolved for a config (the Q1 seam, Phase-2 form). */
+export interface DeliberationTrust {
+  /** Tier + role resolution (the extended membership-verifier seam). */
+  readonly resolver: TrustResolver;
+  /** The floor-aware participation gate the aggregation uses. */
+  readonly gate: MembershipVerifier;
+  /** Steward issuance, when the session holds a steward key (else null). */
+  readonly issuance: StewardIssuance | null;
+}
+
+/**
+ * Resolve the trust machinery for a config.
+ *
+ * - **demo** — the seeded community's CredentialTrustResolver: REAL
+ *   federation-trust verification over credentials read back from the
+ *   sandboxed pods, against the seeded steward anchors. Fail-closed: a demo
+ *   config with a non-demo IRI throws rather than degrading to an allowlist.
+ * - **pod** — the hand-typed participant list IS the membership decision
+ *   (AllowlistTrustResolver, tier 1, NEVER roles) until the fedreg community
+ *   registry wiring lands (Phase 5) — then published steward anchors +
+ *   PodCredentialSource replace it here, behind the same seam.
+ */
+export async function deliberationTrust(config: DeliberationConfig): Promise<DeliberationTrust> {
+  if (config.mode === "demo") {
+    const demo = await demoForDeliberation(config.deliberation);
+    if (!demo) {
+      throw new Error(`demo mode requires a demo deliberation IRI: ${config.deliberation}`);
+    }
+    const { resolver, sessionSteward, bases } = demo.trust;
+    return {
+      resolver,
+      gate: new TierParticipationGate(resolver, config.participationFloor),
+      issuance: sessionSteward
+        ? {
+            steward: sessionSteward.webId,
+            key: sessionSteward.key,
+            writeFetch: demo.fetch,
+            baseFor: (webId) => bases.get(webId),
+            invalidate: (webId) => resolver.invalidate(webId),
+          }
+        : null,
+    };
+  }
+  const resolver = new AllowlistTrustResolver(config.participants.map((p) => p.webId));
+  return {
+    resolver,
+    gate: new TierParticipationGate(resolver, config.participationFloor),
+    issuance: null,
+  };
 }

@@ -12,7 +12,14 @@ import { demoDisplayName, demoForDeliberation } from "../demo/pods.js";
 import { type AggregateResult, aggregateDeliberation } from "../lib/aggregate.js";
 import { watchContainers } from "../lib/notifications.js";
 import { isValidParticipant } from "../lib/registry.js";
-import { buildRegistry, buildVerifier, configReady, type DeliberationConfig } from "./state.js";
+import { type TrustProfile, UNTRUSTED } from "../lib/trust.js";
+import {
+  buildRegistry,
+  configReady,
+  type DeliberationConfig,
+  deliberationTrust,
+  sessionIdentity,
+} from "./state.js";
 
 export interface AggregateState {
   readonly result: AggregateResult | null;
@@ -111,9 +118,11 @@ export function useAggregate(
     setError(null);
     try {
       const registry = buildRegistry(config);
-      const verifier = buildVerifier(config);
+      // The floor-aware credential gate (Phase 2): demo mode verifies REAL
+      // seeded credentials; pod mode keeps the configured-list decision.
+      const { gate } = await deliberationTrust(config);
       const fetchFn = await readFetchFor(config, controller);
-      const next = await aggregateDeliberation({ registry, verifier, fetch: fetchFn });
+      const next = await aggregateDeliberation({ registry, verifier: gate, fetch: fetchFn });
       if (!isCurrent()) return; // superseded (newer refresh or config change)
       setResult(next);
     } catch (e) {
@@ -172,6 +181,57 @@ export function deliberationContainers(config: DeliberationConfig): string[] {
  * or controller changes; `onChange` is read through a ref so a new callback identity
  * does not churn the subscriptions. Demo mode watches nothing (in-memory pods).
  */
+/** The session's resolved trust standing (null while resolving). */
+export interface SessionTrust {
+  /**
+   * The profile for the CURRENT session identity within the configured
+   * deliberation — null only while resolving (treat as untrusted: the view
+   * gates fail closed on null). No identity resolves to UNTRUSTED (tier 0).
+   */
+  readonly profile: TrustProfile | null;
+  /** Re-resolve (e.g. after a credential was issued). */
+  readonly refresh: () => Promise<void>;
+}
+
+/**
+ * Resolve the session identity's tier + roles for the configured deliberation
+ * — the view-side half of the Phase-2 trust seam. FAIL-CLOSED: any resolution
+ * failure yields UNTRUSTED, never a grant; a superseded (config/webId changed)
+ * resolution can never clobber a newer one.
+ */
+export function useTrustProfile(config: DeliberationConfig, webId: string | null): SessionTrust {
+  const [profile, setProfile] = useState<TrustProfile | null>(null);
+  const reqId = useRef(0);
+
+  const refresh = useCallback(async () => {
+    reqId.current += 1;
+    const id = reqId.current;
+    const identity = sessionIdentity(config, webId);
+    if (!identity) {
+      if (id === reqId.current) setProfile(UNTRUSTED);
+      return;
+    }
+    try {
+      const { resolver } = await deliberationTrust(config);
+      const next = await resolver.resolve(identity, config.deliberation);
+      if (id === reqId.current) setProfile(next);
+    } catch {
+      if (id === reqId.current) setProfile(UNTRUSTED); // fail-closed
+    }
+  }, [config, webId]);
+
+  useEffect(() => {
+    setProfile(null); // a config/identity change invalidates the old standing
+    void refresh();
+    // On unmount, supersede any in-flight resolution (no late setState).
+    return () => {
+      reqId.current += 1;
+    };
+  }, [refresh]);
+
+  return { profile, refresh };
+}
+
 export function useLiveUpdates(
   config: DeliberationConfig,
   controller: LoginController,

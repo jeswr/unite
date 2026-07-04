@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { nodeCryptoShimPlugin } from "./node-crypto-shim-plugin.js";
 
 // AUTHORED-BY Claude Fable 5 (PSS agent)
 
@@ -14,7 +15,10 @@ function gitSha(): string {
 }
 
 export default defineConfig({
-  plugins: [react()],
+  // The shim plugin maps federation-trust's `node:crypto` imports onto the
+  // browser shim (see node-crypto-shim-plugin.ts); vitest.config.ts carries
+  // the SAME plugin so the tests execute the exact bytes the SPA ships.
+  plugins: [nodeCryptoShimPlugin(), react()],
   define: {
     __APP_VERSION__: JSON.stringify(gitSha()),
   },

@@ -10,13 +10,14 @@ import { LoginPanel } from "@jeswr/solid-elements/react";
 import { useState } from "react";
 import { resolveScope, SCOPE_ORDER, SCOPES, scopeHref } from "../scope/scopes.js";
 import { useController } from "./auth.js";
-import { useAggregate, useLiveUpdates } from "./hooks.js";
+import { useAggregate, useLiveUpdates, useTrustProfile } from "./hooks.js";
 import { useHashView, type View } from "./route.js";
 import { type DeliberationConfig, scopedDefaultConfig } from "./state.js";
 import { Bridging } from "./views/Bridging.js";
 import { Compose } from "./views/Compose.js";
 import { NeedsBoard } from "./views/NeedsBoard.js";
 import { Overview } from "./views/Overview.js";
+import { Trust } from "./views/Trust.js";
 
 // One codebase, three nested scope modes (docs/PLATFORM-PLAN.md §1–2).
 // Resolved once at load from the SPA's own location (+ optional build pin).
@@ -31,6 +32,7 @@ const TABS: { id: View; label: string }[] = [
   { id: "compose", label: "Compose" },
   { id: "board", label: "Needs board" },
   { id: "bridge", label: "Common ground" },
+  { id: "trust", label: "Trust" },
 ];
 
 /** The Venn brand mark — the intersection is the point (common ground). */
@@ -50,6 +52,9 @@ export function App(): React.JSX.Element {
   const [config, setConfig] = useState<DeliberationConfig>(() => scopedDefaultConfig(SCOPE));
   const [view, navigate] = useHashView();
   const aggregate = useAggregate(config, controller);
+  // The session's verified standing (tier × roles) — resolved once here, and
+  // every view gates off the same profile (Phase 2, PLATFORM-PLAN §4).
+  const trust = useTrustProfile(config, webId);
   // Live updates: re-aggregate when any participant container changes
   // (WebSocketChannel2023 with a poll fallback; best-effort; pod mode only).
   useLiveUpdates(config, controller, aggregate.refresh);
@@ -148,12 +153,25 @@ export function App(): React.JSX.Element {
           />
         )}
         {view === "compose" && (
-          <Compose scope={SCOPE} config={config} webId={webId} onComposed={aggregate.refresh} />
+          <Compose
+            scope={SCOPE}
+            config={config}
+            webId={webId}
+            trust={trust}
+            onComposed={aggregate.refresh}
+          />
         )}
         {view === "board" && (
-          <NeedsBoard scope={SCOPE} config={config} webId={webId} aggregate={aggregate} />
+          <NeedsBoard
+            scope={SCOPE}
+            config={config}
+            webId={webId}
+            trust={trust}
+            aggregate={aggregate}
+          />
         )}
         {view === "bridge" && <Bridging config={config} webId={webId} aggregate={aggregate} />}
+        {view === "trust" && <Trust config={config} webId={webId} trust={trust} />}
       </main>
 
       <p className="footer-note">

@@ -1,18 +1,18 @@
 // AUTHORED-BY Claude Fable 5 (PSS agent)
 //
-// Tiny hash router: the four views are linkable URLs (#/overview, #/compose,
-// #/board, #/bridge) so a deliberation state can be shared/bookmarked and the
-// browser back button works. Pure parse helpers + one hook; fail-closed —
-// anything unrecognised resolves to the default view, never a throw.
+// Tiny hash router: the five views are linkable URLs (#/overview, #/compose,
+// #/board, #/bridge, #/trust) so a deliberation state can be shared/bookmarked
+// and the browser back button works. Pure parse helpers + one hook; fail-closed
+// — anything unrecognised resolves to the default view, never a throw.
 
 import { useCallback, useEffect, useState } from "react";
 
-/** The four app views. Stable ids — they appear in URLs. */
-export type View = "overview" | "compose" | "board" | "bridge";
+/** The five app views. Stable ids — they appear in URLs. */
+export type View = "overview" | "compose" | "board" | "bridge" | "trust";
 
 export const DEFAULT_VIEW: View = "overview";
 
-const VIEW_SET: ReadonlySet<string> = new Set(["overview", "compose", "board", "bridge"]);
+const VIEW_SET: ReadonlySet<string> = new Set(["overview", "compose", "board", "bridge", "trust"]);
 
 /** Parse a location.hash ("#/board", "#board", "#/board?x=1") into a View. */
 export function parseViewHash(hash: string | null | undefined): View {

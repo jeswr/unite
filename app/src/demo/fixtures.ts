@@ -12,6 +12,7 @@
 // few that earn support in BOTH (common ground) — so the Common-ground view
 // demonstrably ranks cross-cluster agreement above raw popularity.
 
+import type { Role } from "../lib/trust.js";
 import type { ScopeId } from "../scope/scopes.js";
 
 /** Deterministic demo origin (reserved .example TLD; never a real host). */
@@ -506,4 +507,66 @@ export const DEMO_NEEDS: Readonly<Record<ScopeId, readonly NeedSpec[]>> = {
   apps: APPS_NEEDS,
   infrastructure: INFRA_NEEDS,
   society: SOCIETY_NEEDS,
+};
+
+// ── The Phase-2 governance seed (docs/PLATFORM-PLAN.md §4) ────────────────────
+
+/** The seeded trust standing for one scope's demo community. */
+export interface DemoTrustSpec {
+  /** Person keys holding a T1 membership credential. Everyone else is T0. */
+  readonly members: readonly string[];
+  /** Person key → role credentials issued (each MUST also be a member). */
+  readonly roles: Readonly<Record<string, readonly Role[]>>;
+}
+
+const EVERYONE = DEMO_PEOPLE.map((p) => p.key);
+const EVERYONE_BUT_YOU = EVERYONE.filter((k) => k !== DEMO_YOU_KEY);
+
+/**
+ * The seeded personas deliberately SPAN the tiers so every trust path demos
+ * live (PLATFORM-PLAN §4.1; design/04 §4.1):
+ *
+ * - **apps** — "you" hold a STEWARD role (≥2 stewards with hana), so the
+ *   issuance UI round-trips for real: issue efe a reviewer credential and
+ *   watch the roll change. Everyone is a vouched member; the floor-1 gate
+ *   and the full role spread (builder/reviewer/steward) all exercise.
+ * - **infrastructure** — "you" are an UNVOUCHED VISITOR (T0): the floor-1
+ *   Compose/react gates show their explanatory LOCKED state live, and the
+ *   steward panel shows its not-a-steward state. (You author nothing in the
+ *   infra fixtures, so the seeded board is unaffected.)
+ * - **society** — floor 0: "you" participate as PSEUDONYMOUS VOICE (T0,
+ *   honestly labelled), demonstrating the G3 open-participation requirement;
+ *   two stewards exist to sign eventual SharedFutures.
+ *
+ * Every role-holder is also a member (design/04 §4.1 — roles presume T1);
+ * seeding asserts this. Each community has ≥2 stewards (design/04 §4.4).
+ */
+export const DEMO_TRUST: Readonly<Record<ScopeId, DemoTrustSpec>> = {
+  apps: {
+    members: EVERYONE,
+    roles: {
+      you: ["steward"],
+      hana: ["steward", "reviewer"],
+      amara: ["builder"],
+      ben: ["builder"],
+      chidi: ["reviewer"],
+      dana: ["reviewer"],
+    },
+  },
+  infrastructure: {
+    members: EVERYONE_BUT_YOU,
+    roles: {
+      hana: ["steward"],
+      farah: ["steward"],
+      chidi: ["builder"],
+      efe: ["reviewer"],
+    },
+  },
+  society: {
+    members: EVERYONE_BUT_YOU,
+    roles: {
+      hana: ["steward"],
+      farah: ["steward"],
+    },
+  },
 };

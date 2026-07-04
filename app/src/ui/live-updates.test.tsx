@@ -24,6 +24,7 @@ import type { DeliberationConfig } from "./state.js";
 const config: DeliberationConfig = {
   mode: "pod",
   deliberation: "https://community.example/d",
+  participationFloor: 1,
   ownBase: "https://alice.example/unite/d/",
   participants: [
     { webId: "https://alice.example/#me", base: "https://alice.example/unite/d/" },

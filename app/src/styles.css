@@ -790,6 +790,12 @@ body {
   max-width: 30rem;
   font-size: 0.9rem;
 }
+/* The trust-gate locked state (Phase 2): a solid gold accent — not an error. */
+.empty.locked {
+  border-style: solid;
+  border-color: var(--u-gold);
+  background: var(--u-gold-soft);
+}
 
 .skel {
   border-radius: 12px;

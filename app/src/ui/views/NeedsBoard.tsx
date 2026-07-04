@@ -16,10 +16,11 @@ import {
 } from "../../lib/fut.js";
 import type { Need, Resonance } from "../../lib/model.js";
 import { writeResonance } from "../../lib/pod.js";
+import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
 import { avatarColor, formatDate, initials } from "../format.js";
-import type { AggregateState } from "../hooks.js";
+import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, writeSessionFor } from "../hooks.js";
 import { configReady, type DeliberationConfig, sessionIdentity } from "../state.js";
 
@@ -70,11 +71,13 @@ export function NeedsBoard({
   scope,
   config,
   webId,
+  trust,
   aggregate,
 }: {
   scope: ScopeConfig;
   config: DeliberationConfig;
   webId: string | null;
+  trust: SessionTrust;
   aggregate: AggregateState;
 }): React.JSX.Element {
   const controller = useController();
@@ -86,6 +89,11 @@ export function NeedsBoard({
   const [sort, setSort] = useState<SortKey>("newest");
 
   const identity = sessionIdentity(config, webId);
+  // The design/04 §4.1 participant gate also covers REACTING in floor-1 scopes
+  // (the aggregate would silently drop an unvouched reaction — better an honest
+  // lock than a vote that never counts). Fail-closed while resolving (null).
+  const floor = config.participationFloor;
+  const canReact = floor === 0 || (trust.profile !== null && meetsTier(trust.profile, floor));
   const tallies = useMemo(
     () => tallyResonances(result?.resonances ?? [], identity),
     [result, identity],
@@ -133,6 +141,12 @@ export function NeedsBoard({
     setWriteError(null);
     if (!identity) {
       setWriteError("Sign in to react — your resonance is stored in your own pod.");
+      return;
+    }
+    if (!canReact) {
+      setWriteError(
+        `Reacting here requires identity tier T${floor} (a vouched membership) — see the Trust view.`,
+      );
       return;
     }
     setBusy(need.id);
@@ -219,6 +233,14 @@ export function NeedsBoard({
 
       {error && <p className="notice error">{error}</p>}
       {writeError && <p className="notice error">{writeError}</p>}
+
+      {!canReact && trust.profile !== null && (
+        <p className="notice info">
+          Reading is open to everyone; <strong>reacting</strong> in this scope requires a vouched
+          membership (tier T{floor}) so tallies stay attributable. See the{" "}
+          <a href="#/trust">Trust</a> view for how vouching works.
+        </p>
+      )}
 
       {result && result.errors.length > 0 && (
         <details className="sources">
@@ -310,7 +332,12 @@ export function NeedsBoard({
                     key={stance}
                     className={`stance ${cls}`}
                     aria-pressed={tally?.yours === stance}
-                    disabled={busy === need.id}
+                    disabled={busy === need.id || !canReact}
+                    title={
+                      canReact
+                        ? undefined
+                        : `Reacting requires a vouched membership (T${floor}) in this scope`
+                    }
                     onClick={() => resonate(need, stance)}
                   >
                     <span aria-hidden="true">{glyph}</span> {label}
