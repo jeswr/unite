@@ -59,6 +59,14 @@ export function isViewEnabled(scope: ScopeConfig, view: View): boolean {
   );
 }
 
+/**
+ * The scope views whose machinery has NOT landed yet — the only ones the
+ * PreviewView may render. "proposals" and "room" left this set when S1 landed
+ * the proposal layer + Convergence Room v1; the rest leave it with their
+ * build-plan phases (S2 / S4 / S5).
+ */
+export type PreviewViewId = Exclude<ScopeViewId, "proposals" | "room">;
+
 /** What a not-yet-built view WILL be, and which build-plan phase lands it. */
 interface PreviewCopy {
   readonly phase: string;
@@ -68,21 +76,7 @@ interface PreviewCopy {
 // Honest phase previews, verbatim from the build plan
 // (docs/SCOPE-DIFFERENTIATION.md §6): an enabled-but-unbuilt view says exactly
 // what it will do and when it arrives — the anti-"relabelled poll" discipline.
-const PREVIEW_COPY: Readonly<Record<ScopeViewId, PreviewCopy>> = {
-  proposals: {
-    phase: "S1",
-    description:
-      "The proposal board: proposals as kanban cards, each showing which shared " +
-      "needs it serves — rival proposals for the same need presented as a " +
-      "portfolio, not a conflict.",
-  },
-  room: {
-    phase: "S1",
-    description:
-      "The Convergence Room: candidate synthesis → critique thread → " +
-      "cross-cluster endorsement against the bridging threshold → either an " +
-      "endorsed synthesis with its dissent annex, or an honest disagreement map.",
-  },
+const PREVIEW_COPY: Readonly<Record<PreviewViewId, PreviewCopy>> = {
   "adoption-board": {
     phase: "S2",
     description:
@@ -122,7 +116,7 @@ export function PreviewView({
   view,
   scope,
 }: {
-  view: ScopeViewId;
+  view: PreviewViewId;
   scope: ScopeConfig;
 }): React.JSX.Element {
   const copy = PREVIEW_COPY[view];

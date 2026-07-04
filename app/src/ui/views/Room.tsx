@@ -1,0 +1,541 @@
+// AUTHORED-BY Claude Fable 5 (PSS agent)
+//
+// Convergence Room v1 (S1 — SCOPE-DIFFERENTIATION §2; design/03 §4): the
+// shared deliberation→synthesis surface every scope's output stage reuses.
+// A candidate synthesis (fut:SpecSynthesis, prov:wasDerivedFrom ≥1 input) →
+// the critique round (fut:Critique — the only threaded surface; standing
+// critiques are the dissent-annex raw material) → a cross-cluster endorsement
+// round (ordinary fut:Resonances on the candidate) → an outcome COMPUTED
+// against the bridging threshold, never asserted: endorsed, or an honest
+// disagreement map (the co-equal outcome), or still open. Bounded revision
+// via prov:wasRevisionOf. Thin over src/lib (convergence.ts does the math).
+
+import { useMemo, useState } from "react";
+import { candidateReception, orderCandidates, standingCritiques } from "../../lib/convergence.js";
+import { STANCE_CONFLICTS, STANCE_RESONATES, STANCE_UNSURE } from "../../lib/fut.js";
+import type { Critique, SynthesisCandidate } from "../../lib/model.js";
+import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH } from "../../lib/model.js";
+import { writeCandidate, writeCritique } from "../../lib/pod.js";
+import { meetsTier } from "../../lib/trust.js";
+import type { ScopeConfig } from "../../scope/scopes.js";
+import { useController } from "../auth.js";
+import { avatarColor, formatDate, initials } from "../format.js";
+import type { AggregateState, SessionTrust } from "../hooks.js";
+import { displayName, writeSessionFor } from "../hooks.js";
+import { configReady, type DeliberationConfig, sessionIdentity } from "../state.js";
+import { DistributionBar } from "./Bridging.js";
+import { StanceButtons } from "./StanceButtons.js";
+import { TIER_MEANING } from "./Trust.js";
+
+/** The room's stance labels: an endorsement round, not a mood poll. */
+const ENDORSE_LABELS = {
+  [STANCE_RESONATES]: "Endorse",
+  [STANCE_CONFLICTS]: "Object",
+  [STANCE_UNSURE]: "Unsure",
+} as const;
+
+/** What happens to an ENDORSED candidate in this scope (the outputKind seam). */
+function outputCopy(scope: ScopeConfig): string {
+  switch (scope.outputKind) {
+    case "adoption-decision":
+      return (
+        "In this scope an endorsed candidate becomes an adoption decision — a recommendation " +
+        "whose ratification is MEASURED adoption on the wire, never asserted. That pipeline " +
+        "(structured proposals, the role lens, the adoption board) arrives in S2–S3."
+      );
+    case "advisory-synthesis":
+      return (
+        "In this scope an endorsed candidate becomes a signed advisory synthesis with a " +
+        "mandatory dissent annex, handed to human decision-makers — nothing executes. That " +
+        "publication pipeline (steward signing, method-provenance labels) arrives in S5."
+      );
+    default:
+      return (
+        "In this scope an endorsed synthesis is the input to a build commission — a signed " +
+        "delegation naming this exact synthesis, executed by the agent suite under full " +
+        "engineering gates (PLATFORM-PLAN §4.3). The commissioning chain arrives with " +
+        "Phases 3–6; endorsed syntheses queue here until it lands."
+      );
+  }
+}
+
+export function Room({
+  scope,
+  config,
+  webId,
+  trust,
+  aggregate,
+}: {
+  scope: ScopeConfig;
+  config: DeliberationConfig;
+  webId: string | null;
+  trust: SessionTrust;
+  aggregate: AggregateState;
+}): React.JSX.Element {
+  const controller = useController();
+  const { result, loading, error, refresh } = aggregate;
+
+  const [selected, setSelected] = useState<string | null>(null);
+  // Draft form
+  const [drafting, setDrafting] = useState(false);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftContent, setDraftContent] = useState("");
+  const [draftInputs, setDraftInputs] = useState<readonly string[]>([]);
+  const [draftRevises, setDraftRevises] = useState(false);
+  // Critique form
+  const [critique, setCritique] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const identity = sessionIdentity(config, webId);
+  const floor = config.participationFloor;
+  const mayParticipate = floor === 0 || (trust.profile !== null && meetsTier(trust.profile, floor));
+
+  const candidates = useMemo(() => orderCandidates(result?.candidates ?? []), [result]);
+  // The active candidate: the selected one if it still exists, else the newest.
+  const active: SynthesisCandidate | null =
+    candidates.find((c) => c.id === selected) ?? candidates[0] ?? null;
+
+  const reception = useMemo(() => {
+    if (!result || !active) return null;
+    return candidateReception(
+      result.verified.map((v) => v.webId),
+      result.needs.map((n) => n.id),
+      result.resonances,
+      active.id,
+    );
+  }, [result, active]);
+
+  const activeCritiques = useMemo(
+    () => (active ? standingCritiques(result?.critiques ?? [], active.id) : []),
+    [result, active],
+  );
+
+  /** Resolve a statement IRI to a display snippet (need/proposal content). */
+  const statementText = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of result?.needs ?? []) m.set(n.id, n.content);
+    for (const p of result?.proposals ?? []) m.set(p.id, `${p.title} — ${p.content}`);
+    for (const c of result?.candidates ?? []) m.set(c.id, c.title ?? c.content);
+    return m;
+  }, [result]);
+
+  const inputPool = useMemo(
+    () => [
+      ...(result?.proposals ?? []).map((p) => ({ id: p.id, label: `proposal · ${p.title}` })),
+      ...(result?.needs ?? []).map((n) => ({
+        id: n.id,
+        label: `need · ${n.content.length > 60 ? `${n.content.slice(0, 57)}…` : n.content}`,
+      })),
+    ],
+    [result],
+  );
+
+  function toggleInput(id: string): void {
+    setDraftInputs((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function submitDraft(): Promise<void> {
+    setFormError(null);
+    if (!identity) {
+      setFormError("Sign in first — a candidate is written to your own pod under your WebID.");
+      return;
+    }
+    if (!mayParticipate) {
+      setFormError(`Drafting here requires identity tier T${floor} — see the Trust view.`);
+      return;
+    }
+    if (!draftContent.trim()) {
+      setFormError("Write the candidate synthesis first.");
+      return;
+    }
+    if (draftInputs.length === 0) {
+      setFormError(
+        "Select at least one input — a synthesis must name what it derives from (prov:wasDerivedFrom), so its lineage is checkable.",
+      );
+      return;
+    }
+    setSaving(true);
+    try {
+      const session = await writeSessionFor(config, controller, webId);
+      const body: Omit<SynthesisCandidate, "id"> = {
+        content: draftContent.trim(),
+        derivedFrom: draftInputs,
+        created: new Date().toISOString(),
+        creator: identity,
+        inDeliberation: config.deliberation,
+        ...(draftTitle.trim() ? { title: draftTitle.trim() } : {}),
+        ...(draftRevises && active ? { revisionOf: active.id } : {}),
+      };
+      const { url } = await writeCandidate(session.fetch, session.ownBase, body);
+      setDraftTitle("");
+      setDraftContent("");
+      setDraftInputs([]);
+      setDraftRevises(false);
+      setDrafting(false);
+      setSelected(url);
+      try {
+        await refresh();
+      } catch {
+        // aggregation errors surface through the room's own error state
+      }
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitCritique(): Promise<void> {
+    setFormError(null);
+    if (!active) return;
+    if (!identity) {
+      setFormError("Sign in first — a critique is written to your own pod under your WebID.");
+      return;
+    }
+    if (!mayParticipate) {
+      setFormError(`Critiquing here requires identity tier T${floor} — see the Trust view.`);
+      return;
+    }
+    if (!critique.trim()) {
+      setFormError("Write the critique first.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const session = await writeSessionFor(config, controller, webId);
+      const body: Omit<Critique, "id"> = {
+        content: critique.trim(),
+        onStatement: active.id,
+        created: new Date().toISOString(),
+        creator: identity,
+        inDeliberation: config.deliberation,
+      };
+      await writeCritique(session.fetch, session.ownBase, body);
+      setCritique("");
+      try {
+        await refresh();
+      } catch {
+        // aggregation errors surface through the room's own error state
+      }
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const showSkeletons = loading && !result;
+
+  return (
+    <section className="view">
+      <div className="row-between">
+        <div>
+          <h2 className="view-title">Convergence room</h2>
+          <p className="view-lede">
+            A candidate synthesis is endorsed only when <em>every</em> opinion group leans positive
+            — computed live from the votes, never declared. Standing critiques travel with the
+            outcome as its dissent annex, and a split room publishes an honest{" "}
+            <strong>disagreement map</strong> instead of a forced consensus.
+          </p>
+        </div>
+        <button type="button" className="btn" onClick={refresh} disabled={loading}>
+          {loading ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
+      {error && <p className="notice error">{error}</p>}
+      {formError && <p className="notice error">{formError}</p>}
+
+      {!mayParticipate && trust.profile !== null && (
+        <p className="notice info">
+          Reading is open to everyone; <strong>drafting, critiquing and endorsing</strong> here
+          requires a vouched membership (tier T{floor} — {TIER_MEANING[floor]}). See the{" "}
+          <a href="#/trust">Trust</a> view.
+        </p>
+      )}
+
+      {showSkeletons && (
+        <ul className="cards" aria-hidden="true">
+          <li className="skel" />
+          <li className="skel" />
+        </ul>
+      )}
+
+      {!showSkeletons && !configReady(config) && (
+        <div className="empty">
+          <span className="empty-title">Not connected yet</span>
+          <p>
+            Configure your deliberation on the <a href="#/overview">Overview</a> — or switch to the
+            demo deliberation to explore how the room works.
+          </p>
+        </div>
+      )}
+
+      {!showSkeletons && result && configReady(config) && candidates.length === 0 && !drafting && (
+        <div className="empty">
+          <span className="empty-title">No candidate synthesis yet</span>
+          <p>
+            When the <a href="#/bridge">common ground</a> is visible, someone drafts a candidate:
+            one text that tries to carry what every group needs — naming exactly which needs and
+            proposals it derives from.
+          </p>
+          {mayParticipate && (
+            <button type="button" className="btn primary" onClick={() => setDrafting(true)}>
+              Draft the first candidate
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Candidate strip ─────────────────────────────────────────────── */}
+      {candidates.length > 0 && (
+        <div className="row-between">
+          <fieldset className="chip-row" aria-label="candidates">
+            {candidates.map((c) => (
+              <button
+                type="button"
+                key={c.id}
+                className="chip"
+                aria-pressed={active?.id === c.id}
+                onClick={() => setSelected(c.id)}
+                title={c.content}
+              >
+                {c.title ?? `${c.content.slice(0, 32)}…`}
+                {c.revisionOf && <span className="muted small"> (revision)</span>}
+              </button>
+            ))}
+          </fieldset>
+          {mayParticipate && !drafting && (
+            <button type="button" className="btn" onClick={() => setDrafting(true)}>
+              Draft a candidate
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Draft form ──────────────────────────────────────────────────── */}
+      {drafting && mayParticipate && (
+        <div className="panel">
+          <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
+            Draft a candidate synthesis
+          </h3>
+          <label className="field">
+            <span>
+              Short name <span className="hint">(optional)</span>
+            </span>
+            <input
+              type="text"
+              maxLength={MAX_TITLE_LENGTH}
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              placeholder="e.g. The offline-first common spine"
+            />
+          </label>
+          <label className="field">
+            <span>
+              The synthesis{" "}
+              <span className="char-count">
+                {draftContent.length}/{MAX_CONTENT_LENGTH}
+              </span>
+            </span>
+            <textarea
+              rows={5}
+              maxLength={MAX_CONTENT_LENGTH}
+              value={draftContent}
+              onChange={(e) => setDraftContent(e.target.value)}
+              placeholder="One text that tries to carry what every group needs — not a compromise nobody wants, a synthesis the room can endorse."
+            />
+          </label>
+          <div className="field">
+            <span>
+              Derived from{" "}
+              <span className="hint">
+                — the needs and proposals this synthesis carries (≥1; its checkable lineage)
+              </span>
+            </span>
+            {inputPool.length === 0 ? (
+              <p className="muted small">
+                Nothing to derive from yet — the deliberation needs shared{" "}
+                <a href="#/board">needs</a> first.
+              </p>
+            ) : (
+              <fieldset className="chip-row" aria-label="synthesis inputs">
+                {inputPool.map((s) => (
+                  <button
+                    type="button"
+                    key={s.id}
+                    className="chip"
+                    aria-pressed={draftInputs.includes(s.id)}
+                    onClick={() => toggleInput(s.id)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </fieldset>
+            )}
+          </div>
+          {active && (
+            <label className="field" style={{ flexDirection: "row", gap: "0.5rem" }}>
+              <input
+                type="checkbox"
+                checked={draftRevises}
+                onChange={(e) => setDraftRevises(e.target.checked)}
+              />
+              <span>
+                This revises “{active.title ?? active.content.slice(0, 40)}” (bounded revision
+                rounds — the lineage is recorded, prov:wasRevisionOf)
+              </span>
+            </label>
+          )}
+          <div className="chip-row">
+            <button type="button" className="primary" onClick={submitDraft} disabled={saving}>
+              {saving ? "Saving…" : "Put it to the room"}
+            </button>
+            <button type="button" className="btn" onClick={() => setDrafting(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── The active candidate ────────────────────────────────────────── */}
+      {active && result && (
+        <div className="card">
+          {active.title && <strong>{active.title}</strong>}
+          <p className="need-content">{active.content}</p>
+          <div className="card-meta">
+            <span className="avatar" style={{ background: avatarColor(active.creator) }}>
+              {initials(displayName(active.creator))}
+            </span>
+            <span className="who">{displayName(active.creator)}</span>
+            <span className="when">{formatDate(active.created)}</span>
+            {active.revisionOf && (
+              <button
+                type="button"
+                className="chip"
+                onClick={() => setSelected(active.revisionOf ?? null)}
+                title={active.revisionOf}
+              >
+                revises: {statementText.get(active.revisionOf)?.slice(0, 40) ?? "an earlier round"}
+              </button>
+            )}
+          </div>
+
+          <details className="sources">
+            <summary>
+              Derived from {active.derivedFrom.length} input
+              {active.derivedFrom.length === 1 ? "" : "s"} (the checkable lineage)
+            </summary>
+            <ul>
+              {active.derivedFrom.map((s) => (
+                <li key={s}>{statementText.get(s) ?? <code>{s}</code>}</li>
+              ))}
+            </ul>
+          </details>
+
+          {/* Outcome — computed, never asserted */}
+          {reception && (
+            <div>
+              <div className="chip-row">
+                {reception.outcome === "endorsed" && (
+                  <span className="badge gold">endorsed — every group leans positive</span>
+                )}
+                {reception.outcome === "disagreement" && (
+                  <span className="badge con">disagreement map — the groups divide here</span>
+                )}
+                {reception.outcome === "open" && (
+                  <span className="badge">round open — not enough cross-group signal yet</span>
+                )}
+                <span className="muted small">
+                  {reception.totalSeen} endorsement vote{reception.totalSeen === 1 ? "" : "s"}{" "}
+                  across {reception.clusterCount} opinion group
+                  {reception.clusterCount === 1 ? "" : "s"} · bridging score{" "}
+                  {reception.score.toFixed(3)}
+                </span>
+              </div>
+              <div className="dists">
+                {reception.perCluster.map((dist, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: cluster order is stable — the index IS the cluster identity.
+                  <DistributionBar key={`${active.id}-${i}`} dist={dist} index={i} />
+                ))}
+              </div>
+              {reception.outcome === "disagreement" && (
+                <p className="notice info">
+                  This split is a first-class outcome, not a failure: the map of exactly where the
+                  groups divide is published alongside any endorsement — dissent is data, never
+                  smoothed away. A drafter can put a revision to the room that tries to carry the
+                  objecting group too.
+                </p>
+              )}
+              {reception.outcome === "endorsed" && (
+                <p className="notice info">{outputCopy(scope)}</p>
+              )}
+            </div>
+          )}
+
+          <StanceButtons
+            statement={active.id}
+            config={config}
+            webId={webId}
+            trust={trust}
+            aggregate={aggregate}
+            labels={ENDORSE_LABELS}
+          />
+
+          {/* ── Critique round ───────────────────────────────────────────── */}
+          <div className="panel">
+            <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
+              Standing critiques{" "}
+              <span className="muted small">
+                — the dissent-annex material; whatever stands at endorsement travels with the
+                outcome
+              </span>
+            </h3>
+            {activeCritiques.length === 0 && (
+              <p className="muted small">No standing critiques on this candidate.</p>
+            )}
+            <ul className="cards">
+              {activeCritiques.map((c) => (
+                <li key={c.id} className="card">
+                  <p className="need-content">{c.content}</p>
+                  <div className="card-meta">
+                    <span className="avatar" style={{ background: avatarColor(c.creator) }}>
+                      {initials(displayName(c.creator))}
+                    </span>
+                    <span className="who">{displayName(c.creator)}</span>
+                    <span className="when">{formatDate(c.created)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {mayParticipate && (
+              <div className="field">
+                <label className="field">
+                  <span>
+                    Add a critique{" "}
+                    <span className="char-count">
+                      {critique.length}/{MAX_CONTENT_LENGTH}
+                    </span>
+                  </span>
+                  <textarea
+                    rows={2}
+                    maxLength={MAX_CONTENT_LENGTH}
+                    value={critique}
+                    onChange={(e) => setCritique(e.target.value)}
+                    placeholder="What does this synthesis miss, distort, or trade away?"
+                  />
+                </label>
+                <div>
+                  <button type="button" className="btn" onClick={submitCritique} disabled={saving}>
+                    {saving ? "Saving…" : "Stand this critique"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

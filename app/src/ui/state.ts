@@ -20,6 +20,7 @@ import {
   demoWebId,
 } from "../demo/fixtures.js";
 import { demoForDeliberation } from "../demo/pods.js";
+import type { StatementKind } from "../lib/aggregate.js";
 import type { MembershipVerifier } from "../lib/membership.js";
 import { isHttpIri } from "../lib/model.js";
 import { type DeliberationRegistry, isValidParticipant, StaticRegistry } from "../lib/registry.js";
@@ -85,6 +86,19 @@ export function podConfig(scope: ScopeConfig): DeliberationConfig {
  */
 export function scopedDefaultConfig(scope: ScopeConfig): DeliberationConfig {
   return demoConfig(scope.id);
+}
+
+/**
+ * The statement kinds aggregation collects for a scope (the S1 kinds seam,
+ * SCOPE-DIFFERENTIATION §5.1): the scope's board artifacts (`artifactKinds`,
+ * a subset of the aggregator's kinds) plus — when the scope's Convergence
+ * Room is enabled — the room's own artifacts (candidates + critiques).
+ * Pure; deterministic order (the aggregator treats kinds as a set).
+ */
+export function collectionKinds(scope: ScopeConfig): readonly StatementKind[] {
+  const kinds: StatementKind[] = [...scope.artifactKinds];
+  if (scope.views.includes("room")) kinds.push("synthesis", "critique");
+  return kinds;
 }
 
 /**

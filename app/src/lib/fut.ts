@@ -16,6 +16,10 @@ export const NS = {
   skos: "http://www.w3.org/2004/02/skos/core#",
   rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
   xsd: "http://www.w3.org/2001/XMLSchema#",
+  /** W3C SolidOS workflow ontology (the @jeswr/solid-task-model shared model). */
+  wf: "http://www.w3.org/2005/01/wf/flow#",
+  /** W3C PROV-O — derivation/revision provenance on syntheses. */
+  prov: "http://www.w3.org/ns/prov#",
 } as const;
 
 /** `fut:` term builder. */
@@ -27,9 +31,16 @@ export const dct = (local: string): string => `${NS.dct}${local}`;
 /** `skos:` term builder. */
 export const skos = (local: string): string => `${NS.skos}${local}`;
 
-// ── Classes (design/01) ─────────────────────────────────────────────────────
+// ── Classes (design/01; all landed in the 0.1.0 sector vocabulary) ──────────
 export const FUT_NEED = fut("Need");
 export const FUT_RESONANCE = fut("Resonance");
+/** `fut:AppProposal` ⊑ `wf:Task` — scope A's proposal artifact (design/01 Stage-1 layer). */
+export const FUT_APP_PROPOSAL = fut("AppProposal");
+/** `fut:SpecSynthesis` ⊑ `fut:SharedFuture` — the converged app spec (design/01). */
+export const FUT_SPEC_SYNTHESIS = fut("SpecSynthesis");
+/** `wf:Task` — asserted alongside fut:AppProposal so plain wf:Task readers
+ * (solid-issues, Pod Manager) federate proposals without OWL reasoning. */
+export const WF_TASK = `${NS.wf}Task`;
 
 // ── Properties ──────────────────────────────────────────────────────────────
 export const RDF_TYPE = `${NS.rdf}type`;
@@ -38,10 +49,17 @@ export const FUT_NEED_CONCEPT = fut("needConcept");
 export const FUT_INTENSITY = fut("intensity");
 export const DCT_CREATED = dct("created");
 export const DCT_CREATOR = dct("creator");
+export const DCT_TITLE = dct("title");
 export const FUT_IN_DELIBERATION = fut("inDeliberation");
 export const FUT_ON_STATEMENT = fut("onStatement");
 export const FUT_STANCE = fut("stance");
 export const FUT_DIMENSION = fut("dimension");
+/** `fut:motivatedBy` — AppProposal → the Need(s)/ValueStatement(s) it serves (≥1, SHACL MUST). */
+export const FUT_MOTIVATED_BY = fut("motivatedBy");
+/** `prov:wasDerivedFrom` — a synthesis candidate → every input statement. */
+export const PROV_WAS_DERIVED_FROM = `${NS.prov}wasDerivedFrom`;
+/** `prov:wasRevisionOf` — a revised candidate → the candidate it revises (bounded rounds). */
+export const PROV_WAS_REVISION_OF = `${NS.prov}wasRevisionOf`;
 
 // ── The Max-Neef need scheme (design/01 "needs/satisfiers split") ────────────
 // The nine fundamental human needs, few and universal per Max-Neef, Elizalde &

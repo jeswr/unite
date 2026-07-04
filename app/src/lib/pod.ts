@@ -12,11 +12,18 @@ import { assertWithinPodScope } from "@jeswr/guarded-fetch";
 import { ContainerDataset } from "@solid/object";
 import { DataFactory } from "n3";
 import { type ConsentPolicy, consentQuads, ODRL_NS } from "./consent.js";
+import { NS } from "./fut.js";
 import {
+  type AppProposal,
+  buildCandidateQuads,
+  buildCritiqueQuads,
   buildNeedQuads,
+  buildProposalQuads,
+  type Critique,
   isHttpIri,
   type Need,
   type Resonance,
+  type SynthesisCandidate,
   serializeNeed,
   serializeResonance,
   serializeTurtle,
@@ -25,6 +32,9 @@ import {
 /** The subdirectory each statement type is written under. */
 const NEEDS_DIR = "needs";
 const RESONANCES_DIR = "resonances";
+const PROPOSALS_DIR = "proposals";
+const SYNTHESES_DIR = "syntheses";
+const CRITIQUES_DIR = "critiques";
 
 /** Default cap on a single resource/container body (bytes/characters). */
 export const DEFAULT_MAX_BODY_BYTES = 1_000_000;
@@ -209,6 +219,69 @@ export async function writeNeed(
   } else {
     body = await serializeNeed(resource);
   }
+  const response = await putTurtle(fetchFn, url, body);
+  return { url, resource, response };
+}
+
+/**
+ * Write an {@link AppProposal} to the participant's own pod at
+ * `<base>proposals/<slug>.ttl` (S1 — the scope-A proposal layer). Same
+ * fail-closed discipline as {@link writeNeed}; a proposal is an
+ * expression-layer resource, so it MAY carry an inline ODRL consent policy.
+ */
+export async function writeProposal(
+  fetchFn: typeof fetch,
+  base: string,
+  proposal: Omit<AppProposal, "id">,
+  consent?: ConsentPolicy,
+): Promise<WriteResult<AppProposal>> {
+  const url = assertWithinBase(base, childUrl(base, PROPOSALS_DIR, slug()));
+  const resource: AppProposal = { ...proposal, id: url };
+  const quads = buildProposalQuads(resource);
+  if (consent) quads.push(...consentQuads(url, consent, resource.creator));
+  const body = await serializeTurtle(quads, {
+    wf: NS.wf,
+    ...(consent ? { odrl: ODRL_NS } : {}),
+  });
+  const response = await putTurtle(fetchFn, url, body);
+  return { url, resource, response };
+}
+
+/**
+ * Write a {@link SynthesisCandidate} to the drafter's own pod at
+ * `<base>syntheses/<slug>.ttl` (S1 — the Convergence Room). A candidate is a
+ * process-layer DERIVED artifact: its inputs' consent policies gate what may
+ * derive into it (fut:synthesize), so no policy of its own is attached here.
+ */
+export async function writeCandidate(
+  fetchFn: typeof fetch,
+  base: string,
+  candidate: Omit<SynthesisCandidate, "id">,
+): Promise<WriteResult<SynthesisCandidate>> {
+  const url = assertWithinBase(base, childUrl(base, SYNTHESES_DIR, slug()));
+  const resource: SynthesisCandidate = { ...candidate, id: url };
+  const body = await serializeTurtle(buildCandidateQuads(resource), { prov: NS.prov });
+  const response = await putTurtle(fetchFn, url, body);
+  return { url, resource, response };
+}
+
+/**
+ * Write a {@link Critique} to the critic's own pod at
+ * `<base>critiques/<slug>.ttl` (S1 — the Convergence Room critique round).
+ * Expression-layer: MAY carry an inline consent policy (the annex-signing
+ * path, S5, must honour quoteVerbatim when materialising the DissentRecord).
+ */
+export async function writeCritique(
+  fetchFn: typeof fetch,
+  base: string,
+  critique: Omit<Critique, "id">,
+  consent?: ConsentPolicy,
+): Promise<WriteResult<Critique>> {
+  const url = assertWithinBase(base, childUrl(base, CRITIQUES_DIR, slug()));
+  const resource: Critique = { ...critique, id: url };
+  const quads = buildCritiqueQuads(resource);
+  if (consent) quads.push(...consentQuads(url, consent, resource.creator));
+  const body = await serializeTurtle(quads, consent ? { odrl: ODRL_NS } : undefined);
   const response = await putTurtle(fetchFn, url, body);
   return { url, resource, response };
 }

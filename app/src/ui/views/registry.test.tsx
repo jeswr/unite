@@ -62,10 +62,11 @@ describe("view registry", () => {
     }
   });
 
-  it("apps shows the base tab strip unchanged (S0: zero behaviour change)", () => {
+  it("apps' extra tabs are exactly its declared views (S1: proposals + room)", () => {
     expect(enabledViews(SCOPES.apps).filter((v) => !BASE_VIEWS.includes(v))).toEqual(
       SCOPES.apps.views.slice(),
     );
+    expect(SCOPES.apps.views).toEqual(["proposals", "room"]);
   });
 });
 

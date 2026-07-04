@@ -16,7 +16,18 @@
 import { parseRdf } from "@jeswr/fetch-rdf";
 import type { DatasetCore } from "@rdfjs/types";
 import type { MembershipTier, MembershipVerifier } from "./membership.js";
-import { type Need, parseNeeds, parseResonances, type Resonance } from "./model.js";
+import {
+  type AppProposal,
+  type Critique,
+  type Need,
+  parseCandidates,
+  parseCritiques,
+  parseNeeds,
+  parseProposals,
+  parseResonances,
+  type Resonance,
+  type SynthesisCandidate,
+} from "./model.js";
 import { DEFAULT_MAX_BODY_BYTES, isWithinBase, listContainer, readBodyCapped } from "./pod.js";
 import type { DeliberationRegistry, Participant } from "./registry.js";
 
@@ -24,12 +35,34 @@ import type { DeliberationRegistry, Participant } from "./registry.js";
 export const DEFAULT_MAX_RESOURCES = 500;
 export { DEFAULT_MAX_BODY_BYTES } from "./pod.js";
 
+/**
+ * The statement kinds aggregation can collect (scope-blind — the SCOPE decides
+ * which it enables via `ScopeConfig.artifactKinds` + its room view; the S0
+ * seam). Resonances are ALWAYS collected. Kinds without landed machinery yet
+ * ("infra-proposal" S2; "vision"/"claim"/"value" S4) are accepted but collect
+ * nothing until their parsers land — honest no-ops, never a crash.
+ */
+export type StatementKind =
+  | "need"
+  | "app-proposal"
+  | "infra-proposal"
+  | "vision"
+  | "claim"
+  | "value"
+  | "synthesis"
+  | "critique";
+
+/** The default collection set — the pre-S1 behaviour (needs only). */
+export const DEFAULT_KINDS: readonly StatementKind[] = ["need"];
+
 /** Options for {@link aggregateDeliberation}. */
 export interface AggregateOptions {
   readonly registry: DeliberationRegistry;
   readonly verifier: MembershipVerifier;
   /** The foreign-pod read fetch (publicFetch — never the session-bound one). */
   readonly fetch: typeof fetch;
+  /** Statement kinds to collect (default {@link DEFAULT_KINDS}: needs only). */
+  readonly kinds?: readonly StatementKind[];
   readonly maxResourcesPerParticipant?: number;
   readonly maxBodyBytes?: number;
 }
@@ -38,7 +71,7 @@ export interface AggregateOptions {
 export interface SourceError {
   readonly webId: string;
   readonly base: string;
-  readonly stage: "membership" | "needs" | "resonances";
+  readonly stage: "membership" | "needs" | "resonances" | "proposals" | "syntheses" | "critiques";
   /** The specific member resource that failed, when the failure was per-member. */
   readonly resource?: string;
   readonly message: string;
@@ -56,6 +89,12 @@ export interface AggregateResult {
   readonly deliberation: string;
   readonly needs: Need[];
   readonly resonances: Resonance[];
+  /** Collected only when `kinds` includes "app-proposal" (S1, scope A). */
+  readonly proposals: AppProposal[];
+  /** Collected only when `kinds` includes "synthesis" (S1, the room). */
+  readonly candidates: SynthesisCandidate[];
+  /** Collected only when `kinds` includes "critique" (S1, the room). */
+  readonly critiques: Critique[];
   readonly verified: VerifiedParticipant[];
   readonly unverified: { readonly webId: string; readonly reason: string }[];
   readonly errors: SourceError[];
@@ -89,7 +128,7 @@ async function readStatements<T extends { creator: string; inDeliberation: strin
   deliberation: string,
   maxResources: number,
   maxBytes: number,
-  stage: "needs" | "resonances",
+  stage: Exclude<SourceError["stage"], "membership">,
   parse: (ds: DatasetCore) => T[],
   errors: SourceError[],
 ): Promise<T[]> {
@@ -159,10 +198,14 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
   const { registry, verifier, fetch: fetchFn } = options;
   const maxResources = options.maxResourcesPerParticipant ?? DEFAULT_MAX_RESOURCES;
   const maxBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+  const kinds = new Set(options.kinds ?? DEFAULT_KINDS);
   const deliberation = registry.deliberation;
 
   const participants = await registry.listParticipants();
   const needs: Need[] = [];
+  const proposals: AppProposal[] = [];
+  const candidates: SynthesisCandidate[] = [];
+  const critiques: Critique[] = [];
   const rawResonances: Resonance[] = [];
   const verified: VerifiedParticipant[] = [];
   const unverified: { webId: string; reason: string }[] = [];
@@ -182,38 +225,29 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
     }
     verified.push({ webId: p.webId, base: p.base, tier: result.tier });
 
-    needs.push(
-      ...(await readStatements(
-        fetchFn,
-        p,
-        "needs",
-        deliberation,
-        maxResources,
-        maxBytes,
-        "needs",
-        parseNeeds,
-        errors,
-      )),
-    );
-    rawResonances.push(
-      ...(await readStatements(
-        fetchFn,
-        p,
-        "resonances",
-        deliberation,
-        maxResources,
-        maxBytes,
-        "resonances",
-        parseResonances,
-        errors,
-      )),
-    );
+    const read = <T extends { creator: string; inDeliberation: string }>(
+      dir: Exclude<SourceError["stage"], "membership">,
+      parse: (ds: DatasetCore) => T[],
+    ): Promise<T[]> =>
+      readStatements(fetchFn, p, dir, deliberation, maxResources, maxBytes, dir, parse, errors);
+
+    if (kinds.has("need")) needs.push(...(await read("needs", parseNeeds)));
+    // The scope-A proposal layer (S1). Other proposal-shaped kinds
+    // ("infra-proposal" S2; "vision"/"claim"/"value" S4) collect nothing until
+    // their parsers land — an honestly-empty result, never a crash.
+    if (kinds.has("app-proposal")) proposals.push(...(await read("proposals", parseProposals)));
+    if (kinds.has("synthesis")) candidates.push(...(await read("syntheses", parseCandidates)));
+    if (kinds.has("critique")) critiques.push(...(await read("critiques", parseCritiques)));
+    rawResonances.push(...(await read("resonances", parseResonances)));
   }
 
   return {
     deliberation,
     needs,
     resonances: dedupeResonances(rawResonances),
+    proposals,
+    candidates,
+    critiques,
     verified,
     unverified,
     errors,

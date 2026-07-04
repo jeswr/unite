@@ -4,7 +4,9 @@
 // in src/ui compose these; all logic lives here.
 
 export * from "./aggregate.js";
+export * from "./convergence.js";
 export * from "./fut.js";
+export * from "./fut-draft.js";
 export * from "./membership.js";
 export * from "./model.js";
 export * from "./pod.js";

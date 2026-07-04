@@ -21,13 +21,14 @@ import type { AggregateState } from "../hooks.js";
 import { displayName } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
 
-const GROUP_NAMES = ["Group A", "Group B", "Group C", "Group D"] as const;
+export const GROUP_NAMES = ["Group A", "Group B", "Group C", "Group D"] as const;
 
-function clusterColor(g: number): string {
+export function clusterColor(g: number): string {
   return `var(--u-cluster-${g % 4})`;
 }
 
-function DistributionBar({
+/** One opinion group's reception bar — shared by Common ground and the Room. */
+export function DistributionBar({
   dist,
   index,
 }: {

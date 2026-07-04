@@ -471,8 +471,8 @@ implementation = passes the fixtures") true as the surface grows.
 
 | Phase | Contents | Scope flips | Maps to PLATFORM-PLAN §7 | Depends on |
 |---|---|---|---|---|
-| **S0 — scope-config seams** | the §5.3 ScopeConfig extension + view scaffolding switches; pure, exhaustively unit-tested; zero behaviour change for `apps` | — | infrastructural (no §7 phase) | nothing |
-| **S1 — the artifact + convergence spine** | A's proposal layer (`fut:AppProposal` compose + proposal board) + **Convergence Room v1** (candidate/critique/endorse/dissent/disagreement-map) end-to-end in demo mode; sector 0.2.0 draft authored (the §3.2 + §4.2 additions, one version bump) | A completes its loop up to commissioning | new — propose as **§7 Phase 8** (the §7 table gains a row; Phases 3/4/6 consume its output) | S0; Phase 2 for real endorsement identity (demo-gated before that) |
+| **S0 — scope-config seams** (**SHIPPED**) | the §5.3 ScopeConfig extension + view scaffolding switches; pure, exhaustively unit-tested; zero behaviour change for `apps` | — | infrastructural (no §7 phase) | nothing |
+| **S1 — the artifact + convergence spine** (**SHIPPED**) | A's proposal layer (`fut:AppProposal` compose + proposal board) + **Convergence Room v1** (candidate/critique/endorse/dissent/disagreement-map) end-to-end in demo mode; sector 0.2.0 draft authored (the §3.2 + §4.2 additions, one version bump — `vocab/futures-0.2.0-draft.ttl`); build decisions recorded in §6.1 | A completes its loop up to commissioning | **§7 Phase 8** (the §7 table's row; Phases 3/4/6 consume its output) | S0; Phase 2 for real endorsement identity (demo-gated before that) |
 | **S2 — scope B live: propose + see adoption** | `fut:InfraProposal` model + structured compose + spec-lineage strip + **Adoption board** (read-only `fedreg:acceptsSpec` matrix via federation-client/registry); run the sector-0.2.0 change **as the first scope-B deliberation** (B4 executed for real) | **B → live** (propose/resonate/converge; ratification visible) | **= §7 Phase 5**, expanded | S1 |
 | **S3 — scope B ratification machinery** | role declaration + fail-closed verification; role-cohort lens on Common ground; reviewer/steward endorsement gating; signed `fut:AdoptionDecision`; computed Current status | B fully live | composes **§7 Phase 2** (roles) | S2 + Phase 2 landed |
 | **S4 — scope C live: voice** | expression layer (`VisionStatement`/`Claim`/`ValueStatement` + manual decompose + adopt); Resonance deck with deterministic routing; Futures gallery; T0 pseudonymous compose with tier badges | **C → live** (voice + mapping) | **= §7 Phase 7**, first half | S1 (parallel with S2/S3 — different modules) |
@@ -484,6 +484,49 @@ modules and can run as concurrent work-fronts; S0/S1 are the shared spine
 and must land first. The existing §7 Phases 1 (hosting), 2 (roles — in
 flight), 3–4 (build channel), 6 (first live commission) are untouched by
 this plan and interleave as their own dependencies allow.
+
+### 6.1 Build decisions (S1) — recorded per the proceed-without-greenlight rule
+
+Design calls made while landing S1, each reviewable and reversible:
+
+1. **The critique unit got a class: `fut:Critique` (0.2.0 draft), wired ahead
+   of the sector bump.** design/03 §4 captures critiques AS DATA and design/01
+   assembles the `DissentRecord` FROM them, but no class named the unit. The
+   draft mints it (`vocab/futures-0.2.0-draft.ttl` §4) and S1 uses it now —
+   consistent with the §3.1 self-hosting plan, where the 0.2.0 ratification is
+   itself the first scope-B deliberation. Same for `fut:indirectStakeholders`
+   (the VSD compose prompt). Everything else in the draft (InfraProposal,
+   AdoptionDecision, methodProvenance, decomposedBy) stays UNWIRED until
+   S2/S4 (`app/src/lib/fut-draft.ts` records the wiring status).
+2. **Endorsement votes are ordinary `fut:Resonance`s on the candidate; the
+   outcome is COMPUTED, never asserted.** No `endorsed` status property
+   exists: the room recomputes endorsed / disagreement / open live from the
+   votes against the bridging threshold (`lib/convergence.ts`) — the same
+   computed-not-asserted posture as scope B's measured adoption. A captured
+   room could write a status triple; it cannot fake the distribution.
+3. **Proposals and candidates are NOT in the opinion-space clustering
+   universe.** Clusters come from NEED votes only, so drafting many
+   candidates (or stuffing proposals) cannot reshape the cohorts that judge
+   them; votes on a candidate are just its endorsement round. Revisit when
+   proposals accumulate enough votes to carry real opinion signal.
+4. **Proposal compose lives on the Proposals board, not the Compose wizard.**
+   Compose keeps the need-first grammar (`composeFlow` unchanged — the
+   §5.3 seam still selects it); the proposal form (title + idea + ≥1 needs
+   trace + the VSD prompt) sits beside the board it lands on. Keeps A's
+   compose surface byte-compatible and the satisfier/need split visible where
+   proposals are read.
+5. **`fut:AppProposal` asserts `wf:Task` explicitly** (both `rdf:type`s
+   serialised) so plain `wf:Task` readers — solid-issues, Pod Manager —
+   federate proposals without OWL subclass reasoning.
+6. **Critique withdrawal = pod deletion.** A critic deletes the critique from
+   their own pod (pod-sovereign); no tombstone machinery in v1. Standing
+   critiques at endorsement time are the dissent-annex raw material (S5
+   materialises the signed `DissentRecord` from them, honouring
+   `quoteVerbatim`).
+7. **Room quorum floors are v1 constants** (`ROOM_K = 2`,
+   `ROOM_MIN_CLUSTER_SIZE = 2` in `lib/convergence.ts`) until the Phase-5
+   community-registry wiring makes them community-configured (raise-only,
+   per §4.4 of the platform plan).
 
 ---
 

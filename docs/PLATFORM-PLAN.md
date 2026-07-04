@@ -357,6 +357,7 @@ differentiator: the build layer is *that stack with a chat UI*.
 | 5 | Scope B machinery: spec-change proposal type + adoption-rule status surface (`fedreg:acceptsSpec` reading) | 2 |
 | 6 | First live commissioned agent build through the full loop | 4 + maintainer wiring |
 | 7 | Scope C hardening: tier stratification surfaces, ConvergenceMetrics publication, SharedFuture signing UI | 2 |
+| 8 | **SHIPPED** — The S1 artifact + convergence spine (SCOPE-DIFFERENTIATION §6 S1): scope A's proposal layer (`fut:AppProposal` ⊑ `wf:Task`, ≥1 `fut:motivatedBy`, the Proposals board with the portfolio-by-need framing) + **Convergence Room v1** (candidate `fut:SpecSynthesis` with checkable `prov:wasDerivedFrom` lineage → standing `fut:Critique`s → an endorsement round of ordinary resonances → a COMPUTED endorsed / disagreement-map / open outcome against the bridging threshold) end-to-end in demo mode; the futures-sector **0.2.0 vocab DRAFT** authored (`vocab/futures-0.2.0-draft.ttl`, to be ratified as the first scope-B deliberation per design/04 §2). Phases 3/4/6 consume its endorsed output; S2 (Phase 5) and S4/S5 (Phase 7) reuse the room | 2 (real endorsement identity; demo-gated before that) |
 
 ## 8. Security posture
 

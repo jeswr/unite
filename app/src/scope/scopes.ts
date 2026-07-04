@@ -146,13 +146,15 @@ export const SCOPES: Readonly<Record<ScopeId, ScopeConfig>> = {
     buildLayer: true,
     status: "live",
     minTierToPropose: 1,
-    // The reference lifecycle (SCOPE-DIFFERENTIATION §2): the S0 seams resolve
-    // to the live Stage-1 behaviour — the safe defaults every scope falls back to.
+    // The reference lifecycle (SCOPE-DIFFERENTIATION §2). S1 lands scope A's
+    // artifact spine: the proposal layer + the Convergence Room. composeFlow
+    // stays "need-first" — these remain the safe defaults every scope falls
+    // back to; the proposal compose lives on the Proposals board itself.
     composeFlow: "need-first",
-    artifactKinds: ["need"],
+    artifactKinds: ["need", "app-proposal"],
     cohortLenses: ["opinion"],
     outputKind: "build-commission",
-    views: [],
+    views: ["proposals", "room"],
     endorsementGate: {
       crossCohort: ["opinion"],
       reviewerRoleRequired: false,
