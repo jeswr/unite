@@ -69,6 +69,12 @@ body {
   color: white;
   border-color: transparent;
 }
+/* Keep the "(preview)" marker readable on the active pill's accent background:
+   .muted must never win against the pill's white foreground. */
+.scope-link.active .muted {
+  color: inherit;
+  opacity: 0.85;
+}
 .scope-tagline {
   margin: 0.25rem 0 0.5rem;
 }

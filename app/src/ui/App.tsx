@@ -10,7 +10,7 @@ import { useState } from "react";
 import { resolveScope, SCOPE_ORDER, SCOPES } from "../scope/scopes.js";
 import { useController } from "./auth.js";
 import { useAggregate, useLiveUpdates } from "./hooks.js";
-import { DEFAULT_CONFIG, type DeliberationConfig } from "./state.js";
+import { type DeliberationConfig, scopedDefaultConfig } from "./state.js";
 import { Bridging } from "./views/Bridging.js";
 import { Compose } from "./views/Compose.js";
 import { Join } from "./views/Join.js";
@@ -36,7 +36,7 @@ const TABS: { id: View; label: string }[] = [
 export function App(): React.JSX.Element {
   const controller = useController();
   const [webId, setWebId] = useState<string | null>(controller.webId);
-  const [config, setConfig] = useState<DeliberationConfig>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState<DeliberationConfig>(() => scopedDefaultConfig(SCOPE));
   const [view, setView] = useState<View>("join");
   const aggregate = useAggregate(config, controller);
   // Live updates: re-aggregate when any participant container changes
