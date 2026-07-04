@@ -28,6 +28,28 @@ import { useController } from "../auth.js";
 import { readFetchFor } from "../hooks.js";
 import type { DeliberationConfig } from "../state.js";
 
+/** A stored snapshot, tagged with the config key it was observed under. */
+export interface KeyedSnapshot {
+  readonly key: string;
+  readonly snap: AdoptionSnapshot;
+}
+
+/**
+ * The snapshot the board may RENDER for `configKey` — PURE, derived at render:
+ * a snapshot observed under a different config resolves to null, so a stale
+ * (e.g. demo) snapshot is unrenderable under a new (e.g. pod) config by
+ * construction — there is no effect-timing window to get wrong. Exported so
+ * the no-stale-frame property is provable as a unit test on the derivation
+ * itself (a DOM test after rerender cannot distinguish render-derivation from
+ * effect-clearing, since testing-library flushes effects inside act()).
+ */
+export function activeAdoptionSnapshot(
+  stored: KeyedSnapshot | null,
+  configKey: string,
+): AdoptionSnapshot | null {
+  return stored !== null && stored.key === configKey ? stored.snap : null;
+}
+
 /** The computed-status chip (never an asserted property anywhere). */
 function StatusBadge({ column }: { column: VersionAdoption }): React.JSX.Element {
   if (column.status === "current") {
@@ -67,8 +89,8 @@ export function AdoptionBoard({
   // render: a snapshot observed under a previous config is never rendered —
   // not even for the one frame before the refresh effect fires (a demo
   // snapshot must never appear under a pod config).
-  const [snapshot, setSnapshot] = useState<{ key: string; snap: AdoptionSnapshot } | null>(null);
-  const activeSnapshot = snapshot !== null && snapshot.key === configKey ? snapshot.snap : null;
+  const [snapshot, setSnapshot] = useState<KeyedSnapshot | null>(null);
+  const activeSnapshot = activeAdoptionSnapshot(snapshot, configKey);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Monotonic request id: only the LATEST observation sweep may apply its

@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { SCOPES } from "../../scope/scopes.js";
 import { AuthProvider, DevLoginController } from "../auth.js";
 import { demoConfig, podConfig } from "../state.js";
-import { AdoptionBoard } from "./AdoptionBoard.js";
+import { AdoptionBoard, activeAdoptionSnapshot } from "./AdoptionBoard.js";
 
 function renderBoard(config = demoConfig("infrastructure")) {
   return render(
@@ -24,6 +24,25 @@ function renderBoard(config = demoConfig("infrastructure")) {
 }
 
 afterEach(cleanup);
+
+describe("activeAdoptionSnapshot (the pure render derivation — the no-stale-frame proof)", () => {
+  const demoSnap = { observations: [], errors: [] };
+  const stored = { key: JSON.stringify(["demo", "https://d.example/infra"]), snap: demoSnap };
+
+  it("resolves a snapshot ONLY under the config key it was observed with", () => {
+    expect(activeAdoptionSnapshot(stored, stored.key)).toBe(demoSnap);
+  });
+
+  it("resolves NULL for any other config key — a stale snapshot is unrenderable by construction, no effect involved", () => {
+    expect(
+      activeAdoptionSnapshot(stored, JSON.stringify(["pod", "https://d.example/infra"])),
+    ).toBeNull();
+    expect(
+      activeAdoptionSnapshot(stored, JSON.stringify(["demo", "https://other.example/x"])),
+    ).toBeNull();
+    expect(activeAdoptionSnapshot(null, stored.key)).toBeNull();
+  });
+});
 
 describe("AdoptionBoard (the ratification instrument)", () => {
   it("renders the computed matrix from the demo seeds: 0.1.0 Current, 0.2.0 honestly empty", async () => {
@@ -71,10 +90,10 @@ describe("AdoptionBoard (the ratification instrument)", () => {
         <AdoptionBoard scope={SCOPES.infrastructure} config={podConfig(SCOPES.infrastructure)} />
       </AuthProvider>,
     );
-    // IMMEDIATELY after the rerender — before any effect/refresh runs — the
-    // demo source list AND the demo snapshot are gone (both derived at render,
-    // keyed to the config): a demo observation never appears under a pod
-    // config, not even for one frame.
+    // After the switch the demo source list AND the demo snapshot are gone.
+    // (testing-library flushes effects inside act(), so this DOM check alone
+    // cannot prove the no-stale-FRAME property — that is proven directly on
+    // the pure render derivation in the activeAdoptionSnapshot suite below.)
     expect((screen.getByPlaceholderText(/fedreg.ttl/) as HTMLTextAreaElement).value).toBe("");
     expect(screen.queryByRole("link", { name: "re-check" })).toBeNull();
     expect(screen.getByText("Nobody advertises this lineage yet")).toBeTruthy();
