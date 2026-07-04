@@ -104,6 +104,23 @@ describe("assertWithinBase", () => {
   it("rejects the exact base itself as a write target", () => {
     expect(() => assertWithinBase(BASE, BASE)).toThrow();
   });
+
+  // Regression (roborev finding on 576742e): the fail-loud trailing-slash check
+  // must validate the PARSED `pathname`, not the raw `base` string — a raw-string
+  // `base.endsWith("/")` check is fooled by a slashless path whose query/fragment
+  // happens to end in "/", which would otherwise let a malformed base slip past
+  // the loud-failure contract and be silently re-slashed downstream.
+  it("throws loudly on a slashless-path base whose query ends in '/'", () => {
+    expect(() => assertWithinBase("https://alice.example/unite/d1?x=/", "https://x")).toThrow(
+      /base must not carry a query or fragment/,
+    );
+  });
+
+  it("throws loudly on a slashless-path base whose fragment ends in '/'", () => {
+    expect(() => assertWithinBase("https://alice.example/unite/d1#x=/", "https://x")).toThrow(
+      /base must not carry a query or fragment/,
+    );
+  });
 });
 
 describe("writeNeed / writeResonance", () => {

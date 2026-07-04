@@ -87,10 +87,15 @@ export async function readBodyCapped(res: Response, maxBytes: number): Promise<s
  *      is https too — the explicit target-side re-check below is provably redundant
  *      once the base is confirmed https, kept only for a clearer error message /
  *      defence in depth.
- *   2. **fail-loud "base must end in `/`".** `assertWithinPodScope`/`normalizePodBase`
- *      SILENTLY append a trailing slash to a slashless base; unite's public contract
- *      instead FAILS LOUD on a malformed (slashless) base so a caller mistake surfaces
- *      rather than being papered over.
+ *   2. **fail-loud "base must end in `/`" — checked on the PARSED `pathname`, not the
+ *      raw string.** `assertWithinPodScope`/`normalizePodBase` SILENTLY append a
+ *      trailing slash to a slashless base; unite's public contract instead FAILS LOUD
+ *      on a malformed (slashless) base so a caller mistake surfaces rather than being
+ *      papered over. This must check `URL#pathname`, not `base.endsWith("/")` on the
+ *      raw string — a raw-string check is fooled by a slashless PATH whose query or
+ *      fragment happens to end in "/" (e.g. `https://alice.example/unite/d1?x=/`: the
+ *      string ends in "/" but the actual container path does not) — so a query/hash on
+ *      `base` is rejected outright rather than silently ignored.
  *   3. **`allowRoot: false` — this is exclusively a WRITE-TARGET guard.** Both
  *      production callers ({@link writeNeed}, {@link writeResonance}) mint documents
  *      STRICTLY UNDER `base` (`<base><dir>/<slug>.ttl`), never the container document
@@ -105,9 +110,6 @@ export async function readBodyCapped(res: Response, maxBytes: number): Promise<s
  * checked is the URL that is fetched.
  */
 export function assertWithinBase(base: string, target: string): string {
-  if (!base.endsWith("/")) {
-    throw new Error(`assertWithinBase: base must be a container ending in "/": ${base}`);
-  }
   let b: URL;
   try {
     b = new URL(base);
@@ -116,6 +118,18 @@ export function assertWithinBase(base: string, target: string): string {
   }
   if (b.protocol !== "https:") {
     throw new Error(`assertWithinBase: base must be https: ${base}`);
+  }
+  // Reject a query/fragment on the base BEFORE the trailing-slash check below: a
+  // raw-string `base.endsWith("/")` check (the pre-existing form) can be fooled by
+  // a slashless path whose query/fragment happens to end in "/" (e.g.
+  // `https://alice.example/unite/d1?x=/`) — the string ends in "/" but the actual
+  // container path does not, so a downstream normaliser would silently paper over
+  // the malformed base instead of this wrapper failing loud as documented.
+  if (b.search !== "" || b.hash !== "") {
+    throw new Error(`assertWithinBase: base must not carry a query or fragment: ${base}`);
+  }
+  if (!b.pathname.endsWith("/")) {
+    throw new Error(`assertWithinBase: base must be a container ending in "/": ${base}`);
   }
   const scoped = assertWithinPodScope(base, target, { allowRoot: false });
   // Provably redundant once `base` is confirmed https (same-origin transitively
