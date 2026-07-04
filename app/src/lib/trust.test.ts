@@ -363,6 +363,48 @@ describe("CredentialTrustResolver — memoisation + failure isolation", () => {
     expect(source.calls).toBe(3);
   });
 
+  it("the cache NEVER outlives a credential's validity (expiry-bounded)", async () => {
+    const from = new Date("2026-07-01T00:00:00Z");
+    const issued = await issueCommunityMembership({
+      community: COMMUNITY,
+      subject: ALICE,
+      steward: STEWARD,
+      key: stewardKey,
+      validFrom: from,
+      validityDays: 30,
+    });
+    let now = new Date("2026-07-02T00:00:00Z");
+    const source = new MapSource(new Map([[ALICE, [issued]]]));
+    const r = new CredentialTrustResolver({ trustAnchors: anchors, source, now: () => now });
+    expect(await r.resolve(ALICE, COMMUNITY)).toEqual({ tier: 1, roles: [] });
+    // Within validity the cache serves (no re-verification churn)…
+    now = new Date("2026-07-20T00:00:00Z");
+    expect(await r.resolve(ALICE, COMMUNITY)).toEqual({ tier: 1, roles: [] });
+    expect(source.calls).toBe(1);
+    // …but past validUntil the SAME instance re-verifies and DENIES — a grant
+    // must not persist from cache after its credential expired.
+    now = new Date("2026-08-15T00:00:00Z");
+    expect(await r.resolve(ALICE, COMMUNITY)).toEqual(UNTRUSTED);
+    expect(source.calls).toBe(2);
+  });
+
+  it("a cached denial for a NOT-YET-VALID credential lifts when it activates", async () => {
+    const issued = await issueCommunityMembership({
+      community: COMMUNITY,
+      subject: ALICE,
+      steward: STEWARD,
+      key: stewardKey,
+      validFrom: new Date("2026-07-10T00:00:00Z"),
+      validityDays: 30,
+    });
+    let now = new Date("2026-07-01T00:00:00Z");
+    const source = new MapSource(new Map([[ALICE, [issued]]]));
+    const r = new CredentialTrustResolver({ trustAnchors: anchors, source, now: () => now });
+    expect(await r.resolve(ALICE, COMMUNITY)).toEqual(UNTRUSTED); // pending
+    now = new Date("2026-07-15T00:00:00Z"); // now inside the window
+    expect(await r.resolve(ALICE, COMMUNITY)).toEqual({ tier: 1, roles: [] });
+  });
+
   it("a SOURCE failure is fail-closed but NOT cached (no sticky denial)", async () => {
     let healthy = false;
     const membership = await membershipFor(ALICE);

@@ -17,6 +17,7 @@ import {
   buildRegistry,
   configReady,
   type DeliberationConfig,
+  deliberationKey,
   deliberationTrust,
   sessionIdentity,
 } from "./state.js";
@@ -195,39 +196,64 @@ export interface SessionTrust {
 
 /**
  * Resolve the session identity's tier + roles for the configured deliberation
- * — the view-side half of the Phase-2 trust seam. FAIL-CLOSED: any resolution
- * failure yields UNTRUSTED, never a grant; a superseded (config/webId changed)
- * resolution can never clobber a newer one.
+ * — the view-side half of the Phase-2 trust seam. FAIL-CLOSED twice over: any
+ * resolution failure yields UNTRUSTED, never a grant; and the stored profile
+ * is KEYED to the exact (config, webId) it was resolved for, so a config or
+ * identity change exposes `null` (locked) in the very same render — a stale
+ * grant is never visible, not even for one frame. A superseded resolution can
+ * never clobber a newer one (monotonic request id).
  */
 export function useTrustProfile(config: DeliberationConfig, webId: string | null): SessionTrust {
-  const [profile, setProfile] = useState<TrustProfile | null>(null);
+  const [resolved, setResolved] = useState<{
+    readonly key: string;
+    readonly profile: TrustProfile;
+  } | null>(null);
   const reqId = useRef(0);
+  // Render-synced refs (the useAggregate pattern): refresh reads the LATEST
+  // config/webId, while its identity depends on the VALUE key — so a caller
+  // re-creating a structurally-equal config per render neither loops the
+  // effect nor wedges the derived profile.
+  const configRef = useRef(config);
+  configRef.current = config;
+  const webIdRef = useRef(webId);
+  webIdRef.current = webId;
 
+  const key = deliberationKey(config, webId);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed by VALUE — refresh re-creates when the config/identity VALUE changes; the render-synced refs carry the objects.
   const refresh = useCallback(async () => {
+    const cfg = configRef.current;
+    const wid = webIdRef.current;
+    const k = deliberationKey(cfg, wid);
     reqId.current += 1;
     const id = reqId.current;
-    const identity = sessionIdentity(config, webId);
+    const identity = sessionIdentity(cfg, wid);
+    const commit = (profile: TrustProfile) => {
+      if (id === reqId.current) setResolved({ key: k, profile });
+    };
     if (!identity) {
-      if (id === reqId.current) setProfile(UNTRUSTED);
+      commit(UNTRUSTED);
       return;
     }
     try {
-      const { resolver } = await deliberationTrust(config);
-      const next = await resolver.resolve(identity, config.deliberation);
-      if (id === reqId.current) setProfile(next);
+      const { resolver } = await deliberationTrust(cfg);
+      commit(await resolver.resolve(identity, cfg.deliberation));
     } catch {
-      if (id === reqId.current) setProfile(UNTRUSTED); // fail-closed
+      commit(UNTRUSTED); // fail-closed
     }
-  }, [config, webId]);
+  }, [key]);
 
   useEffect(() => {
-    setProfile(null); // a config/identity change invalidates the old standing
     void refresh();
     // On unmount, supersede any in-flight resolution (no late setState).
     return () => {
       reqId.current += 1;
     };
   }, [refresh]);
+
+  // Derived AT RENDER TIME: a profile resolved for a different config/identity
+  // is never returned (no stale-grant window while the effect catches up).
+  const profile = resolved !== null && resolved.key === key ? resolved.profile : null;
 
   return { profile, refresh };
 }

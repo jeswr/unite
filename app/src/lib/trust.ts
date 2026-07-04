@@ -192,7 +192,12 @@ export interface CredentialTrustResolverOptions {
  * - roles count ONLY when a membership credential also verified (design/04
  *   §4.1 — every role presumes ≥ T1); tier 2 is seamed, never minted here.
  *
- * Successful resolutions are memoised per (community, webId) — call
+ * Successful resolutions are memoised per (community, webId), but the cache is
+ * VALIDITY-BOUNDED: an entry expires at the earliest validity boundary among
+ * the credentials that shaped it (the soonest `validUntil` of an accepted
+ * credential, and the soonest future `validFrom` of a not-yet-valid one), so a
+ * grant can never outlive its credential and a pending credential activates on
+ * time — expiry IS the design's routine revocation path (design/04 §4.2). Call
  * {@link invalidate} after issuing/revoking a credential. A SOURCE failure
  * resolves {@link UNTRUSTED} WITHOUT caching, so a transient outage is never a
  * sticky denial. Also implements the Q1 {@link MembershipVerifier} seam so the
@@ -202,7 +207,7 @@ export class CredentialTrustResolver implements TrustResolver, MembershipVerifie
   readonly #anchors: readonly TrustAnchor[];
   readonly #source: CredentialSource;
   readonly #now: (() => Date) | undefined;
-  readonly #cache = new Map<string, TrustProfile>();
+  readonly #cache = new Map<string, { profile: TrustProfile; staleAtMs: number }>();
 
   constructor(options: CredentialTrustResolverOptions) {
     this.#anchors = options.trustAnchors;
@@ -222,9 +227,15 @@ export class CredentialTrustResolver implements TrustResolver, MembershipVerifie
   }
 
   async resolve(webId: string, community: string): Promise<TrustProfile> {
+    const now = this.#now ? this.#now() : new Date();
     const key = JSON.stringify([community, webId]);
     const cached = this.#cache.get(key);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      // A cached profile is honoured only while no credential validity
+      // boundary has passed — past it, re-verify (fail-closed refresh).
+      if (now.getTime() < cached.staleAtMs) return cached.profile;
+      this.#cache.delete(key);
+    }
 
     let docs: readonly unknown[];
     try {
@@ -240,16 +251,36 @@ export class CredentialTrustResolver implements TrustResolver, MembershipVerifie
 
     let member = false;
     const roles = new Set<Role>();
+    // The instant this resolution's outcome could change on its own: the
+    // soonest accepted-credential expiry, or the soonest future validFrom of
+    // a not-yet-valid credential. The cache must not outlive it.
+    let staleAtMs = Number.POSITIVE_INFINITY;
+    const boundary = (iso: string | undefined, mustBeFuture: boolean): void => {
+      if (typeof iso !== "string") return;
+      const ms = Date.parse(iso);
+      if (Number.isNaN(ms)) return;
+      if (mustBeFuture && ms <= now.getTime()) return;
+      if (ms < staleAtMs) staleAtMs = ms;
+    };
     for (const doc of docs) {
       let result: MembershipVerificationResult;
       try {
         result = await verifyMembershipCredential(doc as VerifiableCredential, {
           trustAnchors: this.#anchors,
           expectedApp: webId,
-          ...(this.#now ? { now: this.#now() } : {}),
+          now,
         });
       } catch {
         continue; // defence in depth — a throwing document is just not counted
+      }
+      if (result.claim !== undefined && scopes.has(result.claim.federation)) {
+        if (result.verified) {
+          // An accepted grant lapses at its expiry.
+          boundary(result.claim.validUntil, false);
+        } else if (result.errors.some((e) => e.code === "NOT_YET_VALID")) {
+          // A pending credential activates at its validFrom.
+          boundary(result.claim.validFrom, true);
+        }
       }
       if (!result.verified || result.claim === undefined) continue;
       const purpose = scopes.get(result.claim.federation);
@@ -263,7 +294,7 @@ export class CredentialTrustResolver implements TrustResolver, MembershipVerifie
     const profile: TrustProfile = member
       ? { tier: 1, roles: ROLES.filter((r) => roles.has(r)) }
       : UNTRUSTED;
-    this.#cache.set(key, profile);
+    this.#cache.set(key, { profile, staleAtMs });
     return profile;
   }
 

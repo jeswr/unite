@@ -116,6 +116,23 @@ export function buildRegistry(config: DeliberationConfig): DeliberationRegistry 
 }
 
 /**
+ * A VALUE key identifying a config (plus optionally the session identity) for
+ * keyed async state: two structurally-equal configs key identically, so a
+ * caller re-creating an equal config object per render cannot wedge (or
+ * stale-expose) state keyed by object identity.
+ */
+export function deliberationKey(config: DeliberationConfig, webId?: string | null): string {
+  return JSON.stringify([
+    config.mode,
+    config.deliberation,
+    config.ownBase,
+    config.participants,
+    config.participationFloor,
+    webId ?? null,
+  ]);
+}
+
+/**
  * The steward-issuance seam surfaced to the Trust view. Present only when the
  * session identity actually holds a steward signing key (the demo sandbox
  * today; a live steward console once the community-registry wiring lands) —

@@ -23,6 +23,7 @@ import { displayName } from "../hooks.js";
 import {
   type DeliberationConfig,
   type DeliberationTrust,
+  deliberationKey,
   deliberationTrust,
   sessionIdentity,
 } from "../state.js";
@@ -70,8 +71,15 @@ export function Trust({
   webId: string | null;
   trust: SessionTrust;
 }): React.JSX.Element {
-  const [machinery, setMachinery] = useState<DeliberationTrust | null>(null);
-  const [roll, setRoll] = useState<ReadonlyMap<string, TrustProfile> | null>(null);
+  // Machinery + roll are stored KEYED to the config VALUE they were resolved
+  // for and derived at render time — a config change must never expose (or let
+  // the issue action use) the previous community's resolver/steward key, not
+  // even for one render (the same stale-state discipline as useTrustProfile).
+  const [resolved, setResolved] = useState<{
+    readonly key: string;
+    readonly machinery: DeliberationTrust;
+    readonly roll: ReadonlyMap<string, TrustProfile>;
+  } | null>(null);
   const [rollError, setRollError] = useState<string | null>(null);
 
   const [subject, setSubject] = useState("");
@@ -82,32 +90,37 @@ export function Trust({
 
   // Monotonic id: a superseded (config changed) resolution never applies.
   const reqId = useRef(0);
+  // Render-synced ref + value key (the useTrustProfile pattern): loadRoll's
+  // identity follows the config VALUE, so an equal-but-new config object can
+  // neither loop the effect nor wedge the derived state.
+  const configRef = useRef(config);
+  configRef.current = config;
+  const key = deliberationKey(config);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed by VALUE — loadRoll re-creates when the config VALUE changes; the render-synced ref carries the object.
   const loadRoll = useCallback(async () => {
+    const cfg = configRef.current;
+    const k = deliberationKey(cfg);
     reqId.current += 1;
     const id = reqId.current;
     setRollError(null);
     try {
-      const m = await deliberationTrust(config);
+      const m = await deliberationTrust(cfg);
       const entries = await Promise.all(
-        config.participants.map(
-          async (p) => [p.webId, await m.resolver.resolve(p.webId, config.deliberation)] as const,
+        cfg.participants.map(
+          async (p) => [p.webId, await m.resolver.resolve(p.webId, cfg.deliberation)] as const,
         ),
       );
       if (id !== reqId.current) return;
-      setMachinery(m);
-      setRoll(new Map(entries));
+      setResolved({ key: k, machinery: m, roll: new Map(entries) });
     } catch (e) {
       if (id !== reqId.current) return;
-      setMachinery(null);
-      setRoll(null);
+      setResolved(null);
       setRollError(e instanceof Error ? e.message : String(e));
     }
-  }, [config]);
+  }, [key]);
 
   useEffect(() => {
-    setMachinery(null);
-    setRoll(null);
     setIssued(null);
     setIssueError(null);
     void loadRoll();
@@ -122,7 +135,10 @@ export function Trust({
   const profile = trust.profile;
   const floor = config.participationFloor;
   const isSteward = profile !== null && hasRole(profile, "steward");
-  const issuance = machinery?.issuance ?? null;
+  // Derived at render time, keyed to the CURRENT config value (see above).
+  const current = resolved !== null && resolved.key === key ? resolved : null;
+  const roll = current?.roll ?? null;
+  const issuance = current?.machinery.issuance ?? null;
   const stewardNames = roll
     ? [...roll.entries()].filter(([, p]) => hasRole(p, "steward")).map(([w]) => displayName(w))
     : [];
