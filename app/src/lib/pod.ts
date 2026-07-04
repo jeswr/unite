@@ -8,6 +8,7 @@
 // scheme, and no user input ever reaches a URL path (slugs are crypto-random).
 
 import { parseRdf } from "@jeswr/fetch-rdf";
+import { assertWithinPodScope } from "@jeswr/guarded-fetch";
 import { ContainerDataset } from "@solid/object";
 import { DataFactory } from "n3";
 import { type ConsentPolicy, consentQuads, ODRL_NS } from "./consent.js";
@@ -73,49 +74,49 @@ export async function readBodyCapped(res: Response, maxBytes: number): Promise<s
 }
 
 /**
- * Fail-closed scope guard. Throws unless `target` is an https URL strictly
- * within the https container `base` (same origin + path-prefix). Rejects
- * traversal (`..`), encoded traversal (`%2e%2e`), scheme downgrade, and
- * cross-origin / scheme-relative targets. `base` MUST end in "/".
+ * Fail-closed scope guard. Delegates the generic same-origin / path-prefix /
+ * traversal (raw + `%2e`-encoded) / scheme-relative / credential / encoded-delimiter
+ * checks to the suite's ONE reviewed pod-scope primitive
+ * ({@link assertWithinPodScope}), and layers unite's TWO extra protections on top,
+ * which that primitive deliberately does NOT enforce:
+ *
+ *   1. **https-only.** `assertWithinPodScope` accepts either `http:` or `https:` as
+ *      long as base+target share an origin. unite requires https specifically, so we
+ *      reject a non-https `base` up front. Because an origin includes the scheme, the
+ *      primitive's same-origin check then transitively guarantees any accepted target
+ *      is https too — the explicit target-side re-check below is provably redundant
+ *      once the base is confirmed https, kept only for a clearer error message /
+ *      defence in depth.
+ *   2. **fail-loud "base must end in `/`".** `assertWithinPodScope`/`normalizePodBase`
+ *      SILENTLY append a trailing slash to a slashless base; unite's public contract
+ *      instead FAILS LOUD on a malformed (slashless) base so a caller mistake surfaces
+ *      rather than being papered over.
+ *
+ * Returns the CANONICAL (WHATWG-normalised) resolved URL — callers MUST use this
+ * return value as the request target, not the raw `target`, so the URL that was
+ * checked is the URL that is fetched.
  */
-export function assertWithinBase(base: string, target: string): void {
-  const loweredTarget = target.toLowerCase();
-  if (
-    target.includes("..") ||
-    loweredTarget.includes("%2e%2e") ||
-    loweredTarget.includes("%2e.") ||
-    loweredTarget.includes(".%2e")
-  ) {
-    throw new Error(`assertWithinBase: traversal rejected: ${target}`);
-  }
+export function assertWithinBase(base: string, target: string): string {
   if (!base.endsWith("/")) {
     throw new Error(`assertWithinBase: base must be a container ending in "/": ${base}`);
   }
   let b: URL;
-  let t: URL;
   try {
     b = new URL(base);
   } catch {
     throw new Error(`assertWithinBase: invalid base URL: ${base}`);
   }
-  try {
-    // Parsing WITHOUT a base: a scheme-relative or relative `target` throws here.
-    t = new URL(target);
-  } catch {
-    throw new Error(`assertWithinBase: invalid absolute target URL: ${target}`);
-  }
   if (b.protocol !== "https:") {
     throw new Error(`assertWithinBase: base must be https: ${base}`);
   }
-  if (t.protocol !== "https:") {
+  const scoped = assertWithinPodScope(base, target, { allowRoot: true });
+  // Provably redundant once `base` is confirmed https (same-origin transitively
+  // guarantees a scheme match, since origin includes the scheme) — kept for a
+  // clearer error message / defence in depth.
+  if (new URL(scoped).protocol !== "https:") {
     throw new Error(`assertWithinBase: target must be https (no downgrade): ${target}`);
   }
-  if (t.origin !== b.origin) {
-    throw new Error(`assertWithinBase: cross-origin target rejected: ${target}`);
-  }
-  if (!t.pathname.startsWith(b.pathname)) {
-    throw new Error(`assertWithinBase: target escapes base path: ${target}`);
-  }
+  return scoped;
 }
 
 /** Non-throwing form of {@link assertWithinBase} — true iff `target` is in scope. */
@@ -173,8 +174,9 @@ export async function writeNeed(
   need: Omit<Need, "id">,
   consent?: ConsentPolicy,
 ): Promise<WriteResult<Need>> {
-  const url = childUrl(base, NEEDS_DIR, slug());
-  assertWithinBase(base, url); // fail-closed BEFORE serialise/fetch
+  // fail-closed BEFORE serialise/fetch; use the CANONICAL returned URL for everything
+  // downstream (the id, the body, and the PUT target) — never the raw computed string.
+  const url = assertWithinBase(base, childUrl(base, NEEDS_DIR, slug()));
   const resource: Need = { ...need, id: url };
   let body: string;
   if (consent) {
@@ -198,8 +200,8 @@ export async function writeResonance(
   base: string,
   resonance: Omit<Resonance, "id">,
 ): Promise<WriteResult<Resonance>> {
-  const url = childUrl(base, RESONANCES_DIR, slug());
-  assertWithinBase(base, url);
+  // fail-closed BEFORE serialise/fetch; use the CANONICAL returned URL downstream.
+  const url = assertWithinBase(base, childUrl(base, RESONANCES_DIR, slug()));
   const resource: Resonance = { ...resonance, id: url };
   const body = await serializeResonance(resource);
   const response = await putTurtle(fetchFn, url, body);

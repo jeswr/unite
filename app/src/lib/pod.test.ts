@@ -30,24 +30,60 @@ const resBody: Omit<Resonance, "id"> = {
   inDeliberation: DELIB,
 };
 
+// These tests exercise assertWithinBase/isWithinBase as THIN WRAPPERS over
+// @jeswr/guarded-fetch's assertWithinPodScope — they cover only the two extra
+// protections unite layers on top (https-only base/target + fail-loud
+// trailing-slash) and the void→string canonical-return contract. The generic
+// same-origin / path-prefix / traversal / credential / encoded-delimiter cases
+// are already covered exhaustively by guarded-fetch's own podScope suite and are
+// NOT re-ported here (a representative smoke case is kept below for confidence).
 describe("assertWithinBase", () => {
-  it("accepts a target strictly within the container", () => {
-    expect(() => assertWithinBase(BASE, `${BASE}needs/x.ttl`)).not.toThrow();
+  it("accepts a target strictly within the container and returns its canonical URL", () => {
+    const scoped = assertWithinBase(BASE, `${BASE}needs/x.ttl`);
+    expect(scoped).toBe(`${BASE}needs/x.ttl`);
   });
 
+  it("collapses a traversal-that-stays-in-scope and returns the canonical (resolved) URL", () => {
+    // `needs/sub/../x.ttl` collapses to `needs/x.ttl` (in scope) — the RETURNED
+    // value is the normalised URL that should be fetched, never the raw input.
+    const scoped = assertWithinBase(BASE, `${BASE}needs/sub/../x.ttl`);
+    expect(scoped).toBe(`${BASE}needs/x.ttl`);
+  });
+
+  // Representative smoke cases delegated to assertWithinPodScope (not the full suite).
   it.each([
     ["parent traversal", "https://alice.example/unite/d1/../secret.ttl"],
     ["encoded traversal", "https://alice.example/unite/d1/%2e%2e/secret.ttl"],
     ["foreign origin", "https://evil.example/unite/d1/needs/x.ttl"],
-    ["scheme downgrade", "http://alice.example/unite/d1/needs/x.ttl"],
     ["scheme-relative", "//evil.example/needs/x.ttl"],
     ["sibling-prefix escape", "https://alice.example/unite/d1-evil/x.ttl"],
   ])("throws on %s", (_label, target) => {
     expect(() => assertWithinBase(BASE, target)).toThrow();
   });
 
-  it("throws when the base is not a container (no trailing slash)", () => {
-    expect(() => assertWithinBase("https://alice.example/unite/d1", "https://x")).toThrow();
+  // unite's extra protection #1: https-only (assertWithinPodScope accepts either
+  // scheme). A same-origin http downgrade of BOTH base and target must still throw.
+  it("throws when the base is not https (no downgrade)", () => {
+    expect(() =>
+      assertWithinBase(
+        "http://alice.example/unite/d1/",
+        "http://alice.example/unite/d1/needs/x.ttl",
+      ),
+    ).toThrow(/base must be https/);
+  });
+
+  it("throws when the target downgrades scheme against an https base", () => {
+    // Cross-scheme is caught by assertWithinPodScope's same-origin check first
+    // (origin includes scheme), so this is refused before the redundant re-check.
+    expect(() => assertWithinBase(BASE, "http://alice.example/unite/d1/needs/x.ttl")).toThrow();
+  });
+
+  // unite's extra protection #2: fail-loud on a slashless base (guarded-fetch would
+  // SILENTLY append the slash instead).
+  it("throws loudly when the base is not a container (no trailing slash)", () => {
+    expect(() => assertWithinBase("https://alice.example/unite/d1", "https://x")).toThrow(
+      /base must be a container ending in/,
+    );
   });
 });
 
