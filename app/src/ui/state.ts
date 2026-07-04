@@ -5,6 +5,7 @@
 
 import { type MembershipVerifier, StubMembershipVerifier } from "../lib/membership.js";
 import { type DeliberationRegistry, StaticRegistry } from "../lib/registry.js";
+import type { ScopeConfig } from "../scope/scopes.js";
 
 /** A participant row as edited in the Join form. */
 export interface ParticipantConfig {
@@ -30,6 +31,21 @@ export const DEFAULT_CONFIG: DeliberationConfig = {
     { webId: "https://alice.example/profile/card#me", base: "https://alice.example/unite/apps/" },
   ],
 };
+
+/**
+ * The scope-mode default deliberation (docs/PLATFORM-PLAN.md §2): each scope
+ * deliberates in its OWN default community + pod container, so opening
+ * `?scope=society` never reads/writes the apps deliberation. Same dev/local
+ * placeholders as {@link DEFAULT_CONFIG}, segmented by scope id.
+ */
+export function scopedDefaultConfig(scope: ScopeConfig): DeliberationConfig {
+  const base = `https://alice.example/unite/${scope.id}/`;
+  return {
+    deliberation: `https://community.example/deliberations/${scope.id}`,
+    ownBase: base,
+    participants: [{ webId: "https://alice.example/profile/card#me", base }],
+  };
+}
 
 /**
  * Build the participant-listing registry from the config. Throws (validated) on
