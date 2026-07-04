@@ -187,6 +187,49 @@ describe("Convergence Room", () => {
     expect(screen.getByText(/1 statement is not offered/)).toBeTruthy();
   });
 
+  it("PRUNES a stale draft selection when a fresh aggregate revokes its consent", () => {
+    const before = resultWith([]);
+    const { rerender } = render(
+      <AuthProvider controller={new DevLoginController()}>
+        <Room
+          scope={SCOPES.apps}
+          config={demoConfig("apps")}
+          webId={null}
+          trust={asTrust({ tier: 1, roles: [] })}
+          aggregate={asAggregate(before)}
+        />
+      </AuthProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Draft a candidate" }));
+    fireEvent.click(screen.getByRole("button", { name: /need · Need B content/ }));
+    expect(
+      screen.getByRole("button", { name: /need · Need B content/ }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    // A refresh lands in which Need B's author revoked synthesize consent:
+    const after = { ...resultWith([]), synthesizable: new Set<string>([NEED_A]) };
+    rerender(
+      <AuthProvider controller={new DevLoginController()}>
+        <Room
+          scope={SCOPES.apps}
+          config={demoConfig("apps")}
+          webId={null}
+          trust={asTrust({ tier: 1, roles: [] })}
+          aggregate={asAggregate(after)}
+        />
+      </AuthProvider>,
+    );
+    // Need B is no longer offered AND the stale selection was pruned — the
+    // submit-time consent guard can never trap an un-deselectable input.
+    expect(screen.queryByRole("button", { name: /need · Need B content/ })).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText(/One text that tries to carry/), {
+      target: { value: "A draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Put it to the room" }));
+    // The pruned state fails the >=1-inputs check — NOT the consent trap.
+    expect(screen.getByText(/Select at least one input/)).toBeTruthy();
+    expect(screen.queryByText(/has not consented to synthesis/)).toBeNull();
+  });
+
   it("offers NO inputs when nothing carries synthesis consent — with the honest reason", () => {
     const r = { ...resultWith([]), synthesizable: new Set<string>() };
     renderRoom(asTrust({ tier: 1, roles: [] }), r);

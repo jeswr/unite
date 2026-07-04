@@ -28,11 +28,21 @@ const PREFIX = `
   @prefix dct: <http://purl.org/dc/terms/> .
   @prefix prov: <http://www.w3.org/ns/prov#> .
   @prefix ldp: <http://www.w3.org/ns/ldp#> .
+  @prefix odrl: <http://www.w3.org/ns/odrl/2/> .
   @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .`;
 
 const meta = (creator: string, delib = DELIB) => `
       dct:created "2026-07-01T00:00:00Z"^^xsd:dateTime ;
       dct:creator <${creator}> ; fut:inDeliberation <${delib}> .`;
+
+/** A minimal inline ODRL policy permitting fut:synthesize on `url` (named-node
+ * rule — parseConsent skips blank-node rules; the shape consentQuads writes). */
+function synthesizeConsentTtl(url: string): string {
+  return `
+    <${url}> odrl:hasPolicy <${url}#consent> .
+    <${url}#consent> a odrl:Set ; odrl:permission <${url}#c-syn> .
+    <${url}#c-syn> a odrl:Permission ; odrl:action fut:synthesize ; odrl:target <${url}> .`;
+}
 
 function needTtl(url: string, creator: string): string {
   return `${PREFIX} <${url}> a fut:Need ; as:content "n" ; fut:needConcept <${CONCEPT}> ; ${meta(creator)}`;
@@ -72,9 +82,11 @@ function alicePod(): Record<string, string> {
   const c1 = `${ALICE_BASE}critiques/c1.ttl`;
   return {
     [`${ALICE_BASE}needs/`]: containerTtl(`${ALICE_BASE}needs/`, [n1]),
-    [n1]: needTtl(n1, ALICE),
+    // n1/p1 carry synthesize consent so the seeded candidate's lineage clears
+    // the aggregation-side consent gate (candidates are lineage-gated).
+    [n1]: needTtl(n1, ALICE) + synthesizeConsentTtl(n1),
     [`${ALICE_BASE}proposals/`]: containerTtl(`${ALICE_BASE}proposals/`, [p1]),
-    [p1]: proposalTtl(p1, ALICE),
+    [p1]: proposalTtl(p1, ALICE) + synthesizeConsentTtl(p1),
     [`${ALICE_BASE}syntheses/`]: containerTtl(`${ALICE_BASE}syntheses/`, [s1]),
     [s1]: candidateTtl(s1, ALICE),
     [`${ALICE_BASE}critiques/`]: containerTtl(`${ALICE_BASE}critiques/`, [c1]),
@@ -224,7 +236,52 @@ describe("synthesizable (the fut:synthesize consent gate)", () => {
   });
 
   it("is empty for the default needs-only aggregation over policy-less docs", async () => {
-    const result = await run(alicePod()); // fixture docs carry no ODRL policy
+    const n1 = `${ALICE_BASE}needs/n1.ttl`;
+    const pod: Record<string, string> = {
+      [`${ALICE_BASE}needs/`]: containerTtl(`${ALICE_BASE}needs/`, [n1]),
+      [n1]: needTtl(n1, ALICE), // NO policy
+      [`${ALICE_BASE}resonances/`]: containerTtl(`${ALICE_BASE}resonances/`, []),
+    };
+    const result = await run(pod);
+    expect(result.needs).toHaveLength(1);
     expect(result.synthesizable.size).toBe(0);
+  });
+
+  it("EXCLUDES a directly pod-authored candidate whose lineage lacks synthesize consent", async () => {
+    // The room UI can't be bypassed by writing the candidate straight to the
+    // pod: aggregation gates candidate lineage itself (fail-closed) and
+    // records the exclusion.
+    const pod = alicePod();
+    const nDenied = `${ALICE_BASE}needs/n-denied.ttl`;
+    pod[`${ALICE_BASE}needs/`] = containerTtl(`${ALICE_BASE}needs/`, [
+      `${ALICE_BASE}needs/n1.ttl`,
+      nDenied,
+    ]);
+    pod[nDenied] = needTtl(nDenied, ALICE); // collected, but NO synthesize consent
+    const rogue = `${ALICE_BASE}syntheses/rogue.ttl`;
+    pod[`${ALICE_BASE}syntheses/`] = containerTtl(`${ALICE_BASE}syntheses/`, [
+      `${ALICE_BASE}syntheses/s1.ttl`,
+      rogue,
+    ]);
+    pod[rogue] = `${PREFIX} <${rogue}> a fut:SpecSynthesis ; as:content "rogue" ;
+      prov:wasDerivedFrom <${nDenied}> ; ${meta(ALICE)}`;
+    const result = await run(pod, ["need", "app-proposal", "synthesis", "critique"]);
+    // The consented-lineage candidate survives; the rogue one is excluded + recorded.
+    expect(result.candidates.map((c) => c.id)).toEqual([`${ALICE_BASE}syntheses/s1.ttl`]);
+    const gateErrors = result.errors.filter((e) => e.resource === rogue);
+    expect(gateErrors).toHaveLength(1);
+    expect(gateErrors[0]?.stage).toBe("syntheses");
+    expect(gateErrors[0]?.message).toMatch(/consent/);
+  });
+
+  it("EXCLUDES a candidate deriving from a statement OUTSIDE this aggregate (unverifiable lineage)", async () => {
+    const pod = alicePod();
+    const foreign = `${ALICE_BASE}syntheses/foreign.ttl`;
+    pod[`${ALICE_BASE}syntheses/`] = containerTtl(`${ALICE_BASE}syntheses/`, [foreign]);
+    pod[foreign] = `${PREFIX} <${foreign}> a fut:SpecSynthesis ; as:content "foreign" ;
+      prov:wasDerivedFrom <https://elsewhere.example/needs/x.ttl> ; ${meta(ALICE)}`;
+    const result = await run(pod, ["need", "app-proposal", "synthesis"]);
+    expect(result.candidates).toEqual([]);
+    expect(result.errors.some((e) => e.resource === foreign)).toBe(true);
   });
 });

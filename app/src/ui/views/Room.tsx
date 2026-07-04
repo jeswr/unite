@@ -10,7 +10,7 @@
 // disagreement map (the co-equal outcome), or still open. Bounded revision
 // via prov:wasRevisionOf. Thin over src/lib (convergence.ts does the math).
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { candidateReception, orderCandidates, standingCritiques } from "../../lib/convergence.js";
 import { STANCE_CONFLICTS, STANCE_RESONATES, STANCE_UNSURE } from "../../lib/fut.js";
 import type { Critique, SynthesisCandidate } from "../../lib/model.js";
@@ -142,6 +142,17 @@ export function Room({
 
   const withheldCount =
     (result ? result.proposals.length + result.needs.length : 0) - inputPool.length;
+
+  // A fresh aggregate may SHRINK the consented set (an author revoked their
+  // fut:synthesize consent): prune stale draft selections so the form never
+  // holds an invisible, un-deselectable, non-consented input.
+  useEffect(() => {
+    const ok = result?.synthesizable;
+    if (!ok) return;
+    setDraftInputs((prev) =>
+      prev.every((id) => ok.has(id)) ? prev : prev.filter((id) => ok.has(id)),
+    );
+  }, [result]);
 
   function toggleInput(id: string): void {
     setDraftInputs((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));

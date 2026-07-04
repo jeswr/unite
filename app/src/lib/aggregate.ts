@@ -92,7 +92,13 @@ export interface AggregateResult {
   readonly resonances: Resonance[];
   /** Collected only when `kinds` includes "app-proposal" (S1, scope A). */
   readonly proposals: AppProposal[];
-  /** Collected only when `kinds` includes "synthesis" (S1, the room). */
+  /**
+   * Collected only when `kinds` includes "synthesis" (S1, the room), and
+   * LINEAGE-GATED: a candidate survives only if every `prov:wasDerivedFrom`
+   * input is in {@link AggregateResult.synthesizable} — so collect the
+   * expression kinds ("need" / "app-proposal") alongside "synthesis". A
+   * violating candidate is excluded with a recorded {@link SourceError}.
+   */
   readonly candidates: SynthesisCandidate[];
   /** Collected only when `kinds` includes "critique" (S1, the room). */
   readonly critiques: Critique[];
@@ -280,12 +286,37 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
     rawResonances.push(...(await read("resonances", parseResonances)));
   }
 
+  // The consent gate on candidate LINEAGE (fail-closed; enforced here, not in
+  // the room UI, so a candidate written directly to a pod cannot bypass it):
+  // every prov:wasDerivedFrom input must be a statement THIS aggregate
+  // collected whose author permits fut:synthesize. A violating candidate is
+  // excluded and the exclusion recorded honestly. Runs AFTER the participant
+  // loop because `synthesizable` accumulates across all participants.
+  // Consequence for callers: collect the expression kinds ("need" /
+  // "app-proposal") alongside "synthesis", or every candidate fails the gate.
+  const gatedCandidates: SynthesisCandidate[] = [];
+  for (const c of candidates) {
+    if (c.derivedFrom.every((input) => synthesizable.has(input))) {
+      gatedCandidates.push(c);
+    } else {
+      const v = verified.find((x) => x.webId === c.creator);
+      errors.push({
+        webId: c.creator,
+        base: v?.base ?? c.creator,
+        stage: "syntheses",
+        resource: c.id,
+        message:
+          "candidate derives from a statement without fut:synthesize consent (or from outside this aggregate) — excluded, consent gates derivation",
+      });
+    }
+  }
+
   return {
     deliberation,
     needs,
     resonances: dedupeResonances(rawResonances),
     proposals,
-    candidates,
+    candidates: gatedCandidates,
     critiques,
     synthesizable,
     verified,
