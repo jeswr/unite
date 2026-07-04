@@ -292,6 +292,44 @@ describe("Convergence Room in scope B (S2)", () => {
     expect(screen.getByText(/arrive in S3/)).toBeTruthy();
   });
 
+  it("shows the running-code gate chip: missing on a lineage proposal without a reference implementation", () => {
+    const ip = infraProposal("https://a.example/proposals/no-code.ttl", "No running code yet");
+    const base = resultWith([]);
+    const r: AggregateResult = {
+      ...base,
+      infraProposals: [ip],
+      candidates: [
+        { ...(base.candidates[0] as (typeof base.candidates)[0]), derivedFrom: [ip.id, NEED_A] },
+      ],
+      synthesizable: new Set<string>([NEED_A, NEED_B, ip.id]),
+    };
+    renderInfraRoom(r);
+    expect(screen.getByText(/running code missing on 1 of 1 lineage proposal/)).toBeTruthy();
+  });
+
+  it("shows the running-code gate chip green when every lineage proposal carries running code", () => {
+    const ip = {
+      ...infraProposal("https://a.example/proposals/with-code.ttl", "Has running code"),
+      referenceImplementation: "https://github.com/jeswr/unite/commit/abc123",
+    };
+    const base = resultWith([]);
+    const r: AggregateResult = {
+      ...base,
+      infraProposals: [ip],
+      candidates: [
+        { ...(base.candidates[0] as (typeof base.candidates)[0]), derivedFrom: [ip.id, NEED_A] },
+      ],
+      synthesizable: new Set<string>([NEED_A, NEED_B, ip.id]),
+    };
+    renderInfraRoom(r);
+    expect(screen.getByText(/running code ✓/)).toBeTruthy();
+  });
+
+  it("shows NO running-code chip when the lineage carries no infra proposals (nothing to gate)", () => {
+    renderInfraRoom(resultWith([]));
+    expect(screen.queryByText(/running code/)).toBeNull();
+  });
+
   it("offers a CONSENTED infra proposal as a derivation input and withholds a non-consented one (fail-closed)", () => {
     const ipOk = infraProposal("https://a.example/proposals/ok.ttl", "Consented change");
     const ipNo = infraProposal("https://b.example/proposals/no.ttl", "Unconsented change");

@@ -113,6 +113,23 @@ export function Room({
     [result, active],
   );
 
+  // The scope-B running-code gate chip (S2 — SCOPE-DIFFERENTIATION §3.4):
+  // design/04 §2 requires running code before ENDORSEMENT — the SHACL binds it
+  // on an AdoptionDecision's derivation inputs, and the S3 signing path will
+  // enforce it mechanically. Until then the room makes the check VISIBLE:
+  // which infra proposals in the active candidate's lineage still lack a
+  // reference implementation. null = not an adoption-decision scope, or the
+  // lineage carries no infra proposals (nothing to gate).
+  const runningCode = useMemo(() => {
+    if (scope.outputKind !== "adoption-decision" || !active || !result) return null;
+    const inLineage = result.infraProposals.filter((p) => active.derivedFrom.includes(p.id));
+    if (inLineage.length === 0) return null;
+    return {
+      total: inLineage.length,
+      missing: inLineage.filter((p) => p.referenceImplementation === undefined),
+    };
+  }, [scope, active, result]);
+
   /** Resolve a statement IRI to a display snippet (need/proposal content). */
   const statementText = useMemo(() => {
     const m = new Map<string, string>();
@@ -470,6 +487,26 @@ export function Room({
               </button>
             )}
           </div>
+
+          {/* The visible running-code gate (§3.4): rough consensus AND running
+              code — a recommendation whose lineage lacks a reference
+              implementation cannot become an AdoptionDecision (S3 enforces
+              this mechanically at signing; the room shows it now). */}
+          {runningCode && (
+            <div className="chip-row">
+              {runningCode.missing.length === 0 ? (
+                <span className="badge">
+                  running code ✓ — every proposal in this lineage carries a reference implementation
+                </span>
+              ) : (
+                <span className="badge con">
+                  running code missing on {runningCode.missing.length} of {runningCode.total}{" "}
+                  lineage proposal{runningCode.total === 1 ? "" : "s"} — required before this
+                  recommendation can be endorsed (design/04 §2)
+                </span>
+              )}
+            </div>
+          )}
 
           <details className="sources">
             <summary>
