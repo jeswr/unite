@@ -144,6 +144,30 @@ function scopeFromHostname(hostname: string | null | undefined): ScopeId | null 
   return null;
 }
 
+/**
+ * Build a same-page href selecting `id`, PRESERVING every other query param and
+ * the hash (auth callback state, community selectors, return routing must not
+ * be dropped by a scope switch). Fail-safe: a malformed search degrades to just
+ * `?scope=<id>`, never a throw.
+ */
+export function scopeHref(
+  id: ScopeId,
+  search?: string | null | undefined,
+  hash?: string | null | undefined,
+): string {
+  let params: URLSearchParams;
+  try {
+    const raw = typeof search === "string" && search.length <= 4096 ? search : "";
+    params = new URLSearchParams(raw.startsWith("?") ? raw.slice(1) : raw);
+  } catch {
+    params = new URLSearchParams();
+  }
+  params.set("scope", id);
+  const fragment =
+    typeof hash === "string" && hash.startsWith("#") && hash.length <= 4096 ? hash : "";
+  return `?${params.toString()}${fragment}`;
+}
+
 /** Normalise a raw token to a ScopeId, or null. Lenient on case/whitespace only. */
 function normaliseScopeToken(raw: string | null | undefined): ScopeId | null {
   if (typeof raw !== "string") return null;

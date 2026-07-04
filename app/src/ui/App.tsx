@@ -7,7 +7,7 @@
 import { FeedbackButton, ThemeToggle } from "@jeswr/app-shell";
 import { LoginPanel } from "@jeswr/solid-elements/react";
 import { useState } from "react";
-import { resolveScope, SCOPE_ORDER, SCOPES } from "../scope/scopes.js";
+import { resolveScope, SCOPE_ORDER, SCOPES, scopeHref } from "../scope/scopes.js";
 import { useController } from "./auth.js";
 import { useAggregate, useLiveUpdates } from "./hooks.js";
 import { type DeliberationConfig, scopedDefaultConfig } from "./state.js";
@@ -67,11 +67,12 @@ export function App(): React.JSX.Element {
       <nav className="scope-nav" aria-label="unite scopes">
         {SCOPE_ORDER.map((id) => {
           const s = SCOPES[id];
+          const loc = typeof window === "undefined" ? null : window.location;
           return (
             <a
               key={id}
               className={id === SCOPE.id ? "scope-link active" : "scope-link"}
-              href={`?scope=${id}`}
+              href={scopeHref(id, loc?.search, loc?.hash)}
               title={s.tagline}
               aria-current={id === SCOPE.id ? "page" : undefined}
             >

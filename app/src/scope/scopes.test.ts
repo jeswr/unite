@@ -11,6 +11,7 @@ import {
   SCOPE_ORDER,
   SCOPES,
   type ScopeId,
+  scopeHref,
 } from "./scopes.js";
 
 describe("SCOPES table", () => {
@@ -104,6 +105,25 @@ describe("resolveScope query parsing", () => {
     }
     // the duplicate-param case concretely: get() returns the first
     expect(resolveScope({ search: "?scope=society&scope=apps" }).id).toBe("society");
+  });
+});
+
+describe("scopeHref", () => {
+  it("preserves other query params and the hash while setting scope", () => {
+    expect(scopeHref("society", "?code=abc&state=xyz", "#inbox")).toBe(
+      "?code=abc&state=xyz&scope=society#inbox",
+    );
+  });
+  it("replaces an existing scope param instead of duplicating it", () => {
+    const href = scopeHref("infrastructure", "?scope=apps&foo=1", "");
+    expect(href).toContain("scope=infrastructure");
+    expect(href).not.toContain("scope=apps");
+    expect(href).toContain("foo=1");
+  });
+  it("degrades to just ?scope= on missing/malformed/oversized input", () => {
+    expect(scopeHref("apps")).toBe("?scope=apps");
+    expect(scopeHref("apps", null, null)).toBe("?scope=apps");
+    expect(scopeHref("apps", `?x=${"a".repeat(10000)}`, "no-leading-hash")).toBe("?scope=apps");
   });
 });
 
