@@ -10,8 +10,8 @@ import { demoDeliberationIri, demoWebId } from "../demo/fixtures.js";
 import { SCOPE_ORDER, SCOPES } from "../scope/scopes.js";
 import {
   buildRegistry,
-  buildVerifier,
   configReady,
+  deliberationTrust,
   podConfig,
   scopedDefaultConfig,
   sessionIdentity,
@@ -31,11 +31,11 @@ describe("scopedDefaultConfig (demo mode)", () => {
     expect(new Set(configs.map((c) => c?.ownBase)).size).toBe(SCOPE_ORDER.length);
   });
 
-  it("every scoped demo default is accepted by the registry + verifier constructors", () => {
+  it("every scoped demo default is accepted by the registry + trust constructors", async () => {
     for (const id of SCOPE_ORDER) {
       const config = scopedDefaultConfig(SCOPES[id]);
       expect(() => buildRegistry(config)).not.toThrow();
-      expect(() => buildVerifier(config)).not.toThrow();
+      await expect(deliberationTrust(config)).resolves.toBeDefined();
     }
   });
 
@@ -44,18 +44,26 @@ describe("scopedDefaultConfig (demo mode)", () => {
       expect(configReady(scopedDefaultConfig(SCOPES[id]))).toBe(true);
     }
   });
+
+  it("carries each scope's participation floor into the config", () => {
+    for (const id of SCOPE_ORDER) {
+      expect(scopedDefaultConfig(SCOPES[id]).participationFloor).toBe(SCOPES[id].minTierToPropose);
+    }
+    expect(scopedDefaultConfig(SCOPES.society).participationFloor).toBe(0);
+    expect(scopedDefaultConfig(SCOPES.apps).participationFloor).toBe(1);
+  });
 });
 
 describe("podConfig (fail-closed until configured)", () => {
   it("starts empty and NOT ready — no requests fire from a blank form", () => {
-    const c = podConfig();
+    const c = podConfig(SCOPES.apps);
     expect(c.mode).toBe("pod");
     expect(c.participants).toEqual([]);
     expect(configReady(c)).toBe(false);
   });
 
   it("becomes ready only with a valid deliberation IRI + valid participants", () => {
-    const base = { ...podConfig(), deliberation: "https://community.example/d" };
+    const base = { ...podConfig(SCOPES.apps), deliberation: "https://community.example/d" };
     expect(configReady(base)).toBe(false); // no participants
     expect(
       configReady({
@@ -85,7 +93,7 @@ describe("sessionIdentity", () => {
   });
 
   it("is the signed-in WebID (or null) in pod mode", () => {
-    const pod = podConfig();
+    const pod = podConfig(SCOPES.apps);
     expect(sessionIdentity(pod, null)).toBeNull();
     expect(sessionIdentity(pod, "https://real.example/#me")).toBe("https://real.example/#me");
   });

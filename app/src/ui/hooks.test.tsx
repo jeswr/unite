@@ -24,12 +24,14 @@ vi.mock("../lib/aggregate.js", () => ({
 const configA: DeliberationConfig = {
   mode: "pod",
   deliberation: "https://community.example/a",
+  participationFloor: 1,
   ownBase: "https://alice.example/unite/a/",
   participants: [{ webId: "https://alice.example/#me", base: "https://alice.example/unite/a/" }],
 };
 const configB: DeliberationConfig = {
   mode: "pod",
   deliberation: "https://community.example/b",
+  participationFloor: 1,
   ownBase: "https://alice.example/unite/b/",
   participants: [{ webId: "https://alice.example/#me", base: "https://alice.example/unite/b/" }],
 };
@@ -65,6 +67,7 @@ describe("useAggregate", () => {
     const empty: DeliberationConfig = {
       mode: "pod",
       deliberation: "",
+      participationFloor: 1,
       ownBase: "",
       participants: [],
     };
@@ -81,6 +84,7 @@ describe("useAggregate", () => {
     const bad: DeliberationConfig = {
       mode: "demo",
       deliberation: "https://evil.example/deliberations/apps",
+      participationFloor: 1,
       ownBase: "https://evil.example/unite/apps/",
       participants: [
         { webId: "https://evil.example/#me", base: "https://evil.example/unite/apps/" },

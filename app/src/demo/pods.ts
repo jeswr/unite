@@ -41,6 +41,7 @@ import {
   type NeedSpec,
   type VoteCode,
 } from "./fixtures.js";
+import { type DemoTrust, seedDemoTrust } from "./trust.js";
 
 const { namedNode, quad } = DataFactory;
 
@@ -63,6 +64,8 @@ export interface DemoDeliberation {
   readonly participants: readonly DemoParticipant[];
   /** The in-memory pod fetch — safe for both read + write paths. */
   readonly fetch: typeof fetch;
+  /** The seeded governance layer: anchors, resolver, steward issuance seam. */
+  readonly trust: DemoTrust;
 }
 
 /** True iff `iri` is a demo deliberation IRI. */
@@ -242,13 +245,16 @@ async function buildDemo(scope: ScopeId): Promise<DemoDeliberation> {
   for (const spec of DEMO_NEEDS[scope]) {
     await seedNeed(pods, scope, spec, deliberation);
   }
+  // The governance layer: real steward keys + real signed credentials, written
+  // through the same sandboxed fetch the statements use (src/demo/trust.ts).
+  const trust = await seedDemoTrust(pods.fetch, scope, deliberation);
   const participants = DEMO_PEOPLE.map((p) => ({
     webId: demoWebId(p.key),
     base: demoBase(p.key, scope),
   }));
   const you = participants[DEMO_PEOPLE.findIndex((p) => p.key === DEMO_YOU_KEY)];
   if (!you) throw new Error("demo fixtures: missing the `you` participant");
-  return { scope, deliberation, you, participants, fetch: pods.fetch };
+  return { scope, deliberation, you, participants, fetch: pods.fetch, trust };
 }
 
 const instances = new Map<ScopeId, Promise<DemoDeliberation>>();

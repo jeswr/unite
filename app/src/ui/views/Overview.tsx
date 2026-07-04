@@ -14,9 +14,9 @@ import type { AggregateState } from "../hooks.js";
 import { displayName } from "../hooks.js";
 import type { View } from "../route.js";
 import {
-  buildVerifier,
   configReady,
   type DeliberationConfig,
+  deliberationTrust,
   demoConfig,
   podConfig,
 } from "../state.js";
@@ -66,14 +66,16 @@ export function Overview({
       return;
     }
     try {
-      const verifier = buildVerifier(config);
-      setCheck(await verifier.verify(webId, config.deliberation));
+      // The SAME floor-aware gate the aggregation runs — what it says is what
+      // the board does.
+      const { gate } = await deliberationTrust(config);
+      setCheck(await gate.verify(webId, config.deliberation));
     } catch (e) {
       setCheckError(e instanceof Error ? e.message : String(e));
     }
   }
 
-  const verifiedIds = new Set(result?.verified.map((v) => v.webId) ?? []);
+  const verifiedTiers = new Map((result?.verified ?? []).map((v) => [v.webId, v.tier]));
 
   return (
     <section className="view">
@@ -132,7 +134,7 @@ export function Overview({
           type="button"
           className="mode-card"
           aria-pressed={config.mode === "pod"}
-          onClick={() => onChange(podConfig())}
+          onClick={() => onChange(podConfig(scope))}
         >
           <span className="m-title">Your own deliberation</span>
           <span className="m-desc">
@@ -214,7 +216,11 @@ export function Overview({
                 {checkError && <p className="notice error">{checkError}</p>}
                 {check &&
                   (check.ok ? (
-                    <p className="notice ok">Vouched — tier {check.tier}. You may deliberate.</p>
+                    <p className="notice ok">
+                      {check.tier === "T0"
+                        ? "Admitted as pseudonymous voice (T0) — this scope is open to everyone."
+                        : `Vouched — tier ${check.tier}. You may deliberate.`}
+                    </p>
                   ) : (
                     <p className="notice error">Not vouched: {check.reason}</p>
                   ))}
@@ -239,14 +245,17 @@ export function Overview({
           <ul className="participant-list">
             {config.participants.map((p) => {
               const name = displayName(p.webId);
+              const tier = verifiedTiers.get(p.webId);
               return (
                 <li key={p.webId}>
                   <span className="avatar" style={{ background: avatarColor(p.webId) }}>
                     {initials(name)}
                   </span>
                   <span className="who">{name}</span>
-                  {verifiedIds.has(p.webId) ? (
-                    <span className="badge res">vouched · T1</span>
+                  {tier !== undefined ? (
+                    <span className={tier === "T0" ? "badge" : "badge res"}>
+                      {tier === "T0" ? "voice · T0" : `vouched · ${tier}`}
+                    </span>
                   ) : result ? (
                     <span className="badge">unverified</span>
                   ) : null}

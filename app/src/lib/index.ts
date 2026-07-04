@@ -10,3 +10,4 @@ export * from "./model.js";
 export * from "./pod.js";
 export * from "./ranking.js";
 export * from "./registry.js";
+export * from "./trust.js";

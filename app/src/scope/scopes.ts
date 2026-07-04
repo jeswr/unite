@@ -6,11 +6,13 @@
 // hooks — never a fork of the machinery. Resolution is pure + fail-closed:
 // anything unrecognised resolves to the default scope, never a throw.
 
+import type { IdentityTier } from "../lib/trust.js";
+
 /** The three scope ids (PLATFORM-PLAN §1). Stable — they appear in URLs. */
 export type ScopeId = "apps" | "infrastructure" | "society";
 
-/** Identity tiers from design/02 §5 (T0 pseudonymous, T1 vouched, T2 person). */
-export type IdentityTier = 0 | 1 | 2;
+/** Identity tiers from design/02 §5 — canonically defined in lib/trust.ts. */
+export type { IdentityTier } from "../lib/trust.js";
 
 /** One scope mode's configuration (PLATFORM-PLAN §2). */
 export interface ScopeConfig {
@@ -34,7 +36,12 @@ export interface ScopeConfig {
    * "preview" = the scope's own machinery is progressively unlocking.
    */
   readonly status: "live" | "preview";
-  /** Governance hook (PLATFORM-PLAN §4.1): minimum tier to compose/propose. */
+  /**
+   * The design/04 §4.1 PARTICIPANT floor (PLATFORM-PLAN §4.1): the minimum
+   * identity tier to compose/propose AND resonate in this scope — enforced by
+   * the Compose/board gates and the aggregation-side TierParticipationGate.
+   * Scope C keeps floor 0 (pseudonymous voice is a G3 requirement).
+   */
   readonly minTierToPropose: IdentityTier;
 }
 

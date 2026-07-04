@@ -10,11 +10,14 @@ import { type ConsentPolicy, DEFAULT_CONSENT } from "../../lib/consent.js";
 import { MAXNEEF_CONCEPTS } from "../../lib/fut.js";
 import { MAX_CONTENT_LENGTH, type Need } from "../../lib/model.js";
 import { writeNeed } from "../../lib/pod.js";
-import type { ScopeConfig } from "../../scope/scopes.js";
+import { meetsTier } from "../../lib/trust.js";
+import { type ScopeConfig, scopeHref } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
+import type { SessionTrust } from "../hooks.js";
 import { writeSessionFor } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
 import { ConsentPanel } from "./ConsentPanel.js";
+import { TIER_MEANING } from "./Trust.js";
 
 const FIRST_CONCEPT = MAXNEEF_CONCEPTS[0]?.iri ?? "";
 
@@ -60,11 +63,13 @@ export function Compose({
   scope,
   config,
   webId,
+  trust,
   onComposed,
 }: {
   scope: ScopeConfig;
   config: DeliberationConfig;
   webId: string | null;
+  trust: SessionTrust;
   onComposed?: () => Promise<void> | void;
 }): React.JSX.Element {
   const controller = useController();
@@ -78,12 +83,66 @@ export function Compose({
 
   const copy = composeCopy(scope);
   const identity = sessionIdentity(config, webId);
+  const floor = config.participationFloor;
+
+  // The design/04 §4.1 participant gate: composing in this scope needs the
+  // floor tier. Fail-closed — a still-resolving (null) profile is NOT a grant.
+  if (floor > 0 && (trust.profile === null || !meetsTier(trust.profile, floor))) {
+    const held = trust.profile?.tier ?? 0;
+    return (
+      <section className="view">
+        <h2 className="view-title">{copy.title}</h2>
+        {trust.profile === null ? (
+          <div className="empty" aria-live="polite">
+            <span className="empty-title">Checking your standing…</span>
+            <p>Verifying your membership credential for this deliberation.</p>
+          </div>
+        ) : (
+          <div className="empty locked">
+            <span className="empty-title">Proposing here needs a vouched membership</span>
+            <p>
+              This scope changes running systems, so composing requires identity tier{" "}
+              <strong>T{floor}</strong> ({TIER_MEANING[floor]}). You currently hold{" "}
+              <strong>T{held}</strong> ({TIER_MEANING[held]}).
+            </p>
+            <p>
+              How vouching works: two existing members vouch for you and a steward issues your
+              membership credential — a signed, verifiable statement in your own pod. See who the
+              stewards are on the <a href="#/trust">Trust</a> view.
+            </p>
+            {config.mode === "demo" && (
+              <p className="muted small">
+                In this demo scope you are deliberately an unvouched visitor, so you can see the
+                locked state for real. Switch to the{" "}
+                <a
+                  href={scopeHref(
+                    "apps",
+                    typeof window === "undefined" ? null : window.location.search,
+                    typeof window === "undefined" ? null : window.location.hash,
+                  )}
+                >
+                  apps scope
+                </a>{" "}
+                — there you hold a steward role and everything unlocks.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   async function submit(): Promise<void> {
     setError(null);
     setSavedUrl(null);
     if (!identity) {
       setError("Sign in first — a statement is written to your own pod under your WebID.");
+      return;
+    }
+    // Defence in depth: the locked panel above already blocks this path, but a
+    // stale render must never write past the floor.
+    if (floor > 0 && (trust.profile === null || !meetsTier(trust.profile, floor))) {
+      setError(`Composing here requires identity tier T${floor} — see the Trust view.`);
       return;
     }
     if (!content.trim()) {
