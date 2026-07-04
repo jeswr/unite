@@ -113,18 +113,24 @@ export function screenSensitiveDomain(text: string): SensitiveHit | null {
   return null;
 }
 
+/** The plain-language refusal for a screen hit — shared by the error below
+ * and the UI pre-checks (one wording everywhere the gate speaks). */
+export function describeSensitiveHit(hit: SensitiveHit): string {
+  return (
+    `This looks like personal ${hit.domain} information (“${hit.term}”). ` +
+    "The society scope launches on low-sensitivity civic topics only — " +
+    "health- and income-grade disclosure is blocked until privacy-preserving " +
+    "aggregation exists (the C4 launch gate). Please rephrase without personal " +
+    `${hit.domain} details.`
+  );
+}
+
 /** The error the society write chokepoints throw on a C4 screen hit. */
 export class SensitiveDomainError extends Error {
   readonly hit: SensitiveHit;
 
   constructor(hit: SensitiveHit) {
-    super(
-      `This looks like personal ${hit.domain} information (“${hit.term}”). ` +
-        "The society scope launches on low-sensitivity civic topics only — " +
-        "health- and income-grade disclosure is blocked until privacy-preserving " +
-        "aggregation exists (the C4 launch gate). Please rephrase without personal " +
-        `${hit.domain} details.`,
-    );
+    super(describeSensitiveHit(hit));
     this.name = "SensitiveDomainError";
     this.hit = hit;
   }

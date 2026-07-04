@@ -16,6 +16,7 @@ import { STANCE_CONFLICTS, STANCE_RESONATES, STANCE_UNSURE } from "../../lib/fut
 import type { Critique, SynthesisCandidate } from "../../lib/model.js";
 import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH } from "../../lib/model.js";
 import { writeCandidate, writeCritique } from "../../lib/pod.js";
+import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
@@ -203,6 +204,17 @@ export function Room({
       );
       return;
     }
+    // The C4 sensitive-domain launch gate covers scope C's Room text too
+    // (SCOPE-DIFFERENTIATION §4.5): a candidate in the society scope must not
+    // carry personal health/finance disclosure. Same screen as the wizard +
+    // the pod-society chokepoints; scope-gated so A/B rooms are untouched.
+    if (scope.outputKind === "advisory-synthesis") {
+      const hit = screenSensitiveDomain(`${draftTitle}\n${draftContent}`);
+      if (hit) {
+        setFormError(describeSensitiveHit(hit));
+        return;
+      }
+    }
     // Defence in depth (fail-closed): every input must STILL be consented to
     // synthesis at submit time — a stale selection (e.g. the author revoked
     // consent and the aggregate refreshed) must never be derived from.
@@ -257,6 +269,15 @@ export function Room({
     if (!critique.trim()) {
       setFormError("Write the critique first.");
       return;
+    }
+    // The C4 gate covers society critiques too (dissent-annex material may be
+    // published verbatim under quoteVerbatim — it must not carry disclosure).
+    if (scope.outputKind === "advisory-synthesis") {
+      const hit = screenSensitiveDomain(critique);
+      if (hit) {
+        setFormError(describeSensitiveHit(hit));
+        return;
+      }
     }
     setSaving(true);
     try {

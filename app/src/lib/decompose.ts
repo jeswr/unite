@@ -41,6 +41,15 @@ export interface DecompositionPlan {
   readonly tool: string;
   /** The prompt/version identifier. */
   readonly plan: string;
+  /**
+   * The prov:Activity IRI the assistant minted for THIS decomposition run
+   * (an http(s) IRI naming a resource that records tool + plan). When
+   * present, every ADOPTED claim the run proposed is written with
+   * `fut:decomposedBy → activity` — GenAI decomposition is never invisible
+   * (design/01). An assistant that cannot publish an activity resource
+   * omits this and its claims carry no decomposedBy (the honest minimum).
+   */
+  readonly activity?: string;
 }
 
 /** What a decomposition run returns. */

@@ -28,7 +28,7 @@ import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH, type Need } from "../../lib/model
 import type { Claim, ValueStatement, VisionStatement } from "../../lib/model-society.js";
 import { writeNeed } from "../../lib/pod.js";
 import { writeClaim, writeValueStatement, writeVision } from "../../lib/pod-society.js";
-import { screenSensitiveDomain } from "../../lib/sensitive.js";
+import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
@@ -57,6 +57,13 @@ interface DraftAtomState {
   readonly valueConcept: string;
   /** Adoption is an EXPLICIT act — atoms start unadopted (the C6 invariant). */
   readonly adopted: boolean;
+  /**
+   * The decomposition prov:Activity IRI, present ONLY on assistant-proposed
+   * atoms whose run disclosed one (DecompositionPlan.activity) — carried onto
+   * an adopted claim as `fut:decomposedBy` so assisted decomposition is never
+   * invisible. Manual atoms never carry it.
+   */
+  readonly decomposedBy?: string;
 }
 
 const FIRST_NEED_CONCEPT = MAXNEEF_CONCEPTS[0]?.iri ?? "";
@@ -112,14 +119,21 @@ export function NarrativeCompose({
 
   const adopted = useMemo(() => atoms.filter((a) => a.adopted), [atoms]);
 
-  function addAtom(kind: AtomKind, content: string): void {
+  function addAtom(
+    kind: AtomKind,
+    content: string,
+    proposed?: { needConcept?: string; valueConcept?: string; decomposedBy?: string },
+  ): void {
     const atom: DraftAtomState = {
       key: nextKey.current++,
       kind,
       content,
-      needConcept: FIRST_NEED_CONCEPT,
-      valueConcept: FIRST_VALUE_CONCEPT,
+      // An assistant's proposed concepts pre-fill the pickers (the author may
+      // still change them in the adopt step); manual atoms take the defaults.
+      needConcept: proposed?.needConcept ?? FIRST_NEED_CONCEPT,
+      valueConcept: proposed?.valueConcept ?? FIRST_VALUE_CONCEPT,
       adopted: false,
+      ...(proposed?.decomposedBy !== undefined ? { decomposedBy: proposed.decomposedBy } : {}),
     };
     setAtoms((prev) => [...prev, atom]);
   }
@@ -145,7 +159,17 @@ export function NarrativeCompose({
         );
         return;
       }
-      for (const a of result.atoms) addAtom(a.kind, a.content);
+      // Carry the assistant's FULL proposal through: its concept suggestions
+      // pre-fill the pickers, and its disclosed prov:Activity IRI travels onto
+      // adopted claims as fut:decomposedBy (assisted splits are never invisible).
+      const decomposedBy = result.provenance?.activity;
+      for (const a of result.atoms) {
+        addAtom(a.kind, a.content, {
+          ...(a.needConcept !== undefined ? { needConcept: a.needConcept } : {}),
+          ...(a.valueConcept !== undefined ? { valueConcept: a.valueConcept } : {}),
+          ...(decomposedBy !== undefined ? { decomposedBy } : {}),
+        });
+      }
       setAssistantNote(
         `The assistant proposed ${result.atoms.length} atom${result.atoms.length === 1 ? "" : "s"} — ` +
           "each is only a SUGGESTION until you adopt it in the next step (adopt / edit / discard).",
@@ -174,15 +198,12 @@ export function NarrativeCompose({
     }
     // Pre-check the C4 launch gate for a friendly refusal; the write
     // chokepoints (lib/pod-society.ts) enforce it fail-closed regardless.
-    for (const text of [`${title}\n${narrative}`, ...atoms.map((a) => a.content)]) {
+    // Screen ONLY what will actually be written — the vision + the ADOPTED
+    // atoms; an unadopted (discarded-by-intent) draft never blocks the share.
+    for (const text of [`${title}\n${narrative}`, ...adopted.map((a) => a.content)]) {
       const hit = screenSensitiveDomain(text);
       if (hit) {
-        setError(
-          `This looks like personal ${hit.domain} information (“${hit.term}”). The society scope ` +
-            "launches on low-sensitivity civic topics only — health- and income-grade disclosure " +
-            "is blocked until privacy-preserving aggregation exists (the C4 launch gate). Please " +
-            "rephrase.",
-        );
+        setError(describeSensitiveHit(hit));
         return;
       }
     }
@@ -222,6 +243,9 @@ export function NarrativeCompose({
             created,
             creator: identity,
             inDeliberation: config.deliberation,
+            // Assistant-proposed claims carry the disclosed decomposition
+            // activity (fut:decomposedBy); manual claims carry none.
+            ...(a.decomposedBy !== undefined ? { decomposedBy: a.decomposedBy } : {}),
           };
           await writeClaim(session.fetch, session.ownBase, claim, consent);
         } else if (a.kind === "need") {

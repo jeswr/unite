@@ -163,4 +163,79 @@ describe("NarrativeCompose (the §4.3 wizard)", () => {
     expect(screen.getByText(/signed aggregates may persist after you delete/i)).toBeTruthy();
     expect(screen.getByText(/low-sensitivity civic topics only/)).toBeTruthy();
   });
+
+  it("an UNADOPTED sensitive draft does not block a clean vision (only what writes is screened)", async () => {
+    renderWizard();
+    fireEvent.change(narrativeBox(), { target: { value: "A clean civic future." } });
+    next(/Next: split it/);
+    fireEvent.click(screen.getByRole("button", { name: "+ blank claim" }));
+    next(/Next: adopt each/);
+    const textarea = screen.getAllByRole("textbox").find((t) => t.tagName === "TEXTAREA");
+    if (!textarea) throw new Error("no atom textarea");
+    // Sensitive text in a draft the author does NOT adopt — never written,
+    // so it must not block the share.
+    fireEvent.change(textarea, { target: { value: "my diagnosis is nobody's business" } });
+    next(/Next: voice & consent/);
+    fireEvent.click(screen.getByRole("button", { name: /Share this vision statement$/ }));
+    await waitFor(() => {
+      expect(screen.getByText(/Saved to the demo pod/)).toBeTruthy();
+    });
+    const result = await aggregateSociety();
+    expect(result.claims.some((c) => c.content.includes("diagnosis"))).toBe(false);
+    expect(result.visions.some((v) => v.content === "A clean civic future.")).toBe(true);
+  });
+
+  it("an ASSISTED split carries concepts + the disclosed decomposition activity to the writes", async () => {
+    const ACTIVITY = "https://assist.example/activities/run-1";
+    const assistant = {
+      decompose: () =>
+        Promise.resolve({
+          atoms: [
+            { kind: "claim" as const, content: "Later buses on weekends." },
+            {
+              kind: "need" as const,
+              content: "Getting home safely at night.",
+              needConcept: "https://w3id.org/jeswr/sectors/futures#maxneef-protection",
+            },
+          ],
+          provenance: { tool: "example-model", plan: "prompt-v1", activity: ACTIVITY },
+        }),
+    };
+    render(
+      <AuthProvider controller={new DevLoginController()}>
+        <NarrativeCompose
+          scope={SCOPES.society}
+          config={demoConfig("society")}
+          webId={null}
+          trust={asTrust({ tier: 0, roles: [] })}
+          assistant={assistant}
+        />
+      </AuthProvider>,
+    );
+    fireEvent.change(narrativeBox(), { target: { value: "I want safe nights out." } });
+    next(/Next: split it/);
+    fireEvent.click(screen.getByRole("button", { name: "Suggest a split" }));
+    await waitFor(() => {
+      expect(screen.getByText(/The assistant proposed 2 atoms/)).toBeTruthy();
+    });
+    next(/Next: adopt each/);
+    // The assistant's need-concept suggestion pre-fills the picker.
+    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
+      "https://w3id.org/jeswr/sectors/futures#maxneef-protection",
+    );
+    // Adopt both proposed atoms — adoption stays the author's explicit act.
+    for (const box of screen.getAllByRole("checkbox", { name: /Adopt this/ })) {
+      fireEvent.click(box);
+    }
+    next(/Next: voice & consent/);
+    fireEvent.click(screen.getByRole("button", { name: /Share this vision statement \+ 2 atoms/ }));
+    await waitFor(() => {
+      expect(screen.getByText(/Saved to the demo pod/)).toBeTruthy();
+    });
+    const result = await aggregateSociety();
+    const claim = result.claims.find((c) => c.content === "Later buses on weekends.");
+    expect(claim?.decomposedBy).toBe(ACTIVITY); // assisted splits are never invisible
+    const need = result.needs.find((n) => n.content === "Getting home safely at night.");
+    expect(need?.needConcept).toBe("https://w3id.org/jeswr/sectors/futures#maxneef-protection");
+  });
 });

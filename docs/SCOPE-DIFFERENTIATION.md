@@ -600,8 +600,11 @@ and reversible:
    compose/deck/gallery/room machinery is real, not relabelled.
 3. **The C4 gate's client-enforceable half is a deterministic lexical screen
    for FIRST-PERSON health/finance disclosure** (`lib/sensitive.ts`), run
-   fail-closed inside every scope-C write chokepoint (`lib/pod-society.ts`) and
-   pre-checked in the wizard. Honestly limited: it catches the obvious
+   fail-closed inside every scope-C write chokepoint (`lib/pod-society.ts`),
+   pre-checked in the wizard, and applied to the society Room's free text too
+   (candidate drafts + critiques — dissent material may publish verbatim under
+   `quoteVerbatim`, so it must not carry disclosure; scope-gated, A/B rooms
+   untouched). Honestly limited: it catches the obvious
    disclosure vocabulary ("my diagnosis", "my salary"), deliberately NOT civic
    mentions of institutions ("the hospital needs a bus stop" passes); the
    gate's other half remains deliberation seeding/topic policy (§4.5 — the

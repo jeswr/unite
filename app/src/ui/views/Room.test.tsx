@@ -7,7 +7,7 @@
 // enforced in the draft form before any write. The vote fixtures mirror
 // convergence.test.ts: two clean opinion clusters over two needs.
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AggregateResult } from "../../lib/aggregate.js";
 import { STANCE_CONFLICTS, STANCE_RESONATES } from "../../lib/fut.js";
@@ -347,5 +347,38 @@ describe("Convergence Room in scope B (S2)", () => {
     expect(screen.getByRole("button", { name: /proposal · Consented change/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /proposal · Unconsented change/ })).toBeNull();
     expect(screen.getByText(/1 statement is not offered/)).toBeTruthy();
+  });
+});
+
+describe("the C4 gate in the Room (scope C only)", () => {
+  it("the SOCIETY room screens critiques (dissent may publish verbatim)", () => {
+    render(
+      <AuthProvider controller={new DevLoginController()}>
+        <Room
+          scope={SCOPES.society}
+          config={demoConfig("society")}
+          webId={null}
+          trust={asTrust({ tier: 0, roles: [] })}
+          aggregate={asAggregate(resultWith([]))}
+        />
+      </AuthProvider>,
+    );
+    fireEvent.change(screen.getByPlaceholderText(/What does this synthesis miss/), {
+      target: { value: "Since my diagnosis this candidate ignores people like me." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Stand this critique" }));
+    expect(screen.getByText(/This looks like personal health information/)).toBeTruthy();
+  });
+
+  it("the APPS room does NOT screen critiques (the gate is a society launch constraint)", async () => {
+    renderRoom(asTrust({ tier: 1, roles: [] }), resultWith([]));
+    const box = screen.getByPlaceholderText(/What does this synthesis miss/) as HTMLTextAreaElement;
+    fireEvent.change(box, {
+      target: { value: "Since my diagnosis I care about offline access." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Stand this critique" }));
+    // The write goes through (demo pod) — the form clears, no C4 refusal shown.
+    await waitFor(() => expect(box.value).toBe(""));
+    expect(screen.queryByText(/This looks like personal health information/)).toBeNull();
   });
 });
