@@ -69,10 +69,14 @@ export async function seedDemoTrust(
     }
   }
 
-  // Steward keypairs → the community's trust anchors.
+  // Steward keypairs → the community's trust anchors. P-256 (ecdsa-rdfc-2019)
+  // rather than Ed25519 ON PURPOSE: WebCrypto P-256 is universal, while
+  // Ed25519 is missing from older browsers — and a keygen failure here would
+  // take down the WHOLE demo board (buildDemo awaits this seeding), not just
+  // the trust layer.
   const stewardKeys = new Map<string, KeyPair>();
   for (const person of stewards) {
-    stewardKeys.set(person, await generateKeyPairForSuite(demoWebId(person), "Ed25519"));
+    stewardKeys.set(person, await generateKeyPairForSuite(demoWebId(person), "P-256"));
   }
   const anchors: TrustAnchor[] = stewards.map((person) => {
     const key = stewardKeys.get(person);
