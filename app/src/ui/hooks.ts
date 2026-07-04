@@ -39,7 +39,7 @@ export interface AggregateState {
  * demo IRI throws rather than falling through to a real network fetch — the
  * sandbox boundary must not depend on the config being well-formed.
  */
-async function readFetchFor(
+export async function readFetchFor(
   config: DeliberationConfig,
   controller: LoginController,
 ): Promise<typeof fetch> {
@@ -167,10 +167,14 @@ export function useAggregate(
 const KIND_DIRS: Partial<Record<StatementKind, string>> = {
   need: "needs/",
   "app-proposal": "proposals/",
+  // S2: infra proposals share the proposals/ container (readers select by
+  // rdf:type); the dir set below dedupes, so enabling both kinds never
+  // double-watches the container.
+  "infra-proposal": "proposals/",
   synthesis: "syntheses/",
   critique: "critiques/",
-  // Kinds without landed machinery ("infra-proposal", "vision", "claim",
-  // "value") have no container to watch yet — honest no-ops, like aggregation.
+  // Kinds without landed machinery ("vision", "claim", "value") have no
+  // container to watch yet — honest no-ops, like aggregation.
 };
 
 /**

@@ -172,17 +172,19 @@ export const SCOPES: Readonly<Record<ScopeId, ScopeConfig>> = {
     artifactNoun: "infrastructure proposal",
     hosts: ["infra", "infrastructure"],
     buildLayer: true,
-    status: "preview",
+    // S2 flipped B live (SCOPE-DIFFERENTIATION §6): propose (the structured
+    // wizard) → resonate → converge (the shared room) with ratification
+    // VISIBLE on the Adoption board. The S3 ratification machinery (verified
+    // role lens, reviewer/steward endorsement gating, the SIGNED
+    // fut:AdoptionDecision) remains a documented follow-up — the config's
+    // endorsementGate names those floors; the UI says what arrives in S3.
+    status: "live",
     minTierToPropose: 1,
-    // Scope B (SCOPE-DIFFERENTIATION §3): the structured wizard, the
-    // infra-proposal artifact and the role lens flip on in S2/S3 — until then
-    // the config names the target honestly and the UI renders phase-labelled
-    // previews (never a silently relabelled apps surface).
     composeFlow: "structured-infra",
-    artifactKinds: ["need"], // + "infra-proposal" when S2 lands the model
+    artifactKinds: ["need", "infra-proposal"], // S2 landed the model + parser
     cohortLenses: ["opinion", "role"],
     outputKind: "adoption-decision",
-    views: ["adoption-board"],
+    views: ["proposals", "room", "adoption-board"],
     endorsementGate: {
       crossCohort: ["opinion", "role"], // §3.4 — both partitions must clear
       reviewerRoleRequired: true, // spec-review is the reviewer role's scope-B meaning

@@ -510,8 +510,8 @@ export const DEMO_NEEDS: Readonly<Record<ScopeId, readonly NeedSpec[]>> = {
 };
 
 // ── The S1 artifact spine seed (SCOPE-DIFFERENTIATION §2): proposals, the
-//    Convergence Room's candidates + critiques — apps scope only until the
-//    S2 (infrastructure) / S4 (society) layers land their own artifacts. ──────
+//    Convergence Room's candidates + critiques. S2 added the infrastructure
+//    scope's own artifacts; society follows in S4. ─────────────────────────────
 
 /** One seeded proposal + the votes it received. */
 export interface ProposalSpec {
@@ -683,26 +683,203 @@ const APPS_CRITIQUES: readonly CritiqueSpec[] = [
   },
 ];
 
-/** The seeded proposals per scope (S1: apps only). */
+// ── The S2 scope-B artifact spine (SCOPE-DIFFERENTIATION §3): infrastructure
+//    proposals — the SELF-HOSTING first deliberation (§3.1, milestone B4): the
+//    seeded deliberation IS the futures-sector-0.2.0 change, run through the
+//    real machinery in the sandbox. ─────────────────────────────────────────────
+
+/** One seeded infrastructure proposal + the votes it received (S2, scope B). */
+export interface InfraProposalSpec {
+  readonly slug: string;
+  readonly author: string;
+  readonly title: string;
+  readonly content: string;
+  /** Governed-system IRIs (fut:targetsSystem, ≥1). */
+  readonly targets: readonly string[];
+  /** The coded kind's LOCAL NAME ("SpecChange" | "NewSpec" | "ServiceOperation" | "Deprecation"). */
+  readonly kind: string;
+  /** Coded role LOCAL NAMES ("ImplementerRole" | "OperatorRole" | "ParticipantRole", ≥1). */
+  readonly roles: readonly string[];
+  readonly breaking?: boolean;
+  readonly migration?: string;
+  /** Running code (repo/commit IRI) — optional at compose. */
+  readonly referenceImplementation?: string;
+  /** Need SLUGS this proposal serves (resolved to IRIs at seed time; ≥1). */
+  readonly serves: readonly string[];
+  readonly stakeholders?: string;
+  readonly created: string;
+  readonly votes: Readonly<Record<string, VoteCode>>;
+}
+
+/** The futures-sector lineage IRI (the governed system of the B4 deliberation). */
+export const FUTURES_LINEAGE = "https://w3id.org/jeswr/sectors/futures";
+
+const INFRA_PROPOSALS: readonly InfraProposalSpec[] = [
+  {
+    // The self-hosting proposal (§3.1): adopt the futures sector 0.2.0 — the
+    // very vocabulary that makes scope B expressible. Its running code is the
+    // real formalising commit in solid-federation-vocab.
+    slug: "futures-020",
+    author: "hana",
+    title: "Adopt futures sector 0.2.0",
+    content:
+      "Version 0.2.0 adds the scope-B layer this deliberation itself runs on: fut:InfraProposal with targets/kind/blast-radius/migration honesty, the AdoptionDecision + AdoptionObservation output shapes, and the Convergence-Room critique unit. Additive over 0.1.0 — no term changes, dual-advertised during migration.",
+    targets: [FUTURES_LINEAGE],
+    kind: "SpecChange",
+    roles: ["ImplementerRole", "ParticipantRole"],
+    breaking: false,
+    referenceImplementation:
+      "https://github.com/jeswr/solid-federation-vocab/commit/67b00beda1a05963842de75f72b9968ddca990e3",
+    serves: ["spec-versioning", "vocab-registry"],
+    stakeholders:
+      "Every future deliberation community that inherits these shapes without having sat in this room.",
+    created: "2026-06-15T10:00:00Z",
+    votes: {
+      amara: "r",
+      ben: "r",
+      chidi: "r",
+      dana: "r",
+      efe: "u",
+      farah: "r",
+      gus: "r",
+      hana: "r",
+    },
+  },
+  {
+    slug: "one-notification-profile",
+    author: "dana",
+    title: "One live-notification channel profile",
+    content:
+      "Profile the Solid notifications protocol so every conforming pod server speaks the same live-update channel — apps drop their per-server workarounds.",
+    targets: ["https://solidproject.org/TR/notifications-protocol"],
+    kind: "NewSpec",
+    roles: ["ImplementerRole", "OperatorRole"],
+    breaking: false,
+    serves: ["notification-interop"],
+    created: "2026-06-16T14:30:00Z",
+    votes: { amara: "r", ben: "r", chidi: "u", dana: "r", farah: "r", gus: "r", hana: "u" },
+  },
+  {
+    // A breaking proposal, so the migration-honesty machinery (badge + story)
+    // demos live — and the clusters genuinely divide on it (the e2e split).
+    slug: "e2e-by-default",
+    author: "efe",
+    title: "Require end-to-end encryption by default",
+    content:
+      "Server operators should never be able to read pod contents: make E2E encryption the storage default rather than an extension.",
+    targets: [FUTURES_LINEAGE],
+    kind: "Deprecation",
+    roles: ["ImplementerRole", "OperatorRole", "ParticipantRole"],
+    breaking: true,
+    migration:
+      "A dual-read window: storages advertise both plaintext and encrypted profiles while apps migrate; server-side search degrades to client-side indexes before the plaintext profile is retired.",
+    serves: ["mandatory-e2e-crypto"],
+    created: "2026-06-17T09:45:00Z",
+    votes: { amara: "r", ben: "c", chidi: "r", dana: "c", efe: "r", gus: "c", hana: "r" },
+  },
+];
+
+// One candidate so the room's adoption-decision output stage demos: the room
+// recommends 0.2.0; the Adoption board shows what the wire actually did.
+const INFRA_CANDIDATES: readonly CandidateSpec[] = [
+  {
+    slug: "recommend-020",
+    author: "hana",
+    title: "Recommend futures 0.2.0 for adoption",
+    content:
+      "This room recommends the futures-sector 0.2.0 version for adoption: it is additive, carries running code, and its blast radius is declared. The recommendation is advisory — a version becomes Current only when the network's storages actually advertise it (fedreg:acceptsSpec); watch the Adoption board, not this room, for ratification.",
+    derivedFrom: ["infra:futures-020", "need:spec-versioning"],
+    created: "2026-06-20T11:00:00Z",
+    votes: {
+      amara: "r",
+      ben: "r",
+      chidi: "r",
+      dana: "r",
+      efe: "u",
+      farah: "r",
+      gus: "r",
+      hana: "r",
+    },
+  },
+];
+
+const INFRA_CRITIQUES: readonly CritiqueSpec[] = [
+  {
+    slug: "cr-020-closed-kinds",
+    author: "gus",
+    content:
+      "0.2.0's proposal kinds are a closed set — extending them needs another sector bump. Fine for interop, but the recommendation should say so out loud: communities wanting richer change taxonomies wait on 0.3.0.",
+    on: "recommend-020",
+    created: "2026-06-21T08:30:00Z",
+  },
+];
+
+/** The seeded proposals per scope (apps — S1). */
 export const DEMO_PROPOSALS: Readonly<Record<ScopeId, readonly ProposalSpec[]>> = {
   apps: APPS_PROPOSALS,
   infrastructure: [],
   society: [],
 };
 
-/** The seeded Convergence-Room candidates per scope (S1: apps only). */
-export const DEMO_CANDIDATES: Readonly<Record<ScopeId, readonly CandidateSpec[]>> = {
-  apps: APPS_CANDIDATES,
-  infrastructure: [],
+/** The seeded INFRASTRUCTURE proposals (S2, scope B only — its own spec shape). */
+export const DEMO_INFRA_PROPOSALS: Readonly<Record<ScopeId, readonly InfraProposalSpec[]>> = {
+  apps: [],
+  infrastructure: INFRA_PROPOSALS,
   society: [],
 };
 
-/** The seeded standing critiques per scope (S1: apps only). */
-export const DEMO_CRITIQUES: Readonly<Record<ScopeId, readonly CritiqueSpec[]>> = {
-  apps: APPS_CRITIQUES,
-  infrastructure: [],
+/** The seeded Convergence-Room candidates per scope (S1: apps; S2: infrastructure). */
+export const DEMO_CANDIDATES: Readonly<Record<ScopeId, readonly CandidateSpec[]>> = {
+  apps: APPS_CANDIDATES,
+  infrastructure: INFRA_CANDIDATES,
   society: [],
 };
+
+/** The seeded standing critiques per scope (S1: apps; S2: infrastructure). */
+export const DEMO_CRITIQUES: Readonly<Record<ScopeId, readonly CritiqueSpec[]>> = {
+  apps: APPS_CRITIQUES,
+  infrastructure: INFRA_CRITIQUES,
+  society: [],
+};
+
+// ── The S2 adoption-board seed: sandboxed fedreg:StorageDescription documents
+//    the demo Adoption board reads through the REAL fedreg pipeline. The story
+//    they tell is the honest one: 0.1.0 is advertised by two demo storages
+//    (bar met → computed Current); 0.2.0 — the version the room recommends —
+//    is advertised by NOBODY yet (Proposed: published ≠ adopted; the wire
+//    hasn't voted). ────────────────────────────────────────────────────────────
+
+/** One seeded demo storage advertisement. */
+export interface DemoStorageSpec {
+  /** Resource name under `<DEMO_ORIGIN>/registry/` (becomes the source IRI). */
+  readonly name: string;
+  /** The advertising storage IRI (fedreg:storage / fut:observedParty). */
+  readonly storage: string;
+  /** Spec-version IRIs advertised (fedreg:acceptsSpec). */
+  readonly acceptsSpec: readonly string[];
+  /** Sector IRIs supported (fedreg:supportsSector). */
+  readonly supportsSector?: readonly string[];
+}
+
+export const DEMO_STORAGES: readonly DemoStorageSpec[] = [
+  {
+    name: "storage-alpha",
+    storage: `${DEMO_ORIGIN}/storages/alpha/`,
+    acceptsSpec: [`${FUTURES_LINEAGE}/0.1.0`],
+    supportsSector: [`${FUTURES_LINEAGE}#`],
+  },
+  {
+    name: "storage-beta",
+    storage: `${DEMO_ORIGIN}/storages/beta/`,
+    acceptsSpec: [`${FUTURES_LINEAGE}/0.1.0`],
+    supportsSector: [`${FUTURES_LINEAGE}#`],
+  },
+];
+
+/** The demo Adoption board's observation sources (served by the sandbox fetch). */
+export const DEMO_ADOPTION_SOURCES: readonly string[] = DEMO_STORAGES.map(
+  (s) => `${DEMO_ORIGIN}/registry/${s.name}.ttl`,
+);
 
 // ── The Phase-2 governance seed (docs/PLATFORM-PLAN.md §4) ────────────────────
 

@@ -11,6 +11,7 @@
 // Sandbox guarantee: the served origin is the reserved `demo.unite.example`,
 // and the fetch NEVER touches the network — an out-of-scope URL just 404s.
 
+import { describeStorage } from "@jeswr/federation-registry";
 import { DataFactory, Writer } from "n3";
 import { consentQuads, DEFAULT_CONSENT, ODRL_NS } from "../lib/consent.js";
 import {
@@ -22,6 +23,8 @@ import {
   STANCE_UNSURE,
   type Stance,
 } from "../lib/fut.js";
+import { isProposalKind, isStakeholderRole } from "../lib/fut-draft.js";
+import { buildInfraProposalQuads, type InfraProposal } from "../lib/infra.js";
 import {
   type AppProposal,
   buildCandidateQuads,
@@ -41,15 +44,18 @@ import {
   type CritiqueSpec,
   DEMO_CANDIDATES,
   DEMO_CRITIQUES,
+  DEMO_INFRA_PROPOSALS,
   DEMO_NAMES,
   DEMO_NEEDS,
   DEMO_ORIGIN,
   DEMO_PEOPLE,
   DEMO_PROPOSALS,
+  DEMO_STORAGES,
   DEMO_YOU_KEY,
   demoBase,
   demoDeliberationIri,
   demoWebId,
+  type InfraProposalSpec,
   type NeedSpec,
   type ProposalSpec,
   type VoteCode,
@@ -298,6 +304,59 @@ async function seedProposal(
   return url;
 }
 
+/** Seed one INFRASTRUCTURE proposal (the S2 wizard's write shape) + its votes. */
+async function seedInfraProposal(
+  pods: MemoryPods,
+  scope: ScopeId,
+  spec: InfraProposalSpec,
+  deliberation: string,
+  needUrls: ReadonlyMap<string, string>,
+): Promise<string> {
+  const base = demoBase(spec.author, scope);
+  const url = new URL(`proposals/${spec.slug}.ttl`, base).toString();
+  const serves = spec.serves.map((slug) => {
+    const needUrl = needUrls.get(slug);
+    if (!needUrl) throw new Error(`demo fixture ${spec.slug}: unknown need slug ${slug}`);
+    return needUrl;
+  });
+  const kind = fut(spec.kind);
+  if (!isProposalKind(kind)) {
+    throw new Error(`demo fixture ${spec.slug}: unknown proposal kind ${spec.kind}`);
+  }
+  const roles = spec.roles.map((r) => {
+    const iri = fut(r);
+    if (!isStakeholderRole(iri)) {
+      throw new Error(`demo fixture ${spec.slug}: unknown stakeholder role ${r}`);
+    }
+    return iri;
+  });
+  const proposal: InfraProposal = {
+    id: url,
+    title: spec.title,
+    content: spec.content,
+    targetsSystem: spec.targets,
+    proposalKind: kind,
+    affectsRole: roles,
+    motivatedBy: serves,
+    created: spec.created,
+    creator: demoWebId(spec.author),
+    inDeliberation: deliberation,
+    ...(spec.breaking !== undefined ? { breakingChange: spec.breaking } : {}),
+    ...(spec.migration !== undefined ? { migrationPath: spec.migration } : {}),
+    ...(spec.referenceImplementation !== undefined
+      ? { referenceImplementation: spec.referenceImplementation }
+      : {}),
+    ...(spec.stakeholders !== undefined ? { indirectStakeholders: spec.stakeholders } : {}),
+  };
+  const quads = [
+    ...buildInfraProposalQuads(proposal),
+    ...consentQuads(url, DEFAULT_CONSENT, proposal.creator),
+  ];
+  pods.set(url, await serializeTurtle(quads, { wf: NS.wf, odrl: ODRL_NS }));
+  await seedVotes(pods, scope, spec.slug, url, spec.created, spec.votes, deliberation);
+  return url;
+}
+
 /** Seed one Convergence-Room candidate + its endorsement votes. */
 async function seedCandidate(
   pods: MemoryPods,
@@ -367,6 +426,24 @@ async function buildDemo(scope: ScopeId): Promise<DemoDeliberation> {
   for (const spec of DEMO_PROPOSALS[scope]) {
     const url = await seedProposal(pods, scope, spec, deliberation, needUrls);
     statementUrls.set(`proposal:${spec.slug}`, url);
+  }
+  for (const spec of DEMO_INFRA_PROPOSALS[scope]) {
+    const url = await seedInfraProposal(pods, scope, spec, deliberation, needUrls);
+    statementUrls.set(`infra:${spec.slug}`, url);
+  }
+  // The Adoption-board seed (scope B): sandboxed fedreg:StorageDescription
+  // documents, authored through the REAL typed builder (never hand-built
+  // triples) and read back through the REAL fedreg parse pipeline.
+  if (scope === "infrastructure") {
+    for (const s of DEMO_STORAGES) {
+      const doc = describeStorage({
+        id: `${DEMO_ORIGIN}/registry/${s.name}.ttl`,
+        storage: s.storage,
+        acceptsSpec: s.acceptsSpec,
+        ...(s.supportsSector ? { supportsSector: s.supportsSector } : {}),
+      });
+      pods.set(`${DEMO_ORIGIN}/registry/${s.name}.ttl`, await doc.toString());
+    }
   }
   const candidateUrls = new Map<string, string>();
   for (const spec of DEMO_CANDIDATES[scope]) {

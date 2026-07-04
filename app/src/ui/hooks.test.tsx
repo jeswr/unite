@@ -41,6 +41,7 @@ const fakeResult = (deliberation: string): AggregateResult => ({
   needs: [],
   resonances: [],
   proposals: [],
+  infraProposals: [],
   candidates: [],
   critiques: [],
   synthesizable: new Set<string>(),

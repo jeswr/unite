@@ -473,7 +473,7 @@ implementation = passes the fixtures") true as the surface grows.
 |---|---|---|---|---|
 | **S0 — scope-config seams** (**SHIPPED**) | the §5.3 ScopeConfig extension + view scaffolding switches; pure, exhaustively unit-tested; zero behaviour change for `apps` | — | infrastructural (no §7 phase) | nothing |
 | **S1 — the artifact + convergence spine** (**SHIPPED**) | A's proposal layer (`fut:AppProposal` compose + proposal board) + **Convergence Room v1** (candidate/critique/endorse/dissent/disagreement-map) end-to-end in demo mode; sector 0.2.0 draft authored (the §3.2 + §4.2 additions, one version bump — `vocab/futures-0.2.0-draft.ttl`); build decisions recorded in §6.1 | A completes its loop up to commissioning | **§7 Phase 8** (the §7 table's row; Phases 3/4/6 consume its output) | S0; Phase 2 for real endorsement identity (demo-gated before that) |
-| **S2 — scope B live: propose + see adoption** | `fut:InfraProposal` model + structured compose + spec-lineage strip + **Adoption board** (read-only `fedreg:acceptsSpec` matrix via federation-client/registry); run the sector-0.2.0 change **as the first scope-B deliberation** (B4 executed for real) | **B → live** (propose/resonate/converge; ratification visible) | **= §7 Phase 5**, expanded | S1 |
+| **S2 — scope B live: propose + see adoption** (**SHIPPED**) | `fut:InfraProposal` model + typed round-trip (`lib/infra.ts`) + the §3.3 structured compose wizard + the scope-B proposals board + **Adoption board** (read-only `fedreg:acceptsSpec` matrix via `@jeswr/federation-registry`, computed Current/Superseded/Proposed — `lib/adoption.ts`); the room reused for infra endorsement; the aggregation consent gate extended to infra proposals (fail-closed); the infrastructure demo seeds the sector-0.2.0 change as the self-hosting deliberation (B4 in sandbox form; the LIVE run needs a real pod community). Build decisions in §6.2 | **B → live** (propose/resonate/converge; ratification visible) | **= §7 Phase 5**, expanded | S1 |
 | **S3 — scope B ratification machinery** | role declaration + fail-closed verification; role-cohort lens on Common ground; reviewer/steward endorsement gating; signed `fut:AdoptionDecision`; computed Current status | B fully live | composes **§7 Phase 2** (roles) | S2 + Phase 2 landed |
 | **S4 — scope C live: voice** | expression layer (`VisionStatement`/`Claim`/`ValueStatement` + manual decompose + adopt); Resonance deck with deterministic routing; Futures gallery; T0 pseudonymous compose with tier badges | **C → live** (voice + mapping) | **= §7 Phase 7**, first half | S1 (parallel with S2/S3 — different modules) |
 | **S5 — scope C outputs** | Convergence-room reuse for `SharedFuture` candidates; steward signing UI; mandatory-dissent SHACL enforcement in the client; `ConvergenceMetrics` publication (k-anonymous, tier-stratified); Published-futures renderer (proof-verified, dissent-required) | C fully live | **= §7 Phase 7**, second half | S4 + Phase 2 |
@@ -527,6 +527,53 @@ Design calls made while landing S1, each reviewable and reversible:
    `ROOM_MIN_CLUSTER_SIZE = 2` in `lib/convergence.ts`) until the Phase-5
    community-registry wiring makes them community-configured (raise-only,
    per §4.4 of the platform plan).
+
+### 6.2 Build decisions (S2) — recorded per the proceed-without-greenlight rule
+
+1. **The sector 0.2.0 was formalised AHEAD of the deliberation** (discovered at
+   S2 build time): `solid-federation-vocab` `sectors/futures/futures.ttl` @
+   `67b00be` already carries `owl:versionInfo 0.2.0` with the minted immutable
+   version IRI. S2 therefore grounds every term in the PUBLISHED vocabulary
+   (`vocab/futures-0.2.0-draft.ttl` is marked superseded/historical), and the
+   deliberation's subject shifts honestly from "ratify the draft" to design/04
+   §2's real question — *adoption*: 0.2.0 is published but computed **Proposed**
+   until the wire advertises it. Publication ≠ adoption is now load-bearing UI
+   copy on the Adoption board.
+2. **The structured wizard is one page of numbered §3.3 sections, not a
+   paged stepper.** The structure IS the grammar; single-page keeps every
+   invariant visible and the form state simple. Mounted by Compose AFTER the
+   existing tier gate (same fail-closed floor), with the shared need form one
+   click away in both directions — proposals must trace to needs, so need
+   composing must stay reachable in scope B.
+3. **Infra proposals share the `proposals/` container and the Proposals view
+   spine.** Each scope deliberates in its own base (`…/unite/<scope>/`), so
+   there is no cross-scope collision; readers select by `rdf:type` (an
+   `AppProposal` is never misread as an `InfraProposal` or vice versa — tested
+   both ways). The Proposals tab branches to scope-B cards (kind / target /
+   blast-radius / breaking badges, migration story, running-code link).
+4. **The consent gate extension is aggregation-side, same as S1.** An infra
+   proposal enters `synthesizable` only via its author's inline ODRL
+   `fut:synthesize` permission, evaluated in `readStatements` — so a candidate
+   written straight to a pod cannot derive from a non-consented (or
+   uncollected) infra proposal; it is excluded with a recorded error.
+5. **Adoption sources are the observer's input, not deliberation config.**
+   The board takes `fedreg:StorageDescription` IRIs (https-only, credential-free
+   fetch, byte-capped, fail-isolated per source) view-locally; the demo seeds
+   two sandboxed storages so the instrument demonstrates itself — 0.1.0 bar-met
+   (computed Current), 0.2.0 advertised by nobody (computed Proposed — the
+   honest emptiness §9 requires). `@jeswr/federation-registry` alone suffices
+   for the reads (federation-client's fedapp layer isn't needed for
+   StorageDescriptions); it was already a pinned transitive dep via
+   federation-trust, so the dependency delta is one manifest line.
+6. **"Bar met" names only the observable half.** design/04 §2's bar is ≥2
+   independent implementations AND ≥2 advertising communities; only the
+   advertising half is machine-observable from `fedreg:acceptsSpec`, and the
+   board says so explicitly rather than over-claiming (§9 honesty).
+7. **`status: "live"` for scope B** per this table's S2 row (propose /
+   resonate / converge with ratification visible). What S3 still owes is
+   stated in the config comment and the room/board copy: verified role
+   standing + the role-cohort endorsement lens, reviewer/steward gating, and
+   the SIGNED `fut:AdoptionDecision` artifact (Phase-2-dependent).
 
 ---
 

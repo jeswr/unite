@@ -20,10 +20,44 @@ import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, writeSessionFor } from "../hooks.js";
 import { configReady, type DeliberationConfig, sessionIdentity } from "../state.js";
 import { ConsentPanel } from "./ConsentPanel.js";
+import { InfraProposals } from "./InfraProposals.js";
 import { StanceButtons } from "./StanceButtons.js";
 import { TIER_MEANING } from "./Trust.js";
 
 export function Proposals({
+  scope,
+  config,
+  webId,
+  trust,
+  aggregate,
+}: {
+  scope: ScopeConfig;
+  config: DeliberationConfig;
+  webId: string | null;
+  trust: SessionTrust;
+  aggregate: AggregateState;
+}): React.JSX.Element {
+  // S2: a scope whose proposal artifact is the fut:InfraProposal (scope B)
+  // renders the infra board — same spine, scope-B cards (kind/target/breaking
+  // badges); composing lives in the structured wizard on Compose (§3.3).
+  // Branched BEFORE any hook so the two boards' hook orders never interleave.
+  if (scope.artifactKinds.includes("infra-proposal")) {
+    return (
+      <InfraProposals
+        scope={scope}
+        config={config}
+        webId={webId}
+        trust={trust}
+        aggregate={aggregate}
+      />
+    );
+  }
+  return (
+    <AppProposals scope={scope} config={config} webId={webId} trust={trust} aggregate={aggregate} />
+  );
+}
+
+function AppProposals({
   scope,
   config,
   webId,

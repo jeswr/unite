@@ -319,6 +319,9 @@ export async function serializeResonance(res: Resonance): Promise<string> {
 // ── Guarded typed accessors over an RDF/JS DatasetCore ────────────────────────
 // Reads go through DatasetCore.match() (works on both an n3.Store and any
 // RDF/JS dataset — @jeswr/fetch-rdf hands back a DatasetCore). Never hand-parsed.
+// The readers are EXPORTED for the scope-specific model modules (infra — S2;
+// society — S4) so every foreign-RDF read in the codebase shares this ONE
+// reviewed hostile-input discipline, never a per-module reimplementation.
 
 /** The single object term for (s,p), or undefined unless there is exactly one. */
 function single(ds: DatasetCore, s: Term, p: string): Term | undefined {
@@ -329,7 +332,7 @@ function single(ds: DatasetCore, s: Term, p: string): Term | undefined {
 }
 
 /** A single http(s)-IRI object, else undefined. */
-function readIri(ds: DatasetCore, s: Term, p: string): string | undefined {
+export function readIri(ds: DatasetCore, s: Term, p: string): string | undefined {
   const t = single(ds, s, p);
   if (t?.termType !== "NamedNode") return undefined;
   return isHttpIri(t.value) ? t.value : undefined;
@@ -341,7 +344,7 @@ function readIri(ds: DatasetCore, s: Term, p: string): string | undefined {
  * regardless of dataset iteration order) and capped at `max` — a hostile pod
  * cannot fan a link property out unboundedly.
  */
-function readIris(ds: DatasetCore, s: Term, p: string, max: number = MAX_LINKS): string[] {
+export function readIris(ds: DatasetCore, s: Term, p: string, max: number = MAX_LINKS): string[] {
   const out = new Set<string>();
   for (const q of ds.match(s, namedNode(p), null, null)) {
     if (q.object.termType === "NamedNode" && isHttpIri(q.object.value)) out.add(q.object.value);
@@ -355,7 +358,7 @@ function readIris(ds: DatasetCore, s: Term, p: string, max: number = MAX_LINKS):
  * hostile pod publishing e.g. `as:content "123"^^xsd:integer` is rejected
  * (the field is not textual content).
  */
-function readString(ds: DatasetCore, s: Term, p: string, max: number): string | undefined {
+export function readString(ds: DatasetCore, s: Term, p: string, max: number): string | undefined {
   const t = single(ds, s, p);
   if (t?.termType !== "Literal") return undefined;
   const lit = t as Literal;
@@ -366,7 +369,7 @@ function readString(ds: DatasetCore, s: Term, p: string, max: number): string | 
 }
 
 /** A single xsd:dateTime literal whose value is a real date, else undefined. */
-function readDateTime(ds: DatasetCore, s: Term, p: string): string | undefined {
+export function readDateTime(ds: DatasetCore, s: Term, p: string): string | undefined {
   const t = single(ds, s, p);
   if (t?.termType !== "Literal") return undefined;
   const lit = t as Literal;
@@ -392,8 +395,23 @@ function readIntInRange(
   return n;
 }
 
+/**
+ * A single xsd:boolean literal, else undefined (drops the field). Accepts the
+ * four XSD lexical forms only ("true"/"false"/"1"/"0") — anything else from a
+ * hostile pod drops the field, never coerces.
+ */
+export function readBoolean(ds: DatasetCore, s: Term, p: string): boolean | undefined {
+  const t = single(ds, s, p);
+  if (t?.termType !== "Literal") return undefined;
+  const lit = t as Literal;
+  if (lit.datatype.value !== `${NS.xsd}boolean`) return undefined;
+  if (lit.value === "true" || lit.value === "1") return true;
+  if (lit.value === "false" || lit.value === "0") return false;
+  return undefined;
+}
+
 /** A single coded object IRI accepted by `ok`, else undefined (drops the field). */
-function readCoded<T extends string>(
+export function readCoded<T extends string>(
   ds: DatasetCore,
   s: Term,
   p: string,
@@ -405,7 +423,7 @@ function readCoded<T extends string>(
 }
 
 /** The http(s)-IRI subjects typed as `cls` (blank/relative subjects dropped). */
-function typedSubjects(ds: DatasetCore, cls: string): NamedNode[] {
+export function typedSubjects(ds: DatasetCore, cls: string): NamedNode[] {
   const out: NamedNode[] = [];
   for (const q of ds.match(null, namedNode(RDF_TYPE), namedNode(cls), null)) {
     if (q.subject.termType === "NamedNode" && isHttpIri(q.subject.value)) out.push(q.subject);
@@ -447,8 +465,9 @@ export function parseNeeds(ds: DatasetCore): Need[] {
 
 // ── AppProposal (S1 — the scope-A proposal layer) ─────────────────────────────
 
-/** Shared validation for the common statement fields. Throws on invalid. */
-function assertStatementCore(
+/** Shared validation for the common statement fields. Throws on invalid.
+ * Exported for the scope-specific model modules (infra — S2; society — S4). */
+export function assertStatementCore(
   kind: string,
   fields: { id: string; creator: string; inDeliberation: string; created: string; content: string },
 ): void {

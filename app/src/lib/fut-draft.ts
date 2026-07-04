@@ -1,19 +1,22 @@
 // AUTHORED-BY Claude Fable 5 (PSS agent)
 //
-// The futures-sector 0.2.0 DRAFT terms (docs/SCOPE-DIFFERENTIATION.md §3.2 +
-// §4.2; Turtle draft in vocab/futures-0.2.0-draft.ttl). ADDITIVE and
-// non-breaking over the landed 0.1.0 sector; the sector bump itself lands in
-// solid-federation-vocab through the FIRST scope-B deliberation (§3.1
-// self-hosting — milestone B4 run for real), so nothing here is asserted as
-// a published vocabulary: it is the draft the deliberation will ratify.
+// The futures-sector 0.2.0 terms (docs/SCOPE-DIFFERENTIATION.md §3.2 + §4.2).
+// The S1 draft (vocab/futures-0.2.0-draft.ttl) has since been FORMALISED into
+// the sector-contract home: solid-federation-vocab sectors/futures/futures.ttl
+// @ 67b00be now carries owl:versionInfo 0.2.0 with the immutable version IRI
+// <https://w3id.org/jeswr/sectors/futures/0.2.0> — every term here matches it.
+// Publication ≠ adoption (design/04 §2): 0.2.0 becomes *Current* only on
+// measured fedreg:acceptsSpec advertisement, which is exactly what the first
+// scope-B deliberation (§3.1 self-hosting, milestone B4) deliberates and the
+// S2 Adoption board makes visible.
 //
 // Wiring status:
-//   • WIRED in S1 (ahead of the bump, per the self-hosting plan):
-//     fut:Critique + fut:indirectStakeholders (the Convergence Room's critique
-//     unit and the VSD compose prompt — see the doc's "Build decisions").
-//   • NOT yet wired (S2 flips scope B live; S4 flips scope C):
-//     InfraProposal + its properties, AdoptionDecision/AdoptionObservation,
-//     methodProvenance, decomposedBy.
+//   • WIRED in S1: fut:Critique + fut:indirectStakeholders (the Convergence
+//     Room's critique unit and the VSD compose prompt).
+//   • WIRED in S2 (scope B live): InfraProposal + its properties (lib/infra.ts)
+//     and the AdoptionObservation SHAPE as computed data (lib/adoption.ts —
+//     the signed fut:AdoptionDecision artifact itself is S3).
+//   • NOT yet wired (S4 flips scope C): methodProvenance, decomposedBy.
 //
 // These are IRI constants only — serialisation stays in model.ts (n3.Writer),
 // parsing stays guarded (foreign RDF is hostile input). Nothing here mints

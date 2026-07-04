@@ -13,6 +13,7 @@ import { ContainerDataset } from "@solid/object";
 import { DataFactory } from "n3";
 import { type ConsentPolicy, consentQuads, ODRL_NS } from "./consent.js";
 import { NS } from "./fut.js";
+import { buildInfraProposalQuads, type InfraProposal } from "./infra.js";
 import {
   type AppProposal,
   buildCandidateQuads,
@@ -238,6 +239,32 @@ export async function writeProposal(
   const url = assertWithinBase(base, childUrl(base, PROPOSALS_DIR, slug()));
   const resource: AppProposal = { ...proposal, id: url };
   const quads = buildProposalQuads(resource);
+  if (consent) quads.push(...consentQuads(url, consent, resource.creator));
+  const body = await serializeTurtle(quads, {
+    wf: NS.wf,
+    ...(consent ? { odrl: ODRL_NS } : {}),
+  });
+  const response = await putTurtle(fetchFn, url, body);
+  return { url, resource, response };
+}
+
+/**
+ * Write an {@link InfraProposal} to the participant's own pod at
+ * `<base>proposals/<slug>.ttl` (S2 — the scope-B proposal layer; same
+ * container as scope A's proposals — each scope deliberates in its own base,
+ * and readers select by rdf:type). Same fail-closed discipline as
+ * {@link writeNeed}; an expression-layer resource, so it MAY carry an inline
+ * ODRL consent policy.
+ */
+export async function writeInfraProposal(
+  fetchFn: typeof fetch,
+  base: string,
+  proposal: Omit<InfraProposal, "id">,
+  consent?: ConsentPolicy,
+): Promise<WriteResult<InfraProposal>> {
+  const url = assertWithinBase(base, childUrl(base, PROPOSALS_DIR, slug()));
+  const resource: InfraProposal = { ...proposal, id: url };
+  const quads = buildInfraProposalQuads(resource);
   if (consent) quads.push(...consentQuads(url, consent, resource.creator));
   const body = await serializeTurtle(quads, {
     wf: NS.wf,
