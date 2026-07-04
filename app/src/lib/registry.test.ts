@@ -4,7 +4,7 @@
 // misconfiguration is a bug, not a silently-dropped participant).
 
 import { describe, expect, it } from "vitest";
-import { StaticRegistry } from "./registry.js";
+import { isValidBase, StaticRegistry } from "./registry.js";
 
 const DELIB = "https://community.example/d1";
 const OK = { webId: "https://alice.example/#me", base: "https://alice.example/u/d1/" };
@@ -41,5 +41,48 @@ describe("StaticRegistry", () => {
 
   it("rejects a non-http(s) deliberation IRI", () => {
     expect(() => new StaticRegistry("urn:x", [OK])).toThrow();
+  });
+});
+
+// Regression (missed sibling of the pod.ts 7c0af10 fix): `isValidBase` must
+// validate the PARSED `pathname`, not the raw `base` string — a raw-string
+// `base.endsWith("/")` check is fooled by a slashless path whose query/fragment
+// happens to end in "/". `isValidBase` gates which containers get
+// HEAD-polled / WebSocket-watched (hooks.ts -> notifications.ts) for a
+// participant base supplied via the user-editable Join form, so a malformed
+// slashless base must not be accepted as a valid container.
+describe("isValidBase", () => {
+  it("rejects a slashless-path base whose query ends in '/'", () => {
+    expect(isValidBase("https://x/mal?q=/")).toBe(false);
+  });
+
+  it("rejects a slashless-path base whose fragment ends in '/'", () => {
+    expect(isValidBase("https://x/mal#/")).toBe(false);
+  });
+
+  it("accepts a real container base", () => {
+    expect(isValidBase("https://x/mal/")).toBe(true);
+  });
+
+  it("rejects a non-https base", () => {
+    expect(isValidBase("http://x/mal/")).toBe(false);
+  });
+
+  it("rejects an unparseable base", () => {
+    expect(isValidBase("not a url")).toBe(false);
+  });
+});
+
+describe("StaticRegistry — rejects the smuggled-base attack surface", () => {
+  it("rejects a participant base with a slashless path smuggled via a query string", () => {
+    expect(
+      () => new StaticRegistry(DELIB, [{ webId: OK.webId, base: "https://alice.example/mal?x=/" }]),
+    ).toThrow(/invalid participant base/);
+  });
+
+  it("rejects a participant base with a slashless path smuggled via a fragment", () => {
+    expect(
+      () => new StaticRegistry(DELIB, [{ webId: OK.webId, base: "https://alice.example/mal#/" }]),
+    ).toThrow(/invalid participant base/);
   });
 });
