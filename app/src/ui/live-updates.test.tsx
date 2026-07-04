@@ -22,6 +22,7 @@ import { deliberationContainers, useLiveUpdates } from "./hooks.js";
 import type { DeliberationConfig } from "./state.js";
 
 const config: DeliberationConfig = {
+  mode: "pod",
   deliberation: "https://community.example/d",
   ownBase: "https://alice.example/unite/d/",
   participants: [
@@ -44,6 +45,10 @@ describe("deliberationContainers", () => {
     expect(
       deliberationContainers({ ...config, participants: [{ webId: "https://x/#me", base: "" }] }),
     ).toEqual([]);
+  });
+
+  it("watches nothing in demo mode (in-memory pods — no network polling)", () => {
+    expect(deliberationContainers({ ...config, mode: "demo" })).toEqual([]);
   });
 
   it("filters out invalid participants (non-https base / webId / no trailing slash)", () => {

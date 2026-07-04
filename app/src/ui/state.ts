@@ -2,19 +2,39 @@
 //
 // UI-side deliberation configuration + the seam constructors. Kept out of the
 // views so the views stay thin over src/lib.
+//
+// Two modes:
+//   • "demo" — the seeded in-memory deliberation (src/demo): populated on first
+//     paint, writable, sandboxed to the reserved demo origin. The DEFAULT, so
+//     the product demonstrates itself before anyone signs in.
+//   • "pod"  — a real deliberation over live participant pods; requires the
+//     user to configure the deliberation IRI, their own container, and the
+//     participant registry (until the fedreg registry wiring lands).
 
+import {
+  DEMO_PEOPLE,
+  DEMO_YOU_KEY,
+  demoBase,
+  demoDeliberationIri,
+  demoWebId,
+} from "../demo/fixtures.js";
 import { type MembershipVerifier, StubMembershipVerifier } from "../lib/membership.js";
-import { type DeliberationRegistry, StaticRegistry } from "../lib/registry.js";
-import type { ScopeConfig } from "../scope/scopes.js";
+import { isHttpIri } from "../lib/model.js";
+import { type DeliberationRegistry, isValidParticipant, StaticRegistry } from "../lib/registry.js";
+import type { ScopeConfig, ScopeId } from "../scope/scopes.js";
 
-/** A participant row as edited in the Join form. */
+/** A participant row as edited in the Overview form. */
 export interface ParticipantConfig {
   readonly webId: string;
   readonly base: string;
 }
 
-/** The Stage-1 deliberation the client is joined to (dev/local config). */
+/** How the deliberation is backed. */
+export type ConfigMode = "demo" | "pod";
+
+/** The deliberation the client is joined to. */
 export interface DeliberationConfig {
+  readonly mode: ConfigMode;
   /** The deliberation IRI. */
   readonly deliberation: string;
   /** The signed-in participant's OWN unite container for this deliberation. */
@@ -23,28 +43,51 @@ export interface DeliberationConfig {
   readonly participants: readonly ParticipantConfig[];
 }
 
-/** A sensible local-dev default (points at a local Solid server). */
-export const DEFAULT_CONFIG: DeliberationConfig = {
-  deliberation: "https://community.example/deliberations/apps",
-  ownBase: "https://alice.example/unite/apps/",
-  participants: [
-    { webId: "https://alice.example/profile/card#me", base: "https://alice.example/unite/apps/" },
-  ],
-};
+/** The seeded demo deliberation for a scope (the default on load). */
+export function demoConfig(scopeId: ScopeId): DeliberationConfig {
+  return {
+    mode: "demo",
+    deliberation: demoDeliberationIri(scopeId),
+    ownBase: demoBase("you", scopeId),
+    participants: DEMO_PEOPLE.map((p) => ({
+      webId: demoWebId(p.key),
+      base: demoBase(p.key, scopeId),
+    })),
+  };
+}
+
+/** An empty pod-mode config — the Overview view guides the user to fill it. */
+export function podConfig(): DeliberationConfig {
+  return { mode: "pod", deliberation: "", ownBase: "", participants: [] };
+}
 
 /**
  * The scope-mode default deliberation (docs/PLATFORM-PLAN.md §2): each scope
- * deliberates in its OWN default community + pod container, so opening
- * `?scope=society` never reads/writes the apps deliberation. Same dev/local
- * placeholders as {@link DEFAULT_CONFIG}, segmented by scope id.
+ * opens its OWN seeded demo deliberation, so `?scope=society` never reads or
+ * writes the apps deliberation.
  */
 export function scopedDefaultConfig(scope: ScopeConfig): DeliberationConfig {
-  const base = `https://alice.example/unite/${scope.id}/`;
-  return {
-    deliberation: `https://community.example/deliberations/${scope.id}`,
-    ownBase: base,
-    participants: [{ webId: "https://alice.example/profile/card#me", base }],
-  };
+  return demoConfig(scope.id);
+}
+
+/**
+ * The identity statements are AUTHORED as under this config: the demo "you" in
+ * demo mode; the signed-in WebID (or null — not signed in) in pod mode.
+ */
+export function sessionIdentity(config: DeliberationConfig, webId: string | null): string | null {
+  return config.mode === "demo" ? demoWebId(DEMO_YOU_KEY) : webId;
+}
+
+/**
+ * True when the config is complete enough to aggregate: a demo config always
+ * is; a pod config needs a valid deliberation IRI and ≥1 valid participant.
+ * Fail-closed — a half-filled pod form never fires requests.
+ */
+export function configReady(config: DeliberationConfig): boolean {
+  if (config.mode === "demo") return true;
+  if (!isHttpIri(config.deliberation)) return false;
+  if (config.participants.length === 0) return false;
+  return config.participants.every((p) => isValidParticipant(p));
 }
 
 /**
@@ -56,7 +99,7 @@ export function buildRegistry(config: DeliberationConfig): DeliberationRegistry 
 }
 
 /**
- * Build the Stage-1 membership verifier: the dev stub vouches every configured
+ * Build the membership verifier: the allowlist stub vouches every configured
  * participant WebID (tier T1), fail-closed for anyone else. Production swaps in
  * a @jeswr/federation-trust credential verifier (see decisions/0001).
  */
