@@ -1,7 +1,8 @@
 // AUTHORED-BY Claude Fable 5 (PSS agent)
 //
 // Seeds the demo community's TRUST layer with REAL cryptography: fresh
-// in-memory Ed25519 steward keypairs become the community's trust anchors, and
+// in-memory P-256 steward keypairs (ecdsa-rdfc-2019 — see the WebCrypto
+// support note at the keygen below) become the community's trust anchors, and
 // genuine federation-trust Verifiable Credentials (Data Integrity over
 // RDFC-1.0) are issued and WRITTEN THROUGH THE SANDBOX FETCH into each
 // holder's demo pod — so resolution reads them back through the production

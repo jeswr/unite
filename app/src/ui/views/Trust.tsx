@@ -80,7 +80,12 @@ export function Trust({
     readonly machinery: DeliberationTrust;
     readonly roll: ReadonlyMap<string, TrustProfile>;
   } | null>(null);
-  const [rollError, setRollError] = useState<string | null>(null);
+  // The load error is keyed too — a previous config's failure must not show
+  // under the new config, even for one render.
+  const [loadError, setLoadError] = useState<{
+    readonly key: string;
+    readonly message: string;
+  } | null>(null);
 
   const [subject, setSubject] = useState("");
   const [role, setRole] = useState<Role>("builder");
@@ -103,7 +108,7 @@ export function Trust({
     const k = deliberationKey(cfg);
     reqId.current += 1;
     const id = reqId.current;
-    setRollError(null);
+    setLoadError(null);
     try {
       const m = await deliberationTrust(cfg);
       const entries = await Promise.all(
@@ -116,7 +121,7 @@ export function Trust({
     } catch (e) {
       if (id !== reqId.current) return;
       setResolved(null);
-      setRollError(e instanceof Error ? e.message : String(e));
+      setLoadError({ key: k, message: e instanceof Error ? e.message : String(e) });
     }
   }, [key]);
 
@@ -139,6 +144,7 @@ export function Trust({
   const current = resolved !== null && resolved.key === key ? resolved : null;
   const roll = current?.roll ?? null;
   const issuance = current?.machinery.issuance ?? null;
+  const rollError = loadError !== null && loadError.key === key ? loadError.message : null;
   const stewardNames = roll
     ? [...roll.entries()].filter(([, p]) => hasRole(p, "steward")).map(([w]) => displayName(w))
     : [];
@@ -233,8 +239,8 @@ export function Trust({
           community's trust anchors (its stewards' published keys) — signature, expiry, status and
           scope all checked, every failure a quiet denial.
         </p>
-        {rollError && <p className="notice error">{rollError}</p>}
-        {!roll && !rollError && <p className="muted">Verifying credentials…</p>}
+        {rollError !== null && <p className="notice error">{rollError}</p>}
+        {!roll && rollError === null && <p className="muted">Verifying credentials…</p>}
         {roll && (
           <ul className="participant-list">
             {config.participants.map((p) => {

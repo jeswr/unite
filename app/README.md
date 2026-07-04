@@ -29,10 +29,11 @@ deliberation"** (Overview) points the identical machinery at real participant
 pods, fail-closed until the deliberation IRI + participants validate.
 
 The demo also seeds the **governance layer** (`src/demo/trust.ts`) with real
-cryptography: fresh in-memory Ed25519 steward keys become the community's trust
-anchors, and genuine `@jeswr/federation-trust` Verifiable Credentials (Data
-Integrity over RDFC-1.0) are written into the holders' demo pods and verified
-back through the production pipeline. The personas deliberately span the tiers
+cryptography: fresh in-memory P-256 steward keys (universally-supported
+WebCrypto) become the community's trust anchors, and genuine
+`@jeswr/federation-trust` Verifiable Credentials (Data Integrity over
+RDFC-1.0) are written into the holders' demo pods and verified back through
+the production pipeline. The personas deliberately span the tiers
 so every trust path demos live — in **apps** you hold a steward role (try
 issuing a credential on the Trust view); in **infrastructure** you are an
 unvouched visitor and see the locked Compose state for real; in **society**
