@@ -71,9 +71,13 @@ describe("AdoptionBoard (the ratification instrument)", () => {
         <AdoptionBoard scope={SCOPES.infrastructure} config={podConfig(SCOPES.infrastructure)} />
       </AuthProvider>,
     );
-    // The demo source list is gone in the SAME render cycle, the stale demo
-    // snapshot is dropped, and the empty pod-mode matrix renders honestly.
+    // IMMEDIATELY after the rerender — before any effect/refresh runs — the
+    // demo source list AND the demo snapshot are gone (both derived at render,
+    // keyed to the config): a demo observation never appears under a pod
+    // config, not even for one frame.
     expect((screen.getByPlaceholderText(/fedreg.ttl/) as HTMLTextAreaElement).value).toBe("");
+    expect(screen.queryByRole("link", { name: "re-check" })).toBeNull();
+    expect(screen.getByText("Nobody advertises this lineage yet")).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByText("Nobody advertises this lineage yet")).toBeTruthy();
     });
