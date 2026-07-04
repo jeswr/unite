@@ -85,6 +85,25 @@ describe("assertWithinBase", () => {
       /base must be a container ending in/,
     );
   });
+
+  // Regression (roborev finding, security/podscope-consolidation): assertWithinBase
+  // is exclusively a WRITE-TARGET guard, so it must pass `allowRoot: false` to
+  // assertWithinPodScope. With `allowRoot: true` a TARGET equal to the base minus
+  // its trailing slash (e.g. `${BASE}` without the trailing "/") is treated by
+  // guarded-fetch as "the pod root" and accepted — silently widening the pod
+  // boundary vs. the pre-consolidation guard, which required the target's pathname
+  // to literally start with the base's (a shorter, slashless target never can).
+  it("rejects the slashless base-form as a write target (regression: allowRoot must be false)", () => {
+    const slashlessBase = BASE.slice(0, -1);
+    expect(() => assertWithinBase(BASE, slashlessBase)).toThrow();
+  });
+
+  // The exact base (WITH its trailing slash) must also be refused as a write
+  // target — writeNeed/writeResonance only ever target `<base><dir>/<slug>.ttl`,
+  // never the container document itself.
+  it("rejects the exact base itself as a write target", () => {
+    expect(() => assertWithinBase(BASE, BASE)).toThrow();
+  });
 });
 
 describe("writeNeed / writeResonance", () => {

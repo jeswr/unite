@@ -77,8 +77,8 @@ export async function readBodyCapped(res: Response, maxBytes: number): Promise<s
  * Fail-closed scope guard. Delegates the generic same-origin / path-prefix /
  * traversal (raw + `%2e`-encoded) / scheme-relative / credential / encoded-delimiter
  * checks to the suite's ONE reviewed pod-scope primitive
- * ({@link assertWithinPodScope}), and layers unite's TWO extra protections on top,
- * which that primitive deliberately does NOT enforce:
+ * ({@link assertWithinPodScope}), and layers unite's protections on top, which that
+ * primitive deliberately does NOT enforce (or only enforces when asked):
  *
  *   1. **https-only.** `assertWithinPodScope` accepts either `http:` or `https:` as
  *      long as base+target share an origin. unite requires https specifically, so we
@@ -91,6 +91,14 @@ export async function readBodyCapped(res: Response, maxBytes: number): Promise<s
  *      SILENTLY append a trailing slash to a slashless base; unite's public contract
  *      instead FAILS LOUD on a malformed (slashless) base so a caller mistake surfaces
  *      rather than being papered over.
+ *   3. **`allowRoot: false` — this is exclusively a WRITE-TARGET guard.** Both
+ *      production callers ({@link writeNeed}, {@link writeResonance}) mint documents
+ *      STRICTLY UNDER `base` (`<base><dir>/<slug>.ttl`), never the container document
+ *      itself, so the base itself (with OR without its trailing slash) must never be
+ *      accepted as a target — accepting the slashless form widened the boundary vs.
+ *      the pre-consolidation guard (`t.pathname.startsWith(b.pathname)`, which a
+ *      shorter slashless target can never satisfy). `allowRoot: true` here would
+ *      re-open exactly that regression.
  *
  * Returns the CANONICAL (WHATWG-normalised) resolved URL — callers MUST use this
  * return value as the request target, not the raw `target`, so the URL that was
@@ -109,7 +117,7 @@ export function assertWithinBase(base: string, target: string): string {
   if (b.protocol !== "https:") {
     throw new Error(`assertWithinBase: base must be https: ${base}`);
   }
-  const scoped = assertWithinPodScope(base, target, { allowRoot: true });
+  const scoped = assertWithinPodScope(base, target, { allowRoot: false });
   // Provably redundant once `base` is confirmed https (same-origin transitively
   // guarantees a scheme match, since origin includes the scheme) — kept for a
   // clearer error message / defence in depth.
