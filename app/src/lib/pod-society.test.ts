@@ -8,8 +8,15 @@
 // the adoption invariant makes an unadopted claim unwritable.
 
 import { describe, expect, it, vi } from "vitest";
+import type { Critique, SynthesisCandidate } from "./model.js";
 import type { Claim, ValueStatement, VisionStatement } from "./model-society.js";
-import { writeClaim, writeValueStatement, writeVision } from "./pod-society.js";
+import {
+  writeClaim,
+  writeSocietyCandidate,
+  writeSocietyCritique,
+  writeValueStatement,
+  writeVision,
+} from "./pod-society.js";
 import { SensitiveDomainError } from "./sensitive.js";
 
 const BASE = "https://alice.example/unite/soc/";
@@ -146,5 +153,94 @@ describe("writeVision / writeClaim / writeValueStatement", () => {
     await expect(
       writeVision(fetchSpy as unknown as typeof fetch, BASE, visionBody),
     ).rejects.toThrow(/412/);
+  });
+});
+
+// ── The C4 gate at the Room's write boundary (scope C) ───────────────────────
+
+const candidateBody: Omit<SynthesisCandidate, "id"> = {
+  title: "The spine",
+  content: "One text carrying both groups.",
+  derivedFrom: ["https://a.example/needs/a.ttl"],
+  created: "2026-07-01T00:00:00.000Z",
+  creator: WEBID,
+  inDeliberation: DELIB,
+};
+const critiqueBody: Omit<Critique, "id"> = {
+  content: "This candidate underweights rural voices.",
+  onStatement: "https://h.example/syntheses/s1.ttl",
+  created: "2026-07-01T00:00:00.000Z",
+  creator: WEBID,
+  inDeliberation: DELIB,
+};
+
+describe("writeSocietyCandidate / writeSocietyCritique (the Room's C4 write boundary)", () => {
+  it("REFUSES sensitive candidate content before any request", async () => {
+    const fetchSpy = spy201();
+    await expect(
+      writeSocietyCandidate(fetchSpy as unknown as typeof fetch, BASE, {
+        ...candidateBody,
+        content: "Since my diagnosis this synthesis must cover clinic access.",
+      }),
+    ).rejects.toThrowError(SensitiveDomainError);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("REFUSES a sensitive candidate TITLE too (the screen covers title + content)", async () => {
+    const fetchSpy = spy201();
+    await expect(
+      writeSocietyCandidate(fetchSpy as unknown as typeof fetch, BASE, {
+        ...candidateBody,
+        title: "my medication schedule",
+      }),
+    ).rejects.toThrowError(SensitiveDomainError);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("REFUSES sensitive critique text (dissent may publish verbatim under quoteVerbatim)", async () => {
+    const fetchSpy = spy201();
+    await expect(
+      writeSocietyCritique(fetchSpy as unknown as typeof fetch, BASE, {
+        ...critiqueBody,
+        content: "Since my diagnosis this candidate ignores people like me.",
+      }),
+    ).rejects.toThrowError(SensitiveDomainError);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("delegates CLEAN writes to the shared Room primitives (create-only PUT)", async () => {
+    const candSpy = spy201();
+    const { url: candUrl } = await writeSocietyCandidate(
+      candSpy as unknown as typeof fetch,
+      BASE,
+      candidateBody,
+    );
+    expect(candUrl.startsWith(`${BASE}syntheses/`)).toBe(true);
+    const [, candInit] = candSpy.mock.calls[0] as unknown as [string, RequestInit];
+    expect((candInit.headers as Record<string, string>)["if-none-match"]).toBe("*");
+
+    const critSpy = spy201();
+    const { url: critUrl } = await writeSocietyCritique(
+      critSpy as unknown as typeof fetch,
+      BASE,
+      critiqueBody,
+    );
+    expect(critUrl.startsWith(`${BASE}critiques/`)).toBe(true);
+    const [, critInit] = critSpy.mock.calls[0] as unknown as [string, RequestInit];
+    expect((critInit.headers as Record<string, string>)["if-none-match"]).toBe("*");
+  });
+
+  it("a society critique MAY carry its inline ODRL consent policy through", async () => {
+    const fetchSpy = spy201();
+    const { url } = await writeSocietyCritique(
+      fetchSpy as unknown as typeof fetch,
+      BASE,
+      critiqueBody,
+      CONSENT,
+    );
+    const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+    const body = init.body as string;
+    expect(body).toContain(`${url}#consent`);
+    expect(body).toContain("odrl");
   });
 });

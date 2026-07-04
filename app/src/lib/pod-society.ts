@@ -20,7 +20,7 @@
 
 import { type ConsentPolicy, consentQuads, ODRL_NS } from "./consent.js";
 import { NS } from "./fut.js";
-import { serializeTurtle } from "./model.js";
+import { type Critique, type SynthesisCandidate, serializeTurtle } from "./model.js";
 import {
   buildClaimQuads,
   buildValueQuads,
@@ -29,7 +29,15 @@ import {
   type ValueStatement,
   type VisionStatement,
 } from "./model-society.js";
-import { assertWithinBase, childUrl, putTurtle, slug, type WriteResult } from "./pod.js";
+import {
+  assertWithinBase,
+  childUrl,
+  putTurtle,
+  slug,
+  type WriteResult,
+  writeCandidate,
+  writeCritique,
+} from "./pod.js";
 import { assertNotSensitive } from "./sensitive.js";
 
 /** The subdirectory each scope-C statement type is written under. */
@@ -81,6 +89,38 @@ export async function writeClaim(
   });
   const response = await putTurtle(fetchFn, url, body);
   return { url, resource, response };
+}
+
+/**
+ * Write a Convergence-Room candidate IN THE SOCIETY SCOPE: the C4 screen runs
+ * at THIS write boundary (title + content) before delegating to the shared
+ * {@link writeCandidate} — a non-UI caller cannot write sensitive society Room
+ * text past the gate. Scope A/B rooms keep calling writeCandidate directly
+ * (the C4 gate is scope C's launch constraint, not platform moderation).
+ */
+export async function writeSocietyCandidate(
+  fetchFn: typeof fetch,
+  base: string,
+  candidate: Omit<SynthesisCandidate, "id">,
+): Promise<WriteResult<SynthesisCandidate>> {
+  assertNotSensitive(`${candidate.title ?? ""}\n${candidate.content}`);
+  return writeCandidate(fetchFn, base, candidate);
+}
+
+/**
+ * Write a Convergence-Room critique IN THE SOCIETY SCOPE: C4-screened at the
+ * write boundary (dissent-annex material may publish verbatim under
+ * quoteVerbatim, so it must not carry personal disclosure), then delegates to
+ * the shared {@link writeCritique}.
+ */
+export async function writeSocietyCritique(
+  fetchFn: typeof fetch,
+  base: string,
+  critique: Omit<Critique, "id">,
+  consent?: ConsentPolicy,
+): Promise<WriteResult<Critique>> {
+  assertNotSensitive(critique.content);
+  return writeCritique(fetchFn, base, critique, consent);
 }
 
 /**

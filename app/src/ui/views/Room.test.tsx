@@ -370,6 +370,29 @@ describe("the C4 gate in the Room (scope C only)", () => {
     expect(screen.getByText(/This looks like personal health information/)).toBeTruthy();
   });
 
+  it("the SOCIETY room lets a CLEAN critique through its screened write boundary", async () => {
+    render(
+      <AuthProvider controller={new DevLoginController()}>
+        <Room
+          scope={SCOPES.society}
+          config={demoConfig("society")}
+          webId={null}
+          trust={asTrust({ tier: 0, roles: [] })}
+          aggregate={asAggregate(resultWith([]))}
+        />
+      </AuthProvider>,
+    );
+    const box = screen.getByPlaceholderText(/What does this synthesis miss/) as HTMLTextAreaElement;
+    fireEvent.change(box, {
+      target: { value: "This candidate underweights rural voices." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Stand this critique" }));
+    // The write is routed through the C4-screened chokepoint
+    // (writeSocietyCritique) and succeeds — the form clears, no refusal shown.
+    await waitFor(() => expect(box.value).toBe(""));
+    expect(screen.queryByText(/This looks like personal health information/)).toBeNull();
+  });
+
   it("the APPS room does NOT screen critiques (the gate is a society launch constraint)", async () => {
     renderRoom(asTrust({ tier: 1, roles: [] }), resultWith([]));
     const box = screen.getByPlaceholderText(/What does this synthesis miss/) as HTMLTextAreaElement;

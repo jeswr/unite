@@ -238,4 +238,117 @@ describe("NarrativeCompose (the §4.3 wizard)", () => {
     const need = result.needs.find((n) => n.content === "Getting home safely at night.");
     expect(need?.needConcept).toBe("https://w3id.org/jeswr/sectors/futures#maxneef-protection");
   });
+
+  // Regression (roborev 8cf6ef5 Medium): assistant-provided atom METADATA is
+  // untrusted — a malformed decomposedBy/concept IRI used to pass draft +
+  // adoption and only throw inside the atom serialisers, AFTER writeVision had
+  // already succeeded: a partial submission that duplicated the vision on
+  // retry. Submit must refuse it UP FRONT, before ANY write (all-or-nothing).
+  function renderWithAssistant(assistant: {
+    decompose: () => Promise<{
+      atoms: {
+        kind: "claim" | "need" | "value";
+        content: string;
+        needConcept?: string;
+        valueConcept?: string;
+      }[];
+      provenance?: { tool: string; plan: string; activity?: string };
+    }>;
+  }) {
+    return render(
+      <AuthProvider controller={new DevLoginController()}>
+        <NarrativeCompose
+          scope={SCOPES.society}
+          config={demoConfig("society")}
+          webId={null}
+          trust={asTrust({ tier: 0, roles: [] })}
+          assistant={assistant}
+        />
+      </AuthProvider>,
+    );
+  }
+
+  async function adoptAssistedAtomsAndSubmit(narrative: string, atomCount: number): Promise<void> {
+    fireEvent.change(narrativeBox(), { target: { value: narrative } });
+    next(/Next: split it/);
+    fireEvent.click(screen.getByRole("button", { name: "Suggest a split" }));
+    await waitFor(() => {
+      expect(screen.getByText(/The assistant proposed/)).toBeTruthy();
+    });
+    next(/Next: adopt each/);
+    for (const box of screen.getAllByRole("checkbox", { name: /Adopt this/ })) {
+      fireEvent.click(box);
+    }
+    next(/Next: voice & consent/);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: new RegExp(`Share this vision statement \\+ ${atomCount} atom`),
+      }),
+    );
+  }
+
+  it("REFUSES a malformed assistant activity IRI BEFORE any write — no partial submission", async () => {
+    const NARRATIVE = "A future where the malformed-activity vision never lands.";
+    renderWithAssistant({
+      decompose: () =>
+        Promise.resolve({
+          atoms: [{ kind: "claim" as const, content: "Later buses on weekends." }],
+          provenance: { tool: "example-model", plan: "prompt-v1", activity: "not-an-iri" },
+        }),
+    });
+    await adoptAssistedAtomsAndSubmit(NARRATIVE, 1);
+    await waitFor(() => {
+      expect(screen.getByText(/malformed decomposition-provenance IRI/)).toBeTruthy();
+    });
+    // The vision was NOT written — the refusal fired before the first write,
+    // so a retry cannot duplicate anything.
+    const result = await aggregateSociety();
+    expect(result.visions.some((v) => v.content === NARRATIVE)).toBe(false);
+    expect(result.claims.some((c) => c.content === "Later buses on weekends.")).toBe(false);
+  });
+
+  it("REFUSES a malformed assistant concept IRI BEFORE any write (need)", async () => {
+    const NARRATIVE = "A future where the malformed-concept vision never lands.";
+    renderWithAssistant({
+      decompose: () =>
+        Promise.resolve({
+          atoms: [
+            {
+              kind: "need" as const,
+              content: "Getting home safely at night.",
+              needConcept: "javascript:alert(1)",
+            },
+          ],
+        }),
+    });
+    await adoptAssistedAtomsAndSubmit(NARRATIVE, 1);
+    await waitFor(() => {
+      expect(screen.getByText(/An adopted need's concept is not a valid IRI/)).toBeTruthy();
+    });
+    const result = await aggregateSociety();
+    expect(result.visions.some((v) => v.content === NARRATIVE)).toBe(false);
+    expect(result.needs.some((n) => n.content === "Getting home safely at night.")).toBe(false);
+  });
+
+  it("REFUSES a malformed assistant concept IRI BEFORE any write (value)", async () => {
+    const NARRATIVE = "A future where the malformed-value vision never lands.";
+    renderWithAssistant({
+      decompose: () =>
+        Promise.resolve({
+          atoms: [
+            {
+              kind: "value" as const,
+              content: "Streets belong to people first.",
+              valueConcept: "ftp://scheme.example/not-http",
+            },
+          ],
+        }),
+    });
+    await adoptAssistedAtomsAndSubmit(NARRATIVE, 1);
+    await waitFor(() => {
+      expect(screen.getByText(/An adopted value's concept is not a valid IRI/)).toBeTruthy();
+    });
+    const result = await aggregateSociety();
+    expect(result.visions.some((v) => v.content === NARRATIVE)).toBe(false);
+  });
 });

@@ -16,6 +16,7 @@ import { STANCE_CONFLICTS, STANCE_RESONATES, STANCE_UNSURE } from "../../lib/fut
 import type { Critique, SynthesisCandidate } from "../../lib/model.js";
 import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH } from "../../lib/model.js";
 import { writeCandidate, writeCritique } from "../../lib/pod.js";
+import { writeSocietyCandidate, writeSocietyCritique } from "../../lib/pod-society.js";
 import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
@@ -94,6 +95,13 @@ export function Room({
   const identity = sessionIdentity(config, webId);
   const floor = config.participationFloor;
   const mayParticipate = floor === 0 || (trust.profile !== null && meetsTier(trust.profile, floor));
+
+  // Scope C routes Room writes through the C4-screened chokepoints
+  // (lib/pod-society.ts) — the write BOUNDARY enforces the gate, the UI
+  // pre-checks below only make the refusal friendly. A/B rooms are untouched.
+  const societyRoom = scope.outputKind === "advisory-synthesis";
+  const writeRoomCandidate = societyRoom ? writeSocietyCandidate : writeCandidate;
+  const writeRoomCritique = societyRoom ? writeSocietyCritique : writeCritique;
 
   const candidates = useMemo(() => orderCandidates(result?.candidates ?? []), [result]);
   // The active candidate: the selected one if it still exists, else the newest.
@@ -236,7 +244,7 @@ export function Room({
         ...(draftTitle.trim() ? { title: draftTitle.trim() } : {}),
         ...(draftRevises && active ? { revisionOf: active.id } : {}),
       };
-      const { url } = await writeCandidate(session.fetch, session.ownBase, body);
+      const { url } = await writeRoomCandidate(session.fetch, session.ownBase, body);
       setDraftTitle("");
       setDraftContent("");
       setDraftInputs([]);
@@ -289,7 +297,7 @@ export function Room({
         creator: identity,
         inDeliberation: config.deliberation,
       };
-      await writeCritique(session.fetch, session.ownBase, body);
+      await writeRoomCritique(session.fetch, session.ownBase, body);
       setCritique("");
       try {
         await refresh();

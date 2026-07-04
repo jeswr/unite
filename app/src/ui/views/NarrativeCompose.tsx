@@ -24,7 +24,7 @@ import {
 } from "../../lib/decompose.js";
 import { MAXNEEF_CONCEPTS } from "../../lib/fut.js";
 import { MAX_CLAIM_LENGTH, SCHWARTZ_CONCEPTS, VISION_SCOPES } from "../../lib/fut-society.js";
-import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH, type Need } from "../../lib/model.js";
+import { isHttpIri, MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH, type Need } from "../../lib/model.js";
 import type { Claim, ValueStatement, VisionStatement } from "../../lib/model-society.js";
 import { writeNeed } from "../../lib/pod.js";
 import { writeClaim, writeValueStatement, writeVision } from "../../lib/pod-society.js";
@@ -214,6 +214,30 @@ export function NarrativeCompose({
       }
       if (a.kind === "claim" && a.content.trim().length > MAX_CLAIM_LENGTH) {
         setError(`A claim must stay atomic — ≤ ${MAX_CLAIM_LENGTH} characters (split it further).`);
+        return;
+      }
+      // Assistant-provided METADATA is untrusted input: a malformed concept
+      // or provenance IRI must refuse the submit HERE, before ANY write. The
+      // atom serialisers would only throw AFTER writeVision already
+      // succeeded — a partial submission that duplicates the vision on
+      // retry. The multi-write submit is all-or-nothing from validation on.
+      if (a.decomposedBy !== undefined && !isHttpIri(a.decomposedBy)) {
+        setError(
+          `An adopted ${KIND_LABELS[a.kind]} carries a malformed decomposition-provenance IRI ` +
+            "(fut:decomposedBy) from the assistant — discard that atom and re-split; nothing has been written.",
+        );
+        return;
+      }
+      if (a.kind === "need" && !isHttpIri(a.needConcept)) {
+        setError(
+          "An adopted need's concept is not a valid IRI — re-pick its fundamental need; nothing has been written.",
+        );
+        return;
+      }
+      if (a.kind === "value" && !isHttpIri(a.valueConcept)) {
+        setError(
+          "An adopted value's concept is not a valid IRI — re-pick its value; nothing has been written.",
+        );
         return;
       }
     }
