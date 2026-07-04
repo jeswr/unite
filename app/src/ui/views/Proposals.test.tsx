@@ -71,6 +71,7 @@ const result: AggregateResult = {
       inDeliberation: DELIB,
     },
   ],
+  infraProposals: [],
   candidates: [],
   critiques: [],
   synthesizable: new Set<string>([NEED_OFFLINE, NEED_LOGIN]),

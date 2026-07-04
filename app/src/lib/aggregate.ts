@@ -16,6 +16,7 @@
 import { parseRdf } from "@jeswr/fetch-rdf";
 import type { DatasetCore } from "@rdfjs/types";
 import { parseConsent } from "./consent.js";
+import { type InfraProposal, parseInfraProposals } from "./infra.js";
 import type { MembershipTier, MembershipVerifier } from "./membership.js";
 import {
   type AppProposal,
@@ -40,8 +41,8 @@ export { DEFAULT_MAX_BODY_BYTES } from "./pod.js";
  * The statement kinds aggregation can collect (scope-blind — the SCOPE decides
  * which it enables via `ScopeConfig.artifactKinds` + its room view; the S0
  * seam). Resonances are ALWAYS collected. Kinds without landed machinery yet
- * ("infra-proposal" S2; "vision"/"claim"/"value" S4) are accepted but collect
- * nothing until their parsers land — honest no-ops, never a crash.
+ * ("vision"/"claim"/"value" S4) are accepted but collect nothing until their
+ * parsers land — honest no-ops, never a crash. "infra-proposal" landed in S2.
  */
 export type StatementKind =
   | "need"
@@ -92,6 +93,8 @@ export interface AggregateResult {
   readonly resonances: Resonance[];
   /** Collected only when `kinds` includes "app-proposal" (S1, scope A). */
   readonly proposals: AppProposal[];
+  /** Collected only when `kinds` includes "infra-proposal" (S2, scope B). */
+  readonly infraProposals: InfraProposal[];
   /**
    * Collected only when `kinds` includes "synthesis" (S1, the room), and
    * LINEAGE-GATED: a candidate survives only if every `prov:wasDerivedFrom`
@@ -103,13 +106,13 @@ export interface AggregateResult {
   /** Collected only when `kinds` includes "critique" (S1, the room). */
   readonly critiques: Critique[];
   /**
-   * The ids of collected expression statements (needs / proposals) whose
-   * author's inline ODRL consent policy PERMITS `fut:synthesize` — the ONLY
-   * statements a Convergence-Room candidate may derive from. FAIL-CLOSED: a
-   * statement with no policy, an unparseable policy, or a synthesize
-   * prohibition is NOT in the set (design/01: the consent layer gates what the
-   * federation may DO with a statement; deriving a synthesis is exactly the
-   * governed act).
+   * The ids of collected expression statements (needs / app proposals / infra
+   * proposals) whose author's inline ODRL consent policy PERMITS
+   * `fut:synthesize` — the ONLY statements a Convergence-Room candidate may
+   * derive from. FAIL-CLOSED: a statement with no policy, an unparseable
+   * policy, or a synthesize prohibition is NOT in the set (design/01: the
+   * consent layer gates what the federation may DO with a statement; deriving
+   * a synthesis is exactly the governed act).
    */
   readonly synthesizable: ReadonlySet<string>;
   readonly verified: VerifiedParticipant[];
@@ -231,6 +234,7 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
   const participants = await registry.listParticipants();
   const needs: Need[] = [];
   const proposals: AppProposal[] = [];
+  const infraProposals: InfraProposal[] = [];
   const candidates: SynthesisCandidate[] = [];
   const critiques: Critique[] = [];
   const rawResonances: Resonance[] = [];
@@ -275,11 +279,19 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
     // consent — their synthesize permission is evaluated here so the room can
     // fail-closed on derivation inputs.
     if (kinds.has("need")) needs.push(...(await read("needs", parseNeeds, synthesizable)));
-    // The scope-A proposal layer (S1). Other proposal-shaped kinds
-    // ("infra-proposal" S2; "vision"/"claim"/"value" S4) collect nothing until
-    // their parsers land — an honestly-empty result, never a crash.
+    // The scope-A proposal layer (S1). Remaining proposal-shaped kinds
+    // ("vision"/"claim"/"value" S4) collect nothing until their parsers land —
+    // an honestly-empty result, never a crash.
     if (kinds.has("app-proposal")) {
       proposals.push(...(await read("proposals", parseProposals, synthesizable)));
+    }
+    // The scope-B proposal layer (S2). Infra proposals share the `proposals/`
+    // container (each scope deliberates in its own base; the parser selects by
+    // rdf:type) and the SAME fail-closed synthesize-consent hook as scope A —
+    // a candidate may derive from an infra proposal only if its author's
+    // inline ODRL policy permits fut:synthesize.
+    if (kinds.has("infra-proposal")) {
+      infraProposals.push(...(await read("proposals", parseInfraProposals, synthesizable)));
     }
     if (kinds.has("synthesis")) candidates.push(...(await read("syntheses", parseCandidates)));
     if (kinds.has("critique")) critiques.push(...(await read("critiques", parseCritiques)));
@@ -316,6 +328,7 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
     needs,
     resonances: dedupeResonances(rawResonances),
     proposals,
+    infraProposals,
     candidates: gatedCandidates,
     critiques,
     synthesizable,

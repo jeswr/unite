@@ -62,10 +62,11 @@ export function isViewEnabled(scope: ScopeConfig, view: View): boolean {
 /**
  * The scope views whose machinery has NOT landed yet — the only ones the
  * PreviewView may render. "proposals" and "room" left this set when S1 landed
- * the proposal layer + Convergence Room v1; the rest leave it with their
- * build-plan phases (S2 / S4 / S5).
+ * the proposal layer + Convergence Room v1; "adoption-board" left it when S2
+ * landed the real fedreg:acceptsSpec matrix; the rest leave it with their
+ * build-plan phases (S4 / S5).
  */
-export type PreviewViewId = Exclude<ScopeViewId, "proposals" | "room">;
+export type PreviewViewId = Exclude<ScopeViewId, "proposals" | "room" | "adoption-board">;
 
 /** What a not-yet-built view WILL be, and which build-plan phase lands it. */
 interface PreviewCopy {
@@ -77,13 +78,6 @@ interface PreviewCopy {
 // (docs/SCOPE-DIFFERENTIATION.md §6): an enabled-but-unbuilt view says exactly
 // what it will do and when it arrives — the anti-"relabelled poll" discipline.
 const PREVIEW_COPY: Readonly<Record<PreviewViewId, PreviewCopy>> = {
-  "adoption-board": {
-    phase: "S2",
-    description:
-      "The ratification instrument: a versions × advertisers matrix per governed " +
-      "system, built from fedreg:acceptsSpec reads — every cell a re-checkable " +
-      "observation. The wire is the ballot box: adoption is measured, never asserted.",
-  },
   deck: {
     phase: "S4",
     description:

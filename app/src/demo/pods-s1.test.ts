@@ -107,8 +107,9 @@ describe("the seeded S1 artifact spine through the REAL pipeline", () => {
     expect(onSpine).toHaveLength(1);
   });
 
-  it("infrastructure/society demos seed NO S1 artifacts (their layers land in S2/S4)", async () => {
-    for (const scope of ["infrastructure", "society"] as const) {
+  it("the society demo seeds NO artifact spine yet (its layer lands in S4)", async () => {
+    // (infrastructure grew its OWN S2 artifacts — asserted in pods-s2.test.ts.)
+    for (const scope of ["society"] as const) {
       const demo = await getDemoDeliberation(scope);
       const registry = new StaticRegistry(demo.deliberation, [...demo.participants]);
       const verifier = new StubMembershipVerifier(demo.participants.map((p) => p.webId));

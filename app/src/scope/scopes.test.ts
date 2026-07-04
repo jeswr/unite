@@ -21,10 +21,10 @@ describe("SCOPES table", () => {
     for (const id of SCOPE_ORDER) expect(SCOPES[id].id).toBe(id);
   });
 
-  it("has a live default scope and preview others (honest maturity)", () => {
+  it("honest maturity: apps + infrastructure live (S2 flipped B); society still preview", () => {
     expect(SCOPES[DEFAULT_SCOPE].status).toBe("live");
-    expect(SCOPES.infrastructure.status).toBe("preview");
-    expect(SCOPES.society.status).toBe("preview");
+    expect(SCOPES.infrastructure.status).toBe("live"); // S2: propose/converge + visible ratification
+    expect(SCOPES.society.status).toBe("preview"); // flips with S4
   });
 
   it("society is the open-voice scope; build layer only in apps/infrastructure", () => {
@@ -211,6 +211,12 @@ describe("scope seams (S0)", () => {
         expect(s.cohortLenses).toContain(c);
       }
     }
+  });
+
+  it("B's S2 surface: the infra artifact, the shared spine views, the adoption board", () => {
+    expect(SCOPES.infrastructure.artifactKinds).toEqual(["need", "infra-proposal"]);
+    expect(SCOPES.infrastructure.views).toEqual(["proposals", "room", "adoption-board"]);
+    expect(SCOPES.infrastructure.composeFlow).toBe("structured-infra");
   });
 
   it("B and C name their signature views (honest previews until built)", () => {

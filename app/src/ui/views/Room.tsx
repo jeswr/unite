@@ -39,9 +39,11 @@ function outputCopy(scope: ScopeConfig): string {
   switch (scope.outputKind) {
     case "adoption-decision":
       return (
-        "In this scope an endorsed candidate becomes an adoption decision — a recommendation " +
-        "whose ratification is MEASURED adoption on the wire, never asserted. That pipeline " +
-        "(structured proposals, the role lens, the adoption board) arrives in S2–S3."
+        "In this scope an endorsed candidate is an adoption RECOMMENDATION — advisory by " +
+        "design. Ratification is measured on the wire: watch the Adoption board for who " +
+        "actually advertises the version (fedreg:acceptsSpec); Current is computed from those " +
+        "observations, never asserted. Reviewer/steward gating and the SIGNED " +
+        "fut:AdoptionDecision arrive in S3."
       );
     case "advisory-synthesis":
       return (
@@ -116,6 +118,7 @@ export function Room({
     const m = new Map<string, string>();
     for (const n of result?.needs ?? []) m.set(n.id, n.content);
     for (const p of result?.proposals ?? []) m.set(p.id, `${p.title} — ${p.content}`);
+    for (const p of result?.infraProposals ?? []) m.set(p.id, `${p.title} — ${p.content}`);
     for (const c of result?.candidates ?? []) m.set(c.id, c.title ?? c.content);
     return m;
   }, [result]);
@@ -131,6 +134,9 @@ export function Room({
       ...(result?.proposals ?? [])
         .filter((p) => ok.has(p.id))
         .map((p) => ({ id: p.id, label: `proposal · ${p.title}` })),
+      ...(result?.infraProposals ?? [])
+        .filter((p) => ok.has(p.id))
+        .map((p) => ({ id: p.id, label: `proposal · ${p.title}` })),
       ...(result?.needs ?? [])
         .filter((n) => ok.has(n.id))
         .map((n) => ({
@@ -141,7 +147,8 @@ export function Room({
   }, [result]);
 
   const withheldCount =
-    (result ? result.proposals.length + result.needs.length : 0) - inputPool.length;
+    (result ? result.proposals.length + result.infraProposals.length + result.needs.length : 0) -
+    inputPool.length;
 
   // A fresh aggregate may SHRINK the consented set (an author revoked their
   // fut:synthesize consent): prune stale draft selections so the form never

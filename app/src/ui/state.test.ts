@@ -107,8 +107,16 @@ describe("collectionKinds", () => {
     expect(collectionKinds(SCOPES.apps)).toEqual(["need", "app-proposal", "synthesis", "critique"]);
   });
 
+  it("infrastructure collects its infra proposals PLUS the room's artifacts (S2)", () => {
+    expect(collectionKinds(SCOPES.infrastructure)).toEqual([
+      "need",
+      "infra-proposal",
+      "synthesis",
+      "critique",
+    ]);
+  });
+
   it("a scope without the room collects only its board artifacts (no dead fetches)", () => {
-    expect(collectionKinds(SCOPES.infrastructure)).toEqual(["need"]);
     expect(collectionKinds(SCOPES.society)).toEqual(["need"]);
   });
 

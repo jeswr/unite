@@ -4,15 +4,14 @@
 # futures sector 0.2.0 — DRAFT (docs/SCOPE-DIFFERENTIATION.md §3.2 + §4.2)
 # ============================================================================
 #
-# STATUS: DRAFT, deliberately NOT published. This file is the additive,
-# non-breaking delta over the LANDED futures sector 0.1.0
-# (solid-federation-vocab/sectors/futures/futures.ttl,
-# owl:versionIRI <https://w3id.org/jeswr/sectors/futures/0.1.0>). Per the
-# self-hosting plan (SCOPE-DIFFERENTIATION §3.1, milestone B4), the 0.2.0
-# version bump is ratified as the FIRST scope-B deliberation and only then
-# PR'd into solid-federation-vocab under the sector contract (dual-advertised
-# via fedreg:acceptsSpec, immutable version IRI). Until that deliberation
-# concludes, consumers treat these terms as provisional.
+# STATUS: SUPERSEDED — this draft has been FORMALISED into the sector-contract
+# home: solid-federation-vocab sectors/futures/futures.ttl @ 67b00be now
+# carries owl:versionInfo 0.2.0 with the immutable version IRI
+# <https://w3id.org/jeswr/sectors/futures/0.2.0>. That file is the normative
+# source; this one is kept as the historical draft record of what the first
+# scope-B deliberation (§3.1 self-hosting, milestone B4) deliberates.
+# Publication ≠ adoption (design/04 §2): 0.2.0 becomes *Current* only on
+# measured fedreg:acceptsSpec advertisement — the S2 Adoption board watches.
 #
 # Conventions follow the landed sector exactly: gUFO meta-types, classes
 # rooted in core:, skos:definition prose carrying the normative intent,

@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@jeswr/app-shell": "git+https://github.com/jeswr/app-shell.git#e2ad58b166e9c2e5f0e30d88029847abc05b42e2",
+    "@jeswr/federation-registry": "git+https://github.com/jeswr/federation-registry.git#601e8a4b4981b2876adb760b3d92179e9326de54",
     "@jeswr/federation-trust": "git+https://github.com/jeswr/federation-trust.git#75ec53d33d23cf1f18b9a44258dcbee94c5f41de",
     "@jeswr/fetch-rdf": "0.1.0",
     "@jeswr/guarded-fetch": "git+https://github.com/jeswr/guarded-fetch.git#bd4490927fd36d62f6b78a0021e8d40bbb572c3b",

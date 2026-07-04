@@ -72,10 +72,13 @@ describe("view registry", () => {
 
 describe("PreviewView (the honest placeholder)", () => {
   it("names the view, its build phase, and what it will do", () => {
-    render(<PreviewView view="adoption-board" scope={SCOPES.infrastructure} />);
-    expect(screen.getByText("Adoption board")).toBeTruthy();
-    expect(screen.getByText(/arrives in S2/)).toBeTruthy();
-    expect(screen.getByText(/adoption is measured, never asserted/)).toBeTruthy();
+    // "adoption-board" graduated out of the preview set in S2 (the real
+    // fedreg:acceptsSpec matrix landed); "published-futures" (S5) is the
+    // longest-lived remaining preview.
+    render(<PreviewView view="published-futures" scope={SCOPES.society} />);
+    expect(screen.getByText("Published futures")).toBeTruthy();
+    expect(screen.getByText(/arrives in S5/)).toBeTruthy();
+    expect(screen.getByText(/dissent annex/)).toBeTruthy();
   });
 
   it("labels every society preview with its phase (S4/S5), never a fake surface", () => {

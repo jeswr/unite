@@ -13,6 +13,7 @@ import { useController } from "./auth.js";
 import { useAggregate, useLiveUpdates, useTrustProfile } from "./hooks.js";
 import { DEFAULT_VIEW, useHashView, type View } from "./route.js";
 import { collectionKinds, type DeliberationConfig, scopedDefaultConfig } from "./state.js";
+import { AdoptionBoard } from "./views/AdoptionBoard.js";
 import { Bridging } from "./views/Bridging.js";
 import { Compose } from "./views/Compose.js";
 import { NeedsBoard } from "./views/NeedsBoard.js";
@@ -168,6 +169,7 @@ export function App(): React.JSX.Element {
             config={config}
             webId={webId}
             trust={trust}
+            aggregate={aggregate}
             onComposed={aggregate.refresh}
           />
         )}
@@ -197,12 +199,13 @@ export function App(): React.JSX.Element {
         {view === "room" && (
           <Room scope={SCOPE} config={config} webId={webId} trust={trust} aggregate={aggregate} />
         )}
+        {/* The S2 scope-B ratification instrument (real fedreg:acceptsSpec reads). */}
+        {view === "adoption-board" && <AdoptionBoard scope={SCOPE} config={config} />}
         {/* Scope-enabled extra views not yet built render the honest,
             phase-labelled preview (never a relabelled apps surface). */}
-        {(view === "adoption-board" ||
-          view === "deck" ||
-          view === "futures-gallery" ||
-          view === "published-futures") && <PreviewView view={view} scope={SCOPE} />}
+        {(view === "deck" || view === "futures-gallery" || view === "published-futures") && (
+          <PreviewView view={view} scope={SCOPE} />
+        )}
       </main>
 
       <p className="footer-note">

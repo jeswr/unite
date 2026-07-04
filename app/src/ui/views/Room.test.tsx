@@ -11,6 +11,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AggregateResult } from "../../lib/aggregate.js";
 import { STANCE_CONFLICTS, STANCE_RESONATES } from "../../lib/fut.js";
+import { ROLE_IMPLEMENTER } from "../../lib/fut-draft.js";
+import type { InfraProposal } from "../../lib/infra.js";
 import type { Resonance } from "../../lib/model.js";
 import type { TrustProfile } from "../../lib/trust.js";
 import { SCOPES } from "../../scope/scopes.js";
@@ -65,6 +67,7 @@ function resultWith(candidateVotes: Resonance[]): AggregateResult {
     needs: [need(NEED_A, "Need A content."), need(NEED_B, "Need B content.")],
     resonances: [...clusterVotes, ...candidateVotes],
     proposals: [],
+    infraProposals: [],
     candidates: [
       {
         id: CAND,
@@ -243,5 +246,65 @@ describe("Convergence Room", () => {
     renderRoom(asTrust({ tier: 1, roles: [] }), empty);
     expect(screen.getByText("No candidate synthesis yet")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Draft the first candidate" })).toBeTruthy();
+  });
+});
+
+// ── The S2 scope-B reuse: same room, adoption-decision output stage ──────────
+
+const infraProposal = (id: string, title: string): InfraProposal => ({
+  id,
+  title,
+  content: "An infra change.",
+  targetsSystem: ["https://w3id.org/jeswr/sectors/futures"],
+  affectsRole: [ROLE_IMPLEMENTER],
+  motivatedBy: [NEED_A],
+  created: "2026-06-15T00:00:00Z",
+  creator: P[0] as string,
+  inDeliberation: DELIB,
+});
+
+function renderInfraRoom(r: AggregateResult) {
+  return render(
+    <AuthProvider controller={new DevLoginController()}>
+      <Room
+        scope={SCOPES.infrastructure}
+        config={demoConfig("infrastructure")}
+        webId={null}
+        trust={asTrust({ tier: 1, roles: [] })}
+        aggregate={asAggregate(r)}
+      />
+    </AuthProvider>,
+  );
+}
+
+describe("Convergence Room in scope B (S2)", () => {
+  it("an ENDORSED candidate names the measured-adoption pipeline — advisory, wire-ratified, S3 for signing", () => {
+    const r = resultWith([
+      vote(P[0] as string, CAND, STANCE_RESONATES),
+      vote(P[1] as string, CAND, STANCE_RESONATES),
+      vote(P[2] as string, CAND, STANCE_RESONATES),
+      vote(P[3] as string, CAND, STANCE_RESONATES),
+    ]);
+    renderInfraRoom(r);
+    expect(screen.getByText(/endorsed — every group leans positive/)).toBeTruthy();
+    expect(screen.getByText(/Ratification is measured on the wire/)).toBeTruthy();
+    expect(screen.getByText(/never asserted/)).toBeTruthy();
+    expect(screen.getByText(/arrive in S3/)).toBeTruthy();
+  });
+
+  it("offers a CONSENTED infra proposal as a derivation input and withholds a non-consented one (fail-closed)", () => {
+    const ipOk = infraProposal("https://a.example/proposals/ok.ttl", "Consented change");
+    const ipNo = infraProposal("https://b.example/proposals/no.ttl", "Unconsented change");
+    const base = resultWith([]);
+    const r: AggregateResult = {
+      ...base,
+      infraProposals: [ipOk, ipNo],
+      synthesizable: new Set<string>([NEED_A, NEED_B, ipOk.id]),
+    };
+    renderInfraRoom(r);
+    fireEvent.click(screen.getByRole("button", { name: "Draft a candidate" }));
+    expect(screen.getByRole("button", { name: /proposal · Consented change/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /proposal · Unconsented change/ })).toBeNull();
+    expect(screen.getByText(/1 statement is not offered/)).toBeTruthy();
   });
 });

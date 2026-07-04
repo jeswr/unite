@@ -130,8 +130,16 @@ describe("deliberationContainers with the S1 kinds seam", () => {
 
   it("a not-yet-landed kind maps to NO container (honest no-op, like aggregation)", () => {
     const one = { ...config, participants: config.participants.slice(0, 1) };
-    expect(deliberationContainers(one, ["need", "infra-proposal", "vision"])).toEqual([
+    expect(deliberationContainers(one, ["need", "vision", "claim"])).toEqual([
       "https://alice.example/unite/d/needs/",
+      "https://alice.example/unite/d/resonances/",
+    ]);
+  });
+
+  it("infra proposals share the proposals/ container, deduped with app proposals (S2)", () => {
+    const one = { ...config, participants: config.participants.slice(0, 1) };
+    expect(deliberationContainers(one, ["app-proposal", "infra-proposal"])).toEqual([
+      "https://alice.example/unite/d/proposals/",
       "https://alice.example/unite/d/resonances/",
     ]);
   });

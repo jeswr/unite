@@ -3,10 +3,12 @@
 // The unite Stage-1 data layer — the exhaustively-tested core. Thin React views
 // in src/ui compose these; all logic lives here.
 
+export * from "./adoption.js";
 export * from "./aggregate.js";
 export * from "./convergence.js";
 export * from "./fut.js";
 export * from "./fut-draft.js";
+export * from "./infra.js";
 export * from "./membership.js";
 export * from "./model.js";
 export * from "./pod.js";

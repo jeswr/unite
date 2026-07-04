@@ -13,9 +13,10 @@ import { writeNeed } from "../../lib/pod.js";
 import { meetsTier } from "../../lib/trust.js";
 import { type ScopeConfig, scopeHref } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
-import type { SessionTrust } from "../hooks.js";
+import type { AggregateState, SessionTrust } from "../hooks.js";
 import { writeSessionFor } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
+import { ComposeInfra } from "./ComposeInfra.js";
 import { ConsentPanel } from "./ConsentPanel.js";
 import { TIER_MEANING } from "./Trust.js";
 
@@ -64,12 +65,17 @@ export function Compose({
   config,
   webId,
   trust,
+  aggregate,
   onComposed,
 }: {
   scope: ScopeConfig;
   config: DeliberationConfig;
   webId: string | null;
   trust: SessionTrust;
+  /** The deliberation aggregate (the structured-infra wizard's needs-trace
+   * source). Optional so pre-S2 call sites keep working; without it the
+   * scope falls back to the shared need form. */
+  aggregate?: AggregateState;
   onComposed?: () => Promise<void> | void;
 }): React.JSX.Element {
   const controller = useController();
@@ -80,6 +86,10 @@ export function Compose({
   const [saving, setSaving] = useState(false);
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The structured-infra escape hatch: the wizard is the scope's compose
+  // grammar; needMode=true renders the shared need form instead (needs feed
+  // the wizard's trace step, so both must stay reachable).
+  const [needMode, setNeedMode] = useState(false);
 
   const copy = composeCopy(scope);
   const identity = sessionIdentity(config, webId);
@@ -129,6 +139,22 @@ export function Compose({
           </div>
         )}
       </section>
+    );
+  }
+
+  // S2: the scope-B compose grammar IS the structured wizard
+  // (SCOPE-DIFFERENTIATION §3.3) — mounted AFTER the tier gate above, so the
+  // wizard inherits the same fail-closed floor. The shared need form stays
+  // one click away (needMode) because proposals must trace to needs.
+  if (scope.composeFlow === "structured-infra" && aggregate !== undefined && !needMode) {
+    return (
+      <ComposeInfra
+        config={config}
+        webId={webId}
+        trust={trust}
+        aggregate={aggregate}
+        onSwitchToNeed={() => setNeedMode(true)}
+      />
     );
   }
 
@@ -187,15 +213,17 @@ export function Compose({
         your identity, with your consent policy attached. Others read it only because you let them.
       </p>
 
-      {/* The composeFlow seam (S0): only the need-first wizard is built; a scope
-          whose own grammar hasn't landed says so honestly instead of silently
-          rendering the apps form as if it were the scope's own machinery. */}
+      {/* The composeFlow seam (S0/S2): structured-infra mounts the wizard
+          above; this branch renders only via the needMode escape hatch (or a
+          call site without an aggregate — the wizard's needs-trace source). */}
       {scope.composeFlow === "structured-infra" && (
         <p className="notice info">
-          This scope's <strong>structured proposal wizard</strong> (target system → change kind →
-          blast radius by role → breaking/migration → running code) arrives in <strong>S2</strong>{" "}
-          of the scope build plan. Until then, infrastructure needs are composed with the shared
-          needs form below.
+          You are composing a shared <strong>need</strong>.{" "}
+          {aggregate !== undefined && (
+            <button type="button" className="chip" onClick={() => setNeedMode(false)}>
+              Back to the structured proposal wizard
+            </button>
+          )}
         </p>
       )}
       {scope.composeFlow === "narrative-decompose" && (
