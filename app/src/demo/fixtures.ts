@@ -511,7 +511,7 @@ export const DEMO_NEEDS: Readonly<Record<ScopeId, readonly NeedSpec[]>> = {
 
 // ── The S1 artifact spine seed (SCOPE-DIFFERENTIATION §2): proposals, the
 //    Convergence Room's candidates + critiques. S2 added the infrastructure
-//    scope's own artifacts; society follows in S4. ─────────────────────────────
+//    scope's own artifacts; S4 the society scope's. ──────────────────────────
 
 /** One seeded proposal + the votes it received. */
 export interface ProposalSpec {
@@ -546,6 +546,45 @@ export interface CritiqueSpec {
   readonly content: string;
   /** The candidate SLUG this critique stands on. */
   readonly on: string;
+  readonly created: string;
+}
+
+// ── The S4 scope-C expression layer (SCOPE-DIFFERENTIATION §4): whole vision
+//    narratives, the atomic claims adopted out of them, and value statements —
+//    society scope only. ─────────────────────────────────────────────────────
+
+/** One seeded whole-narrative vision (the Futures gallery's content). */
+export interface VisionSpec {
+  readonly slug: string;
+  readonly author: string;
+  readonly title?: string;
+  readonly content: string;
+  /** Scope-ladder short name (fut:<name> — self/household/community/nation/humanity). */
+  readonly scope?: string;
+  /** Target year (4 digits). */
+  readonly horizon?: string;
+  readonly created: string;
+}
+
+/** One seeded atomic claim (adopted by its author) + the votes it received. */
+export interface ClaimSpec {
+  readonly slug: string;
+  readonly author: string;
+  /** ≤ 500 chars (the SHACL atomicity cap). */
+  readonly content: string;
+  /** The vision SLUG it was decomposed from (omit = authored directly). */
+  readonly from?: string;
+  readonly created: string;
+  readonly votes: Readonly<Record<string, VoteCode>>;
+}
+
+/** One seeded value statement. */
+export interface ValueSpec {
+  readonly slug: string;
+  readonly author: string;
+  readonly content: string;
+  /** Schwartz value short name (fut:schwartz-<name>). */
+  readonly value: string;
   readonly created: string;
 }
 
@@ -814,7 +853,220 @@ const INFRA_CRITIQUES: readonly CritiqueSpec[] = [
   },
 ];
 
-/** The seeded proposals per scope (apps — S1). */
+// The society expression layer (S4): the seed topic is deliberately a
+// LOW-SENSITIVITY CIVIC one (neighbourhood streets/transport — the C4 launch
+// gate's recommended default, §8 Q5), with the same two-cluster shape as the
+// needs: P (amara/chidi/efe/hana — calm-streets/safety-first) vs
+// U (ben/dana/farah/gus — keep-it-moving/town-vitality). One claim both
+// clusters endorse, one they divide on — so the deck's cross-cluster routing
+// and the room's co-equal outcomes all demo honestly. "you" authors nothing
+// (the T0 pseudonymous-visitor demo) — your deck starts full.
+
+const SOCIETY_VISIONS: readonly VisionSpec[] = [
+  {
+    slug: "school-run-on-foot",
+    author: "farah",
+    title: "The school run without a car",
+    content:
+      "Right now I drive my kids 900 metres to school because the main road has no safe " +
+      "crossing. In the future I want, they walk with their friends: pavements wide enough " +
+      "for a buggy and a wheelchair side by side, a zebra crossing at the shop corner, and " +
+      "drivers who expect children on the street. I'd still drive to the supermarket — this " +
+      "isn't about banning cars, it's about not needing one for 900 metres.",
+    scope: "community",
+    horizon: "2032",
+    created: "2026-06-14T09:00:00Z",
+  },
+  {
+    slug: "quiet-streets",
+    author: "chidi",
+    title: "Streets that belong to the people on them",
+    content:
+      "My street is a rat-run. In my ideal future, through-traffic uses the ring road and " +
+      "residential streets are for the people who live there — kids playing out, neighbours " +
+      "talking, deliveries still arriving. Traffic calming that actually calms, not paint.",
+    scope: "community",
+    created: "2026-06-15T18:30:00Z",
+  },
+  {
+    slug: "alive-after-eight",
+    author: "gus",
+    title: "A town that's alive after eight",
+    content:
+      "I want a town centre that doesn't shut at 8pm: later buses, venues that can afford " +
+      "their licences, streets that feel safe because they're full of people rather than " +
+      "empty and locked down. The evening economy is part of a living street, not its enemy.",
+    scope: "community",
+    horizon: "2030",
+    created: "2026-06-16T20:15:00Z",
+  },
+];
+
+const SOCIETY_CLAIMS: readonly ClaimSpec[] = [
+  {
+    slug: "safe-crossing",
+    author: "farah",
+    content: "Every child should be able to cross the high street safely on foot.",
+    from: "school-run-on-foot",
+    created: "2026-06-14T09:30:00Z",
+    votes: {
+      amara: "r",
+      ben: "r",
+      chidi: "r",
+      dana: "r",
+      efe: "r",
+      farah: "r",
+      gus: "u",
+      hana: "r",
+    },
+  },
+  {
+    slug: "ban-through-traffic",
+    author: "chidi",
+    content: "Through-traffic should be banned from residential streets entirely.",
+    from: "quiet-streets",
+    created: "2026-06-15T19:00:00Z",
+    votes: {
+      amara: "r",
+      ben: "c",
+      chidi: "r",
+      dana: "c",
+      efe: "r",
+      farah: "u",
+      gus: "c",
+      hana: "r",
+    },
+  },
+  {
+    slug: "later-buses",
+    author: "gus",
+    content: "Buses should run until at least midnight, every day of the week.",
+    from: "alive-after-eight",
+    created: "2026-06-16T20:45:00Z",
+    votes: { ben: "r", dana: "r", farah: "r", gus: "r", hana: "u" },
+  },
+  {
+    slug: "pavement-priority",
+    author: "farah",
+    content:
+      "Pavement space should be wide enough for a buggy and a wheelchair side by side before any street gets a parking lane.",
+    from: "school-run-on-foot",
+    created: "2026-06-14T10:00:00Z",
+    votes: { amara: "r", chidi: "r", efe: "r", hana: "r", dana: "u" },
+  },
+  {
+    slug: "not-anti-car",
+    author: "farah",
+    content: "Making short trips walkable is not the same thing as banning cars.",
+    from: "school-run-on-foot",
+    created: "2026-06-14T10:15:00Z",
+    votes: { ben: "r", dana: "r", farah: "r", gus: "r" },
+  },
+];
+
+const SOCIETY_VALUES: readonly ValueSpec[] = [
+  {
+    slug: "welfare-of-all",
+    author: "efe",
+    content: "Streets should be judged by how they treat the most vulnerable person using them.",
+    value: "universalism",
+    created: "2026-06-15T11:00:00Z",
+  },
+  {
+    slug: "town-vitality",
+    author: "gus",
+    content: "A good town is a lively one — energy and novelty are worth some noise.",
+    value: "stimulation",
+    created: "2026-06-16T21:00:00Z",
+  },
+];
+
+// Two society candidates so BOTH room outcomes demo (like apps): one synthesis
+// both clusters endorse, one absolutist candidate they divide on — with the
+// standing critiques that become the dissent annex.
+const SOCIETY_CANDIDATES: readonly CandidateSpec[] = [
+  {
+    slug: "streets-for-people",
+    author: "hana",
+    title: "Streets for people, roads for through-traffic",
+    content:
+      "Short trips become walkable — safe crossings on the high street, pavements sized for " +
+      "buggies and wheelchairs — while through-traffic is carried by the ring road, deliveries " +
+      "and blue-badge access stay, and later buses keep the centre alive in the evening. " +
+      "Walkability is not a ban on cars; it is not needing one for 900 metres.",
+    derivedFrom: [
+      "claim:safe-crossing",
+      "claim:pavement-priority",
+      "claim:later-buses",
+      "claim:not-anti-car",
+      "need:walkable-neighbourhood",
+    ],
+    created: "2026-06-20T10:00:00Z",
+    votes: {
+      amara: "r",
+      ben: "r",
+      chidi: "r",
+      dana: "r",
+      efe: "r",
+      farah: "r",
+      gus: "u",
+      hana: "r",
+    },
+  },
+  {
+    slug: "car-free-everything",
+    author: "amara",
+    title: "Car-free, everywhere, now",
+    content:
+      "The town centre and every residential street go car-free outright: through-traffic " +
+      "banned, parking removed, deliveries by cargo bike, blue-badge access only. The street " +
+      "is public space first.",
+    derivedFrom: ["claim:ban-through-traffic", "need:car-free-centre"],
+    created: "2026-06-21T14:00:00Z",
+    votes: {
+      amara: "r",
+      ben: "c",
+      chidi: "r",
+      dana: "c",
+      efe: "r",
+      farah: "c",
+      gus: "c",
+      hana: "r",
+    },
+  },
+];
+
+const SOCIETY_CRITIQUES: readonly CritiqueSpec[] = [
+  {
+    slug: "cr-carfree-carer",
+    author: "dana",
+    content:
+      "I carry a week of shopping and an elderly parent's wheelchair. 'Blue-badge only' doesn't " +
+      "cover carers who don't hold the badge — this trades my mobility for your quiet street.",
+    on: "car-free-everything",
+    created: "2026-06-22T09:20:00Z",
+  },
+  {
+    slug: "cr-carfree-trades",
+    author: "gus",
+    content:
+      "A plumber cannot bring a boiler on a cargo bike. Without a workable trades-access story " +
+      "this empties the high street it claims to save.",
+    on: "car-free-everything",
+    created: "2026-06-22T17:40:00Z",
+  },
+  {
+    slug: "cr-streets-funding",
+    author: "ben",
+    content:
+      "Nothing here says who pays. If 'later buses' lands as an unfunded wish, the synthesis " +
+      "over-promises — name the funding mechanism before this goes to anyone as a shared future.",
+    on: "streets-for-people",
+    created: "2026-06-23T08:05:00Z",
+  },
+];
+
+/** The seeded proposals per scope (S1: apps only). */
 export const DEMO_PROPOSALS: Readonly<Record<ScopeId, readonly ProposalSpec[]>> = {
   apps: APPS_PROPOSALS,
   infrastructure: [],
@@ -828,18 +1080,18 @@ export const DEMO_INFRA_PROPOSALS: Readonly<Record<ScopeId, readonly InfraPropos
   society: [],
 };
 
-/** The seeded Convergence-Room candidates per scope (S1: apps; S2: infrastructure). */
+/** The seeded Convergence-Room candidates per scope (S1 apps; S2 infrastructure; S4 society). */
 export const DEMO_CANDIDATES: Readonly<Record<ScopeId, readonly CandidateSpec[]>> = {
   apps: APPS_CANDIDATES,
   infrastructure: INFRA_CANDIDATES,
-  society: [],
+  society: SOCIETY_CANDIDATES,
 };
 
-/** The seeded standing critiques per scope (S1: apps; S2: infrastructure). */
+/** The seeded standing critiques per scope (S1 apps; S2 infrastructure; S4 society). */
 export const DEMO_CRITIQUES: Readonly<Record<ScopeId, readonly CritiqueSpec[]>> = {
   apps: APPS_CRITIQUES,
   infrastructure: INFRA_CRITIQUES,
-  society: [],
+  society: SOCIETY_CRITIQUES,
 };
 
 // ── The S2 adoption-board seed: sandboxed fedreg:StorageDescription documents
@@ -880,6 +1132,27 @@ export const DEMO_STORAGES: readonly DemoStorageSpec[] = [
 export const DEMO_ADOPTION_SOURCES: readonly string[] = DEMO_STORAGES.map(
   (s) => `${DEMO_ORIGIN}/registry/${s.name}.ttl`,
 );
+
+/** The seeded whole-narrative visions per scope (S4: society only). */
+export const DEMO_VISIONS: Readonly<Record<ScopeId, readonly VisionSpec[]>> = {
+  apps: [],
+  infrastructure: [],
+  society: SOCIETY_VISIONS,
+};
+
+/** The seeded adopted claims per scope (S4: society only). */
+export const DEMO_CLAIMS: Readonly<Record<ScopeId, readonly ClaimSpec[]>> = {
+  apps: [],
+  infrastructure: [],
+  society: SOCIETY_CLAIMS,
+};
+
+/** The seeded value statements per scope (S4: society only). */
+export const DEMO_VALUES: Readonly<Record<ScopeId, readonly ValueSpec[]>> = {
+  apps: [],
+  infrastructure: [],
+  society: SOCIETY_VALUES,
+};
 
 // ── The Phase-2 governance seed (docs/PLATFORM-PLAN.md §4) ────────────────────
 

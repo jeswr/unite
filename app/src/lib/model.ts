@@ -6,6 +6,8 @@
 //   • fut:AppProposal   — a proposed app (⊑ wf:Task), ≥1 fut:motivatedBy (S1)
 //   • fut:SpecSynthesis — a Convergence-Room candidate, ≥1 prov:wasDerivedFrom (S1)
 //   • fut:Critique      — a critique on a candidate (0.2.0 draft; S1)
+// The scope-C expression shapes (VisionStatement / Claim / ValueStatement — S4)
+// live in model-society.ts, built on the exported guarded accessors below.
 //
 // SERIALISE with n3.Writer ONLY (correct xsd datatypes; never string-concat
 // RDF). PARSE via @jeswr/fetch-rdf `parseRdf` (which hands back an n3.Store),
@@ -66,6 +68,12 @@ const RDF_LANGSTRING = `${NS.rdf}langString`;
 // Date.parse is far too lax (accepts "2026-07-01", "July 1 2026", and silently
 // normalises invalid calendar dates), so hostile RDF must clear BOTH this
 // lexical guard AND a calendar round-trip before a dateTime is accepted.
+//
+// NOTE: the guarded accessors below (readString/readIri/readIris/readDateTime/
+// readIntInRange/readCoded/typedSubjects) and the validators are EXPORTED as
+// the shared hostile-input toolkit for the per-scope model modules
+// (model-society.ts — S4; the scope-B module — S2). One reviewed
+// implementation, never per-scope copies.
 const XSD_DATETIME_RE =
   /^(-?\d{4,})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
 
@@ -82,7 +90,7 @@ function daysInMonth(year: number, month: number): number {
  * round-trip, which would mis-handle offset timezones). Rejects the lax forms
  * Date.parse accepts (date-only, prose dates) and impossible dates (2026-02-31).
  */
-function isValidXsdDateTime(value: string): boolean {
+export function isValidXsdDateTime(value: string): boolean {
   const m = XSD_DATETIME_RE.exec(value);
   if (!m) return false;
   const year = Number(m[1]);
@@ -378,7 +386,7 @@ export function readDateTime(ds: DatasetCore, s: Term, p: string): string | unde
 }
 
 /** A single xsd:integer literal in [min,max], else undefined (drops the field). */
-function readIntInRange(
+export function readIntInRange(
   ds: DatasetCore,
   s: Term,
   p: string,

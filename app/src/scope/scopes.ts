@@ -203,16 +203,21 @@ export const SCOPES: Readonly<Record<ScopeId, ScopeConfig>> = {
     artifactNoun: "vision statement",
     hosts: ["society"],
     buildLayer: false,
-    status: "preview",
+    // S4 flipped voice + mapping LIVE (SCOPE-DIFFERENTIATION §6): the
+    // narrative→decompose→adopt wizard, the vision/claim/value expression
+    // layer, the Resonance deck and the Futures gallery are real. The OUTPUT
+    // pipeline (steward signing, published futures) lands in S5 — the room
+    // computes + presents the outcome honestly until then.
+    status: "live",
     minTierToPropose: 0,
-    // Scope C (SCOPE-DIFFERENTIATION §4): the narrative→decompose→adopt
-    // wizard, the vision/claim/value artifacts and the tier lens land in
-    // S4/S5 — the config names the target; the UI renders honest previews.
     composeFlow: "narrative-decompose",
-    artifactKinds: ["need"], // + "vision"/"claim"/"value" when S4 lands the layer
+    artifactKinds: ["need", "vision", "claim", "value"],
     cohortLenses: ["opinion", "tier"],
     outputKind: "advisory-synthesis",
-    views: ["deck", "futures-gallery", "published-futures"],
+    // "room" enables the shared Convergence Room (the §4.4 scope-C row): the
+    // candidate SharedFuture's outcome — endorsed OR the co-equal disagreement
+    // map — is computed there; S5 adds signing/publication.
+    views: ["room", "deck", "futures-gallery", "published-futures"],
     endorsementGate: {
       crossCohort: ["opinion"],
       reviewerRoleRequired: false,

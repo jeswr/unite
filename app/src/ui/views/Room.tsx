@@ -24,6 +24,7 @@ import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, writeSessionFor } from "../hooks.js";
 import { configReady, type DeliberationConfig, sessionIdentity } from "../state.js";
 import { DistributionBar } from "./Bridging.js";
+import { SharedFutureOutcome } from "./SharedFutureOutcome.js";
 import { StanceButtons } from "./StanceButtons.js";
 import { TIER_MEANING } from "./Trust.js";
 
@@ -48,8 +49,8 @@ function outputCopy(scope: ScopeConfig): string {
     case "advisory-synthesis":
       return (
         "In this scope an endorsed candidate becomes a signed advisory synthesis with a " +
-        "mandatory dissent annex, handed to human decision-makers — nothing executes. That " +
-        "publication pipeline (steward signing, method-provenance labels) arrives in S5."
+        "mandatory dissent annex, handed to human decision-makers — nothing executes. The " +
+        "outcome is computed and presented below (S4); the steward-signing surface arrives in S5."
       );
     default:
       return (
@@ -556,6 +557,17 @@ export function Room({
               )}
               {reception.outcome === "endorsed" && (
                 <p className="notice info">{outputCopy(scope)}</p>
+              )}
+              {/* The scope-C output presentation (S4): what publication WILL
+                  be — mandatory dissent annex, method-provenance label, the
+                  ≥2-steward floor shown honestly unmet. The disagreement map
+                  gets the SAME panel (a co-equal outcome), never a failure. */}
+              {scope.outputKind === "advisory-synthesis" && (
+                <SharedFutureOutcome
+                  scope={scope}
+                  reception={reception}
+                  critiques={activeCritiques}
+                />
               )}
             </div>
           )}

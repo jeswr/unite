@@ -4,8 +4,10 @@
 
 **Status:** design (2026-07-04), authored by the PSS agent on the maintainer's
 direction that the three scope versions must be **real products, not relabelled
-polls** — today only `apps` is live, and `infrastructure` / `society` render the
-identical Overview/Compose/NeedsBoard/Bridging machinery with different copy.
+polls** — at authoring time only `apps` was live, and `infrastructure` /
+`society` rendered the identical Overview/Compose/NeedsBoard/Bridging machinery
+with different copy. Build progress is tracked in the §6 table (S0/S1 and S4
+have since SHIPPED).
 This doc specifies what each scope is *for*, the data model, compose flow,
 views, and convergence output that differ per scope, what genuinely shares, and
 a phased build plan. It **extends — never redesigns** — the founding design
@@ -475,7 +477,7 @@ implementation = passes the fixtures") true as the surface grows.
 | **S1 — the artifact + convergence spine** (**SHIPPED**) | A's proposal layer (`fut:AppProposal` compose + proposal board) + **Convergence Room v1** (candidate/critique/endorse/dissent/disagreement-map) end-to-end in demo mode; sector 0.2.0 draft authored (the §3.2 + §4.2 additions, one version bump — `vocab/futures-0.2.0-draft.ttl`); build decisions recorded in §6.1 | A completes its loop up to commissioning | **§7 Phase 8** (the §7 table's row; Phases 3/4/6 consume its output) | S0; Phase 2 for real endorsement identity (demo-gated before that) |
 | **S2 — scope B live: propose + see adoption** (**SHIPPED**) | `fut:InfraProposal` model + typed round-trip (`lib/infra.ts`) + the §3.3 structured compose wizard + the scope-B proposals board + **Adoption board** (read-only `fedreg:acceptsSpec` matrix via `@jeswr/federation-registry`, computed Current/Superseded/Proposed — `lib/adoption.ts`); the room reused for infra endorsement; the aggregation consent gate extended to infra proposals (fail-closed); the infrastructure demo seeds the sector-0.2.0 change as the self-hosting deliberation (B4 in sandbox form; the LIVE run needs a real pod community). Build decisions in §6.2 | **B → live** (propose/resonate/converge; ratification visible) | **= §7 Phase 5**, expanded | S1 |
 | **S3 — scope B ratification machinery** | role declaration + fail-closed verification; role-cohort lens on Common ground; reviewer/steward endorsement gating; signed `fut:AdoptionDecision`; computed Current status | B fully live | composes **§7 Phase 2** (roles) | S2 + Phase 2 landed |
-| **S4 — scope C live: voice** | expression layer (`VisionStatement`/`Claim`/`ValueStatement` + manual decompose + adopt); Resonance deck with deterministic routing; Futures gallery; T0 pseudonymous compose with tier badges | **C → live** (voice + mapping) | **= §7 Phase 7**, first half | S1 (parallel with S2/S3 — different modules) |
+| **S4 — scope C live: voice** (**SHIPPED**) | expression layer (`VisionStatement`/`Claim`/`ValueStatement` + manual decompose + adopt); Resonance deck with deterministic routing; Futures gallery; T0 pseudonymous compose with tier badges; the room's computed advisory-synthesis outcome presentation + the C4 write screen; build decisions recorded in §6.2 | **C → live** (voice + mapping) | **= §7 Phase 7**, first half | S1 (parallel with S2/S3 — different modules) |
 | **S5 — scope C outputs** | Convergence-room reuse for `SharedFuture` candidates; steward signing UI; mandatory-dissent SHACL enforcement in the client; `ConvergenceMetrics` publication (k-anonymous, tier-stratified); Published-futures renderer (proof-verified, dissent-required) | C fully live | **= §7 Phase 7**, second half | S4 + Phase 2 |
 | **S6 — scope C legitimacy hardening** | mini-public escalation (sortition cohort + method-provenance label); perception-gap instrument (pre/post estimates); the C4 privacy gate formalised (sensitive-domain deliberations blocked pending privacy-preserving aggregation) | — | new — propose as **§7 Phase 9** | S5 |
 
@@ -530,6 +532,7 @@ Design calls made while landing S1, each reviewable and reversible:
 
 ### 6.2 Build decisions (S2) — recorded per the proceed-without-greenlight rule
 
+
 1. **The sector 0.2.0 was formalised AHEAD of the deliberation** (discovered at
    S2 build time): `solid-federation-vocab` `sectors/futures/futures.ttl` @
    `67b00be` already carries `owl:versionInfo 0.2.0` with the minted immutable
@@ -574,6 +577,55 @@ Design calls made while landing S1, each reviewable and reversible:
    stated in the config comment and the room/board copy: verified role
    standing + the role-cohort endorsement lens, reviewer/steward gating, and
    the SIGNED `fut:AdoptionDecision` artifact (Phase-2-dependent).
+
+### 6.3 Build decisions (S4) — recorded per the proceed-without-greenlight rule
+
+Design calls made while landing S4 (scope C's voice layer), each reviewable
+and reversible:
+
+1. **The room is ENABLED for society in S4, one phase ahead of the §6 row.**
+   The task's output requirement — compute + present the advisory-synthesis
+   outcome with mandatory dissent — needs candidates to exist, and the room is
+   the scope-blind surface that holds them. The candidate artifact stays the
+   shared S1 `fut:SpecSynthesis` room object; typing the published object as a
+   proper signed `fut:SharedFuture` belongs to S5's signing pipeline (which
+   also materialises the `DissentRecord` and `ConvergenceMetrics`). The
+   society-specific presentation is `ui/views/SharedFutureOutcome` — endorsed
+   and disagreement outcomes get the SAME publication panel (co-equal), with
+   the ≥2-steward floor shown honestly UNMET and the method-provenance label
+   always present.
+2. **`society.status` flipped to `"live"`** per this table's S4 row ("C →
+   live (voice + mapping)"); the `published-futures` view stays an honest S5
+   preview — the header no longer says "preview" because the scope's OWN
+   compose/deck/gallery/room machinery is real, not relabelled.
+3. **The C4 gate's client-enforceable half is a deterministic lexical screen
+   for FIRST-PERSON health/finance disclosure** (`lib/sensitive.ts`), run
+   fail-closed inside every scope-C write chokepoint (`lib/pod-society.ts`) and
+   pre-checked in the wizard. Honestly limited: it catches the obvious
+   disclosure vocabulary ("my diagnosis", "my salary"), deliberately NOT civic
+   mentions of institutions ("the hospital needs a bus stop" passes); the
+   gate's other half remains deliberation seeding/topic policy (§4.5 — the
+   seed topic is neighbourhood streets/transport, the §8 Q5 default).
+4. **The adoption invariant is unrepresentable, not just UI-enforced:** a
+   `fut:Claim` with `adoptedBy ≠ creator` is unwritable (the serialiser
+   throws), unreadable (the parser drops it), and un-aggregatable (the
+   creator-owns-the-pod gate) — three independent layers.
+5. **Claims enter the same fail-closed `synthesizable` consent set as
+   needs/proposals** (aggregation evaluates their inline ODRL `fut:synthesize`
+   permission), so a scope-C candidate's lineage is gated identically to S1's.
+6. **Values are collected + composable but have no dedicated display surface
+   yet** — they enrich compose (Schwartz picker) and are aggregated for later
+   cluster-interpretation work; an honest gap, not a hidden one.
+7. **The tier-composition strip lives on the deck + gallery (C-only
+   surfaces), not the shared Overview** — the §4.4 table puts it on Overview,
+   but S2 (running in parallel) owns Overview's next delta and the shared
+   skeleton must not be forked mid-flight; move/extend it to Overview when a
+   scope-gated slot exists there.
+8. **Deck routing + gallery contact prior are exactly the §9-flagged
+   deterministic heuristics** (`lib/deck.ts`, `lib/gallery.ts`): no ML, total
+   deterministic ordering, votes outside the explicit statement universe
+   ignored (the ranking-integrity posture). Their unproven-at-scale status
+   stands as written in §9.
 
 ---
 

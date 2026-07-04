@@ -18,6 +18,7 @@ import { writeSessionFor } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
 import { ComposeInfra } from "./ComposeInfra.js";
 import { ConsentPanel } from "./ConsentPanel.js";
+import { NarrativeCompose } from "./NarrativeCompose.js";
 import { TIER_MEANING } from "./Trust.js";
 
 const FIRST_CONCEPT = MAXNEEF_CONCEPTS[0]?.iri ?? "";
@@ -76,6 +77,45 @@ export function Compose({
    * source). Optional so pre-S2 call sites keep working; without it the
    * scope falls back to the shared need form. */
   aggregate?: AggregateState;
+  onComposed?: () => Promise<void> | void;
+}): React.JSX.Element {
+  // The composeFlow seam (S0 → S4): scope C mounts its OWN grammar — the
+  // narrative→decompose→adopt wizard (SCOPE-DIFFERENTIATION §4.3) — not a
+  // relabelled needs form. (S2 does the same for "structured-infra".)
+  const onComposedProp = onComposed ? { onComposed } : {};
+  if (scope.composeFlow === "narrative-decompose") {
+    return (
+      <NarrativeCompose
+        scope={scope}
+        config={config}
+        webId={webId}
+        trust={trust}
+        {...onComposedProp}
+      />
+    );
+  }
+  return (
+    <NeedFirstCompose
+      scope={scope}
+      config={config}
+      webId={webId}
+      trust={trust}
+      {...onComposedProp}
+    />
+  );
+}
+
+function NeedFirstCompose({
+  scope,
+  config,
+  webId,
+  trust,
+  onComposed,
+}: {
+  scope: ScopeConfig;
+  config: DeliberationConfig;
+  webId: string | null;
+  trust: SessionTrust;
   onComposed?: () => Promise<void> | void;
 }): React.JSX.Element {
   const controller = useController();
@@ -213,9 +253,11 @@ export function Compose({
         your identity, with your consent policy attached. Others read it only because you let them.
       </p>
 
-      {/* The composeFlow seam (S0/S2): structured-infra mounts the wizard
-          above; this branch renders only via the needMode escape hatch (or a
-          call site without an aggregate — the wizard's needs-trace source). */}
+      {/* The composeFlow seam (S0/S2/S4): the scope-specific wizards
+          (structured-infra — S2; narrative-decompose — S4) mount above and
+          delegate here; this branch renders only via the needMode escape hatch
+          (or a call site without an aggregate — the wizard's needs-trace
+          source). */}
       {scope.composeFlow === "structured-infra" && (
         <p className="notice info">
           You are composing a shared <strong>need</strong>.{" "}
@@ -224,13 +266,6 @@ export function Compose({
               Back to the structured proposal wizard
             </button>
           )}
-        </p>
-      )}
-      {scope.composeFlow === "narrative-decompose" && (
-        <p className="notice info">
-          This scope's <strong>narrative-first compose</strong> (tell the whole story → split it
-          into voteable claims, needs and values → adopt each) arrives in <strong>S4</strong> of the
-          scope build plan. Until then, visions are composed as single need statements below.
         </p>
       )}
 

@@ -21,10 +21,10 @@ describe("SCOPES table", () => {
     for (const id of SCOPE_ORDER) expect(SCOPES[id].id).toBe(id);
   });
 
-  it("honest maturity: apps + infrastructure live (S2 flipped B); society still preview", () => {
+  it("honest maturity: apps live (S1), infrastructure live (S2), society live (S4)", () => {
     expect(SCOPES[DEFAULT_SCOPE].status).toBe("live");
     expect(SCOPES.infrastructure.status).toBe("live"); // S2: propose/converge + visible ratification
-    expect(SCOPES.society.status).toBe("preview"); // flips with S4
+    expect(SCOPES.society.status).toBe("live"); // S4: voice + mapping
   });
 
   it("society is the open-voice scope; build layer only in apps/infrastructure", () => {

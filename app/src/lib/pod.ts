@@ -162,13 +162,15 @@ export function isWithinBase(base: string, target: string): boolean {
   }
 }
 
-/** A collision-free, no-user-input resource slug. */
-function slug(): string {
+/** A collision-free, no-user-input resource slug. (Exported for the per-scope
+ * write modules — pod-society.ts — so every scope's writes share the one
+ * reviewed slug/target/PUT discipline, never a per-scope copy.) */
+export function slug(): string {
   return crypto.randomUUID();
 }
 
 /** Compute the child resource URL `<base><dir>/<slug>.ttl`. */
-function childUrl(base: string, dir: string, name: string): string {
+export function childUrl(base: string, dir: string, name: string): string {
   return new URL(`${dir}/${name}.ttl`, base).toString();
 }
 
@@ -179,7 +181,14 @@ export interface WriteResult<T> {
   readonly response: Response;
 }
 
-async function putTurtle(fetchFn: typeof fetch, url: string, body: string): Promise<Response> {
+/** Create-only Turtle PUT (`If-None-Match: *`). Exported for the per-scope
+ * write modules; callers must pass a URL already cleared by
+ * {@link assertWithinBase}. */
+export async function putTurtle(
+  fetchFn: typeof fetch,
+  url: string,
+  body: string,
+): Promise<Response> {
   const response = await fetchFn(url, {
     method: "PUT",
     headers: {

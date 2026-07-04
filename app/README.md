@@ -127,7 +127,7 @@ resource origins the DPoP token may attach to, only when the pod is served from 
 different host than the WebID + issuer. `VITE_CLIENT_ID` pins a specific Client
 Identifier Document URL verbatim (overrides the origin derivation).
 
-## What it does (features a–g)
+## What it does (features)
 
 | Feature | View | Data-layer entry |
 |---|---|---|
@@ -139,6 +139,8 @@ Identifier Document URL verbatim (overrides the origin derivation).
 | (f) **live updates** — the board re-aggregates when a participant container changes (pod mode; demo pods are in-memory) | Needs board / Common ground | `useLiveUpdates` → `watchContainers` (WebSocketChannel2023 + poll fallback) |
 | (g) **ODRL consent** — attach a usage policy to a need (what may be aggregated / synthesized / quoted / forwarded, + k-anonymity) | Compose | `ConsentPanel` → `writeNeed(consent)` → `consentQuads` (`@jeswr/solid-odrl`) |
 | (h) **governance + trust (Phase 2)** — identity tiers × community-scoped role credentials (builder / reviewer / steward) verified fail-closed from `@jeswr/federation-trust` VCs; `minTierToPropose` enforced on Compose + reactions with explanatory locked states; steward issuance UI (signs a real credential into the holder's pod) | Trust (+ gates in Compose / Needs board) | `src/lib/trust.ts` — `CredentialTrustResolver` / `TierParticipationGate` / `issueRoleCredential` / `PodCredentialSource` |
+| (i) **scope-C voice layer (S4)** — narrative→decompose→adopt compose (fut:VisionStatement / adopted fut:Claims ≤500 chars / Schwartz fut:ValueStatements; the adoption invariant unrepresentable end-to-end; manual-first `DecompositionAssistant` seam; the C4 sensitive-domain write screen); card-at-a-time **Resonance deck** with deterministic cross-cluster routing; contact-prior **Futures gallery** (shared needs first); T0 pseudonymous voice with tier strips | Compose / Resonance deck / Futures gallery (society scope) | `src/lib/model-society.ts` / `pod-society.ts` / `deck.ts` / `gallery.ts` / `sensitive.ts` / `decompose.ts` |
+| (j) **scope-C computed output (S4)** — an endorsed candidate presents as a publishable shared future, a split room as the CO-EQUAL disagreement map: mandatory dissent annex (or the explicit no-dissent assertion), method-provenance label, the ≥2-steward floor shown honestly unmet until S5's signing UI | Convergence room (society scope) | `src/ui/views/SharedFutureOutcome.tsx` over `lib/convergence.ts` |
 
 **Fetch discipline (the credential-leak boundary):** the session-bound
 `authenticatedFetch` is used ONLY for your own pod (writes + own reads); foreign
