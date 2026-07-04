@@ -1,8 +1,9 @@
 // AUTHORED-BY Claude Fable 5 (PSS agent)
 //
-// The Stage-1 seed client shell. App chrome from @jeswr/app-shell (ThemeToggle +
+// The unite app shell. App chrome from @jeswr/app-shell (ThemeToggle +
 // FeedbackButton) + the <jeswr-login-panel> auth seam from @jeswr/solid-elements.
-// Everything below is thin over src/lib.
+// Hash-routed views (#/overview … #/bridge); everything below is thin over
+// src/lib.
 
 import { FeedbackButton, ThemeToggle } from "@jeswr/app-shell";
 import { LoginPanel } from "@jeswr/solid-elements/react";
@@ -10,11 +11,12 @@ import { useState } from "react";
 import { resolveScope, SCOPE_ORDER, SCOPES, scopeHref } from "../scope/scopes.js";
 import { useController } from "./auth.js";
 import { useAggregate, useLiveUpdates } from "./hooks.js";
+import { useHashView, type View } from "./route.js";
 import { type DeliberationConfig, scopedDefaultConfig } from "./state.js";
 import { Bridging } from "./views/Bridging.js";
 import { Compose } from "./views/Compose.js";
-import { Join } from "./views/Join.js";
 import { NeedsBoard } from "./views/NeedsBoard.js";
+import { Overview } from "./views/Overview.js";
 
 // One codebase, three nested scope modes (docs/PLATFORM-PLAN.md §1–2).
 // Resolved once at load from the SPA's own location (+ optional build pin).
@@ -24,34 +26,49 @@ const SCOPE = resolveScope({
   env: import.meta.env.VITE_UNITE_SCOPE as string | undefined,
 });
 
-type View = "join" | "compose" | "needs" | "bridging";
-
 const TABS: { id: View; label: string }[] = [
-  { id: "join", label: "Join" },
+  { id: "overview", label: "Overview" },
   { id: "compose", label: "Compose" },
-  { id: "needs", label: "Needs board" },
-  { id: "bridging", label: "Bridging" },
+  { id: "board", label: "Needs board" },
+  { id: "bridge", label: "Common ground" },
 ];
+
+/** The Venn brand mark — the intersection is the point (common ground). */
+function BrandMark(): React.JSX.Element {
+  return (
+    <svg className="brand-mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+      <title>unite</title>
+      <circle cx="10" cy="13" r="7.25" fill="none" stroke="var(--u-petrol)" strokeWidth="2.2" />
+      <circle cx="16" cy="13" r="7.25" fill="none" stroke="var(--u-gold)" strokeWidth="2.2" />
+    </svg>
+  );
+}
 
 export function App(): React.JSX.Element {
   const controller = useController();
   const [webId, setWebId] = useState<string | null>(controller.webId);
   const [config, setConfig] = useState<DeliberationConfig>(() => scopedDefaultConfig(SCOPE));
-  const [view, setView] = useState<View>("join");
+  const [view, navigate] = useHashView();
   const aggregate = useAggregate(config, controller);
   // Live updates: re-aggregate when any participant container changes
-  // (WebSocketChannel2023 with a poll fallback; best-effort).
+  // (WebSocketChannel2023 with a poll fallback; best-effort; pod mode only).
   useLiveUpdates(config, controller, aggregate.refresh);
+
+  const needCount = aggregate.result?.needs.length;
 
   return (
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <strong>unite</strong>
-          <span className="muted small">
-            {SCOPE.name}
-            {SCOPE.status === "preview" ? " · preview" : ""} · under active development
-          </span>
+          <BrandMark />
+          <div>
+            <div className="brand-name">unite</div>
+            <div className="brand-sub">
+              {SCOPE.name}
+              {SCOPE.status === "preview" ? " · preview" : ""}
+            </div>
+          </div>
+          {config.mode === "demo" && <span className="badge demo">demo deliberation</span>}
         </div>
         <div className="chrome">
           <FeedbackButton
@@ -64,54 +81,84 @@ export function App(): React.JSX.Element {
         </div>
       </header>
 
-      <nav className="scope-nav" aria-label="unite scopes">
-        {SCOPE_ORDER.map((id) => {
-          const s = SCOPES[id];
-          const loc = typeof window === "undefined" ? null : window.location;
-          return (
-            <a
-              key={id}
-              className={id === SCOPE.id ? "scope-link active" : "scope-link"}
-              href={scopeHref(id, loc?.search, loc?.hash)}
-              title={s.tagline}
-              aria-current={id === SCOPE.id ? "page" : undefined}
-            >
-              {s.name}
-              {s.status === "preview" ? <span className="muted small"> (preview)</span> : null}
-            </a>
-          );
-        })}
-      </nav>
-      <p className="scope-tagline muted small">{SCOPE.tagline}</p>
-
-      <div className="login-bar">
-        <LoginPanel
-          controller={controller}
-          autoRestore={true}
-          onSessionChange={(e) => setWebId(e.detail.webId)}
-        />
-        <span className="muted small">{webId ? `Signed in as ${webId}` : "Not signed in"}</span>
+      <div className="subheader">
+        <nav className="scope-nav" aria-label="unite scopes">
+          {SCOPE_ORDER.map((id) => {
+            const s = SCOPES[id];
+            const loc = typeof window === "undefined" ? null : window.location;
+            return (
+              <a
+                key={id}
+                className={id === SCOPE.id ? "scope-link active" : "scope-link"}
+                href={scopeHref(id, loc?.search, loc?.hash)}
+                title={s.tagline}
+                aria-current={id === SCOPE.id ? "page" : undefined}
+              >
+                {s.name.replace("Co-designing ", "")}
+              </a>
+            );
+          })}
+        </nav>
+        <div className="login-bar">
+          <span className={webId ? "session-chip signed-in" : "session-chip"}>
+            <span className="dot" aria-hidden="true" />
+            {webId ?? "Not signed in"}
+          </span>
+          {/* The panel stays mounted (autoRestore needs it); the disclosure only
+              controls its visibility so the header stays compact. */}
+          <details className="login-pop">
+            <summary className="btn">{webId ? "Account" : "Sign in"}</summary>
+            <div className="login-pop-panel">
+              <LoginPanel
+                controller={controller}
+                autoRestore={true}
+                onSessionChange={(e) => setWebId(e.detail.webId)}
+              />
+            </div>
+          </details>
+        </div>
       </div>
 
-      <nav className="tabs">
+      <nav className="tabs" aria-label="unite views">
         {TABS.map((t) => (
           <button
             type="button"
             key={t.id}
             className={view === t.id ? "tab active" : "tab"}
-            onClick={() => setView(t.id)}
+            aria-current={view === t.id ? "page" : undefined}
+            onClick={() => navigate(t.id)}
           >
             {t.label}
+            {t.id === "board" && needCount !== undefined && needCount > 0 && (
+              <span className="count">{needCount}</span>
+            )}
           </button>
         ))}
       </nav>
 
-      <main className="content">
-        {view === "join" && <Join config={config} onChange={setConfig} webId={webId} />}
-        {view === "compose" && <Compose config={config} webId={webId} />}
-        {view === "needs" && <NeedsBoard config={config} webId={webId} aggregate={aggregate} />}
-        {view === "bridging" && <Bridging aggregate={aggregate} />}
+      <main className={view === "board" || view === "bridge" ? "content wide" : "content"}>
+        {view === "overview" && (
+          <Overview
+            scope={SCOPE}
+            config={config}
+            onChange={setConfig}
+            webId={webId}
+            aggregate={aggregate}
+            onNavigate={navigate}
+          />
+        )}
+        {view === "compose" && (
+          <Compose scope={SCOPE} config={config} webId={webId} onComposed={aggregate.refresh} />
+        )}
+        {view === "board" && (
+          <NeedsBoard scope={SCOPE} config={config} webId={webId} aggregate={aggregate} />
+        )}
+        {view === "bridge" && <Bridging config={config} webId={webId} aggregate={aggregate} />}
       </main>
+
+      <p className="footer-note">
+        unite · every statement lives in its author's own pod · under active development
+      </p>
     </div>
   );
 }

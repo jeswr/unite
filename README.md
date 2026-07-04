@@ -59,12 +59,17 @@ Read it in order — each part builds on the previous:
 ## The Stage-1 seed client
 
 [`app/`](app/) is the first implementation: a vite + React + TypeScript SPA
-covering the Stage-1 MVP features (a)–(e) — join a deliberation, submit a
-Max-Neef-classified need to your own pod, read the aggregated needs, express
-tri-state resonance, and view needs ranked by cross-cluster (bridging)
-agreement. The data layer (`app/src/lib`) is exhaustively tested (hostile-input
-resilience + a deterministic bridging characterization fixture that seeds the
-design's conformance set). Implementation choices + the answers to the design's
+covering the Stage-1 MVP features — join a deliberation, submit a
+Max-Neef-classified need (with its ODRL consent policy) to your own pod, read
+the aggregated needs live, express tri-state resonance, and see needs ranked by
+cross-cluster (bridging) agreement on a Pol.is-style **opinion map** with the
+full per-group reception distribution. It opens on a **seeded demo
+deliberation** (an in-memory pod federation run through the real aggregation +
+ranking pipeline, sandboxed to a reserved origin) so every view works on first
+paint; pod mode points the same machinery at real participant pods. The data
+layer (`app/src/lib`) is exhaustively tested (hostile-input resilience + a
+deterministic bridging characterization fixture that seeds the design's
+conformance set). Implementation choices + the answers to the design's
 three open questions are recorded in
 [decisions/0001-stage1-implementation-choices.md](decisions/0001-stage1-implementation-choices.md).
 See [`app/README.md`](app/README.md) for run instructions, the EXPERT-REVIEW
