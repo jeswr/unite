@@ -197,6 +197,10 @@ describe("parseInfraProposals hostile-input hardening (drops — the read-side g
       "a breaking change WITHOUT a migration story (interop honesty)",
       { breaking: `fut:breakingChange "true"^^xsd:boolean ;` },
     ],
+    [
+      "a breaking change whose migration story is WHITESPACE-ONLY (roborev Medium: hostile RDF must not satisfy the invariant with spaces)",
+      { breaking: `fut:breakingChange "true"^^xsd:boolean ; fut:migrationPath "   " ;` },
+    ],
     ["a malformed created date", { created: `dct:created "not-a-date"^^xsd:dateTime ;` }],
     ["a literal creator", { creator: `dct:creator "alice" ;` }],
     [
@@ -235,6 +239,11 @@ describe("parseInfraProposals hostile-input hardening (drops — the read-side g
       "an integer-typed indirectStakeholders",
       { kind: `fut:indirectStakeholders "123"^^xsd:integer ;` },
       (p) => p.indirectStakeholders,
+    ],
+    [
+      "a whitespace-only migration story on a NON-breaking proposal (no story is no story)",
+      { kind: `fut:migrationPath "  " ;` },
+      (p) => p.migrationPath,
     ],
   ];
   for (const [name, overrides, get] of fieldDrops) {

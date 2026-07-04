@@ -197,7 +197,8 @@ export function buildInfraProposalQuads(proposal: InfraProposal): Quad[] {
       ),
     );
   }
-  if (proposal.migrationPath !== undefined && proposal.migrationPath.length > 0) {
+  // A whitespace-only story is NO story: never serialised (mirrors the parse).
+  if (proposal.migrationPath !== undefined && proposal.migrationPath.trim().length > 0) {
     quads.push(quad(s, namedNode(FUT_MIGRATION_PATH), literal(proposal.migrationPath)));
   }
   if (proposal.referenceImplementation !== undefined) {
@@ -247,7 +248,14 @@ export function parseInfraProposals(ds: DatasetCore): InfraProposal[] {
     const affectsRole = readRoles(ds, s);
     const motivatedBy = readIris(ds, s, FUT_MOTIVATED_BY);
     const breakingChange = readBoolean(ds, s, FUT_BREAKING_CHANGE);
-    const migrationPath = readString(ds, s, FUT_MIGRATION_PATH, MAX_CONTENT_LENGTH);
+    // A whitespace-only migration story is NO migration story (mirrors the
+    // build-side trim check — hostile RDF must not satisfy the breaking-change
+    // invariant with "   "): treat it as absent everywhere below.
+    const rawMigrationPath = readString(ds, s, FUT_MIGRATION_PATH, MAX_CONTENT_LENGTH);
+    const migrationPath =
+      rawMigrationPath !== undefined && rawMigrationPath.trim().length > 0
+        ? rawMigrationPath
+        : undefined;
     if (
       title === undefined ||
       title.length === 0 || // mirrors build: a title is 1–200 chars
@@ -258,9 +266,10 @@ export function parseInfraProposals(ds: DatasetCore): InfraProposal[] {
       targetsSystem.length === 0 || // SHACL MUST: ≥1 governed system
       affectsRole.length === 0 || // SHACL MUST: ≥1 declared blast-radius role
       motivatedBy.length === 0 || // SHACL MUST: the needs trace
-      (breakingChange === true && (migrationPath === undefined || migrationPath.length === 0))
-      // interop honesty: a breaking change WITHOUT a migration story is not a
-      // conforming proposal — drop the ITEM, same posture as the build throw.
+      (breakingChange === true && migrationPath === undefined)
+      // interop honesty: a breaking change WITHOUT a migration story (absent,
+      // empty, or whitespace-only) is not a conforming proposal — drop the
+      // ITEM, same posture as the build throw.
     ) {
       continue; // a required field / SHACL MUST is violated → drop this item
     }
@@ -279,7 +288,7 @@ export function parseInfraProposals(ds: DatasetCore): InfraProposal[] {
       inDeliberation,
       ...(proposalKind !== undefined ? { proposalKind } : {}),
       ...(breakingChange !== undefined ? { breakingChange } : {}),
-      ...(migrationPath !== undefined && migrationPath.length > 0 ? { migrationPath } : {}),
+      ...(migrationPath !== undefined ? { migrationPath } : {}),
       ...(referenceImplementation !== undefined ? { referenceImplementation } : {}),
       ...(indirectStakeholders !== undefined ? { indirectStakeholders } : {}),
     });

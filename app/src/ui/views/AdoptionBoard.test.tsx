@@ -59,6 +59,27 @@ describe("AdoptionBoard (the ratification instrument)", () => {
     expect(screen.getByText(/arrive in S3/)).toBeTruthy();
   });
 
+  it("resets the source list on a demo→pod config switch (roborev Low: never observes the previous mode's sources)", async () => {
+    const { rerender } = renderBoard();
+    await waitFor(() => {
+      expect(screen.getAllByRole("link", { name: "re-check" }).length).toBe(2);
+    });
+    const textarea = screen.getByPlaceholderText(/fedreg.ttl/) as HTMLTextAreaElement;
+    expect(textarea.value).toContain("storage-alpha");
+    rerender(
+      <AuthProvider controller={new DevLoginController()}>
+        <AdoptionBoard scope={SCOPES.infrastructure} config={podConfig(SCOPES.infrastructure)} />
+      </AuthProvider>,
+    );
+    // The demo source list is gone in the SAME render cycle, the stale demo
+    // snapshot is dropped, and the empty pod-mode matrix renders honestly.
+    expect((screen.getByPlaceholderText(/fedreg.ttl/) as HTMLTextAreaElement).value).toBe("");
+    await waitFor(() => {
+      expect(screen.getByText("Nobody advertises this lineage yet")).toBeTruthy();
+    });
+    expect(screen.queryByRole("link", { name: "re-check" })).toBeNull();
+  });
+
   it("pod mode with no sources renders the HONEST empty matrix — never fake advertisers", async () => {
     renderBoard(podConfig(SCOPES.infrastructure));
     await waitFor(() => {
