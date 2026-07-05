@@ -671,6 +671,126 @@ describe("aggregateChannel", () => {
     expect(result.timeline.map((m) => m.message.content)).toEqual(["live"]);
   });
 
+  it("a HIDDEN (tombstoned) replacement does NOT erase the still-valid original", async () => {
+    // m1 is replacedBy m2, but m2 is itself tombstoned → not eligible, so it must
+    // never hide m1 (the roborev Medium: supersession only by a SURVIVING replacement).
+    const t1 = threadSubject(ALICE_BASE, "t1");
+    const m2sub = as2MessageSubject(messageUrl(ALICE_BASE, "m2"));
+    const pod = await podFrom(
+      [
+        {
+          base: ALICE_BASE,
+          threads: [{ name: "t1", task: { title: "X", state: "open", creator: ALICE } }],
+          messages: [
+            {
+              name: "m1",
+              msg: {
+                content: "original",
+                author: ALICE,
+                room: t1,
+                replacedBy: m2sub,
+                published: "2026-07-01T09:00:00Z",
+              },
+            },
+            {
+              name: "m2",
+              msg: {
+                content: "edit",
+                author: ALICE,
+                room: t1,
+                published: "2026-07-01T09:05:00Z",
+                deletedAt: "2026-07-01T09:06:00Z",
+              },
+            },
+          ],
+        },
+      ],
+      { [CHANNEL]: await trackerDoc() },
+    );
+    const result = await run({
+      pod,
+      parts: [{ webId: ALICE, base: ALICE_BASE }],
+      vouched: [ALICE],
+    });
+    expect(result.timeline.map((m) => m.message.content)).toEqual(["original"]);
+  });
+
+  it("an ORPHAN-room replacement does NOT erase the original either", async () => {
+    // m1 (in-thread) replacedBy m2, but m2's room is out-of-channel → m2 excluded,
+    // so m1 must still stand rather than both vanishing.
+    const t1 = threadSubject(ALICE_BASE, "t1");
+    const m2sub = as2MessageSubject(messageUrl(ALICE_BASE, "m2"));
+    const pod = await podFrom(
+      [
+        {
+          base: ALICE_BASE,
+          threads: [{ name: "t1", task: { title: "X", state: "open", creator: ALICE } }],
+          messages: [
+            {
+              name: "m1",
+              msg: {
+                content: "original",
+                author: ALICE,
+                room: t1,
+                replacedBy: m2sub,
+                published: "2026-07-01T09:00:00Z",
+              },
+            },
+            {
+              name: "m2",
+              msg: {
+                content: "edit",
+                author: ALICE,
+                room: "https://elsewhere.example/thread#it",
+                published: "2026-07-01T09:05:00Z",
+              },
+            },
+          ],
+        },
+      ],
+      { [CHANNEL]: await trackerDoc() },
+    );
+    const result = await run({
+      pod,
+      parts: [{ webId: ALICE, base: ALICE_BASE }],
+      vouched: [ALICE],
+    });
+    expect(result.timeline.map((m) => m.message.content)).toEqual(["original"]);
+  });
+
+  it("rejects a message asserting BOTH a human author AND an agent attribution (even both = owner)", async () => {
+    // The forbidden both-set shape (roborev Low): a message is a human note XOR an
+    // agent turn, never both — dropped even when both name the pod owner.
+    const t1 = threadSubject(AGENT_BASE, "t1");
+    const pod = await podFrom(
+      [
+        {
+          base: AGENT_BASE,
+          threads: [{ name: "t1", task: { title: "X", state: "open", creator: AGENT } }],
+          messages: [
+            {
+              name: "m1",
+              msg: {
+                content: "both",
+                author: AGENT,
+                provenance: { attributedTo: AGENT },
+                room: t1,
+                published: "2026-07-01T09:00:00Z",
+              },
+            },
+          ],
+        },
+      ],
+      { [CHANNEL]: await trackerDoc() },
+    );
+    const result = await run({
+      pod,
+      parts: [{ webId: AGENT, base: AGENT_BASE }],
+      vouched: [AGENT],
+    });
+    expect(result.timeline).toEqual([]);
+  });
+
   it("drops an orphan message whose room is neither the channel nor a known thread", async () => {
     const pod = await podFrom(
       [

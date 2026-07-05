@@ -29,11 +29,12 @@
 // Load-bearing invariants (INV-4 / INV-6 of the design; identical posture to
 // aggregate.ts):
 //   • CREATOR-OWNS-THE-POD. A thread counts only if its `dct:creator` is the pod
-//     owner; a message counts only if EVERY authoring identity it asserts (the
-//     human `as:attributedTo` AND/OR the PROV-O agent `prov:wasAttributedTo`) is
-//     the pod owner. A pod cannot stuff a thread/message as someone else, and an
-//     AGENT message carrying a (different) human author is refused — "agents never
-//     post as humans" enforced structurally, not just labelled.
+//     owner; a message counts only if it asserts EXACTLY ONE authoring identity —
+//     a human note (`as:attributedTo`) XOR an agent turn (the PROV-O agent
+//     `prov:wasAttributedTo`), never both — and that identity is the pod owner. A
+//     pod cannot stuff a thread/message as someone else, and a message that wears
+//     BOTH a human author and an agent attribution is refused outright — "agents
+//     never post as humans" enforced structurally, not just labelled.
 //   • FAIL-CLOSED, FAIL-ISOLATED. A hostile/broken member resource is recorded and
 //     skipped while its siblings still aggregate; a broken container listing
 //     degrades only that participant's stage; a malformed literal drops the field
@@ -47,9 +48,11 @@
 //     CONTENT (a message's `room`/`inReplyTo`, a thread's `project` are used only
 //     to MATCH the channel, never to fetch).
 //   • DETERMINISTIC, EDIT-SAFE ORDERING. The timeline is folded order-INDEPENDENTLY
-//     (a newest-first read cannot overwrite a newer edit): supersession is computed
-//     from the data (`dct:isReplacedBy` targets present in the collected set), never
-//     from read order, then the survivors are sorted by `as:published` with a
+//     (a newest-first read cannot overwrite a newer edit): a message is superseded
+//     ONLY by a `dct:isReplacedBy` replacement that ITSELF survives — is eligible
+//     (not tombstoned, in-channel) AND same-author + same-thread — so a hidden,
+//     orphan, or foreign replacement never erases a still-valid original. Computed
+//     from the data, never from read order; survivors sort by `as:published` with a
 //     deterministic id tie-break.
 //
 // ── The commission-lifecycle SEAM (left clean for lib/quorum.ts + BL.3/BL.4) ─────
@@ -269,25 +272,28 @@ async function readMembers<T>(
 }
 
 /**
- * Does a message assert ONLY the pod owner as its author? Fail-closed, and the
- * "agents never post as humans" gate in one predicate: collect every authoring
- * identity the message asserts — the human `as:attributedTo` ({@link
- * CanonicalMessage.author}) and the PROV-O agent `prov:wasAttributedTo`
- * ({@link MessageProvenance.attributedTo}) — and require that there is AT LEAST ONE
- * and that EVERY one is `webId` (the pod owner).
+ * Does a message assert exactly ONE authoring identity, and is it the pod owner?
+ * Fail-closed, and the "agents never post as humans" gate in one predicate. A
+ * message is EITHER a human note (the human `as:attributedTo`, {@link
+ * CanonicalMessage.author}) OR an agent turn (the PROV-O agent
+ * `prov:wasAttributedTo`, {@link MessageProvenance.attributedTo}) — NEVER both:
+ * the contradictory both-set shape is rejected outright, EVEN when both name the
+ * pod owner, so an agent turn can never also wear a human author and the
+ * human-vs-agent classification ({@link ChannelMessage.isAgent}) is unambiguous.
  *
- * This rejects: an unauthored message; a human author ≠ the pod owner (spoof); and
- * an agent-attributed message that ALSO carries a (different) human author — a
- * message cannot be both a pod-owner-authored human note and an agent's, so the
- * "agent posting as a human" shape can never satisfy the predicate. (Non-http(s)
- * identities are already dropped to `undefined` by `parseAs2Message`.)
+ * Rejects: an unauthored message; a message asserting both a human author AND an
+ * agent attribution (the "agent posting as a human" shape); and any authoring
+ * identity ≠ the pod owner (cross-pod spoof). (Non-http(s) identities are already
+ * dropped to `undefined` by `parseAs2Message`.)
  */
 function assertsOnlyOwner(msg: CanonicalMessage, webId: string): boolean {
-  const asserted: string[] = [];
-  if (msg.author !== undefined) asserted.push(msg.author);
-  if (msg.provenance?.attributedTo !== undefined) asserted.push(msg.provenance.attributedTo);
-  if (asserted.length === 0) return false;
-  return asserted.every((a) => a === webId);
+  const human = msg.author;
+  const agent = msg.provenance?.attributedTo;
+  // A message is a human note XOR an agent turn — both-set is the forbidden shape.
+  if (human !== undefined && agent !== undefined) return false;
+  const asserted = human ?? agent;
+  if (asserted === undefined) return false; // unauthored → drop
+  return asserted === webId; // the sole authoring identity must be the pod owner
 }
 
 /**
@@ -437,35 +443,51 @@ export async function aggregateChannel(options: ChannelOptions): Promise<Channel
     threadRefs.set(t.resource, t);
   }
 
-  // Messages: edit-fold ORDER-INDEPENDENTLY. A message is superseded iff its
-  // `dct:isReplacedBy` names a message we collected (by subject id OR resource url);
-  // a tombstoned (`schema:dateDeleted`) message is hidden. This never depends on read
-  // order — a newest-first read cannot overwrite a newer edit.
-  const collectedRefs = new Set<string>();
+  // Messages: keep only ELIGIBLE ones first — visible (not `schema:dateDeleted`
+  // tombstoned) AND in-channel (`as:context` names the channel root OR a known
+  // thread). Dedupe by message subject id (deterministic first). Supersession is
+  // then computed AGAINST THE ELIGIBLE SET ONLY, so a hidden (tombstoned),
+  // orphan-room, or foreign replacement can never erase a still-valid original
+  // (roborev job Medium — the replacement must itself survive).
+  const eligibleById = new Map<string, ChannelMessage>();
   for (const m of rawMessages) {
-    collectedRefs.add(m.id);
-    collectedRefs.add(m.resource);
-  }
-  const superseded = new Set<string>();
-  for (const m of rawMessages) {
-    const replacedBy = m.message.replacedBy;
-    if (replacedBy !== undefined && collectedRefs.has(replacedBy)) superseded.add(m.id);
-  }
-
-  // Dedupe by message subject id (deterministic first), then keep only channel
-  // messages: `room` names the channel root OR a known thread; drop superseded +
-  // tombstoned + orphan-room messages.
-  const byId = new Map<string, ChannelMessage>();
-  for (const m of rawMessages) {
-    if (superseded.has(m.id)) continue;
     if (m.message.deletedAt !== undefined) continue;
     const room = m.room;
     const inChannel = room !== undefined && (channelIris.has(room) || threadRefs.has(room));
     if (!inChannel) continue;
-    if (!byId.has(m.id)) byId.set(m.id, m);
+    if (!eligibleById.has(m.id)) eligibleById.set(m.id, m);
+  }
+  // Resolve a `dct:isReplacedBy` IRI (subject-`#it` OR bare resource) to its message.
+  const eligibleByRef = new Map<string, ChannelMessage>();
+  for (const m of eligibleById.values()) {
+    eligibleByRef.set(m.id, m);
+    eligibleByRef.set(m.resource, m);
   }
 
-  const timeline = [...byId.values()].sort(sortMessages);
+  // Edit-fold ORDER-INDEPENDENTLY (a newest-first read cannot overwrite a newer
+  // edit). A message is superseded iff its replacement is an ELIGIBLE (surviving,
+  // in-channel) message, distinct from it, BY THE SAME AUTHOR IN THE SAME THREAD —
+  // an edit stays same-author/same-thread, so a cross-author or cross-thread
+  // `replacedBy` never hides another participant's message. Chain-safe (M1→M2→M3
+  // leaves only M3). Computed from the data, never from read order.
+  const superseded = new Set<string>();
+  for (const m of eligibleById.values()) {
+    const replacedBy = m.message.replacedBy;
+    if (replacedBy === undefined) continue;
+    const repl = eligibleByRef.get(replacedBy);
+    if (
+      repl !== undefined &&
+      repl.id !== m.id &&
+      repl.author === m.author &&
+      repl.room === m.room
+    ) {
+      superseded.add(m.id);
+    }
+  }
+
+  const timeline = [...eligibleById.values()]
+    .filter((m) => !superseded.has(m.id))
+    .sort(sortMessages);
 
   // Attach each timeline message to its thread (by `room`).
   for (const m of timeline) {
