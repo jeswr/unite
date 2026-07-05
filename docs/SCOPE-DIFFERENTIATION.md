@@ -6,8 +6,8 @@
 direction that the three scope versions must be **real products, not relabelled
 polls** — at authoring time only `apps` was live, and `infrastructure` /
 `society` rendered the identical Overview/Compose/NeedsBoard/Bridging machinery
-with different copy. Build progress is tracked in the §6 table (S0/S1 and S4
-have since SHIPPED).
+with different copy. Build progress is tracked in the §6 table (S0/S1, S2 and
+S4 have since SHIPPED).
 This doc specifies what each scope is *for*, the data model, compose flow,
 views, and convergence output that differ per scope, what genuinely shares, and
 a phased build plan. It **extends — never redesigns** — the founding design
@@ -477,7 +477,7 @@ implementation = passes the fixtures") true as the surface grows.
 | **S1 — the artifact + convergence spine** (**SHIPPED**) | A's proposal layer (`fut:AppProposal` compose + proposal board) + **Convergence Room v1** (candidate/critique/endorse/dissent/disagreement-map) end-to-end in demo mode; sector 0.2.0 draft authored (the §3.2 + §4.2 additions, one version bump — `vocab/futures-0.2.0-draft.ttl`); build decisions recorded in §6.1 | A completes its loop up to commissioning | **§7 Phase 8** (the §7 table's row; Phases 3/4/6 consume its output) | S0; Phase 2 for real endorsement identity (demo-gated before that) |
 | **S2 — scope B live: propose + see adoption** (**SHIPPED**) | `fut:InfraProposal` model + typed round-trip (`lib/infra.ts`) + the §3.3 structured compose wizard + the scope-B proposals board + **Adoption board** (read-only `fedreg:acceptsSpec` matrix via `@jeswr/federation-registry`, computed Current/Superseded/Proposed — `lib/adoption.ts`); the room reused for infra endorsement; the aggregation consent gate extended to infra proposals (fail-closed); the infrastructure demo seeds the sector-0.2.0 change as the self-hosting deliberation (B4 in sandbox form; the LIVE run needs a real pod community). Build decisions in §6.2 | **B → live** (propose/resonate/converge; ratification visible) | **= §7 Phase 5**, expanded | S1 |
 | **S3 — scope B ratification machinery** | role declaration + fail-closed verification; role-cohort lens on Common ground; reviewer/steward endorsement gating; signed `fut:AdoptionDecision`; computed Current status | B fully live | composes **§7 Phase 2** (roles) | S2 + Phase 2 landed |
-| **S4 — scope C live: voice** (**SHIPPED**) | expression layer (`VisionStatement`/`Claim`/`ValueStatement` + manual decompose + adopt); Resonance deck with deterministic routing; Futures gallery; T0 pseudonymous compose with tier badges; the room's computed advisory-synthesis outcome presentation + the C4 write screen; build decisions recorded in §6.2 | **C → live** (voice + mapping) | **= §7 Phase 7**, first half | S1 (parallel with S2/S3 — different modules) |
+| **S4 — scope C live: voice** (**SHIPPED**) | expression layer (`VisionStatement`/`Claim`/`ValueStatement` + manual decompose + adopt); Resonance deck with deterministic routing; Futures gallery; T0 pseudonymous compose with tier badges; the room's computed advisory-synthesis outcome presentation + the C4 write screen; build decisions recorded in §6.3 | **C → live** (voice + mapping) | **= §7 Phase 7**, first half | S1 (parallel with S2/S3 — different modules) |
 | **S5 — scope C outputs** | Convergence-room reuse for `SharedFuture` candidates; steward signing UI; mandatory-dissent SHACL enforcement in the client; `ConvergenceMetrics` publication (k-anonymous, tier-stratified); Published-futures renderer (proof-verified, dissent-required) | C fully live | **= §7 Phase 7**, second half | S4 + Phase 2 |
 | **S6 — scope C legitimacy hardening** | mini-public escalation (sortition cohort + method-provenance label); perception-gap instrument (pre/post estimates); the C4 privacy gate formalised (sensitive-domain deliberations blocked pending privacy-preserving aggregation) | — | new — propose as **§7 Phase 9** | S5 |
 

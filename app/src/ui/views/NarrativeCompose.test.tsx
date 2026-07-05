@@ -119,6 +119,39 @@ describe("NarrativeCompose (the §4.3 wizard)", () => {
     expect(before.visions.filter((v) => v.content.includes("diagnosis"))).toEqual([]);
   });
 
+  // An assistant seam (lib/decompose.ts) can inject atom content past the
+  // textarea's maxLength; an over-length need/value would pass the pre-check
+  // and then throw INSIDE writeSocietyNeed/writeValueStatement AFTER the vision
+  // already persisted (partial submit + duplicate-on-retry). The submit must be
+  // all-or-nothing from validation on, so the over-length atom is refused up
+  // front with nothing written.
+  for (const kind of ["need", "value"] as const) {
+    it(`REFUSES an over-length ${kind} atom UP FRONT (all-or-nothing), writing nothing`, async () => {
+      renderWizard();
+      fireEvent.change(narrativeBox(), {
+        target: { value: "I want streets my kids can cross safely every single day." },
+      });
+      next(/Next: split it/);
+      fireEvent.click(screen.getByRole("button", { name: `+ blank ${kind}` }));
+      next(/Next: adopt each/);
+      const textarea = screen.getAllByRole("textbox").find((t) => t.tagName === "TEXTAREA");
+      if (!textarea) throw new Error("no atom textarea");
+      // 2001 chars > MAX_CONTENT_LENGTH (2000); benign vocabulary (not the C4 gate).
+      fireEvent.change(textarea, { target: { value: "x".repeat(2001) } });
+      fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(`Adopt this ${kind}`) }));
+      next(/Next: voice & consent/);
+      fireEvent.click(screen.getByRole("button", { name: /Share this vision statement/ }));
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(`An adopted ${kind} is too long`))).toBeTruthy();
+      });
+      // The vision was NEVER written — the refusal happened before any write.
+      const after = await aggregateSociety();
+      expect(
+        after.visions.filter((v) => v.content.includes("cross safely every single day")),
+      ).toEqual([]);
+    });
+  }
+
   it("writes the vision + ONLY the adopted atoms to the demo pod (end-to-end)", async () => {
     renderWizard();
     fireEvent.change(narrativeBox(), {

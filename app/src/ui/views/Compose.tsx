@@ -81,8 +81,11 @@ export function Compose({
 }): React.JSX.Element {
   // The composeFlow seam (S0 → S4): scope C mounts its OWN grammar — the
   // narrative→decompose→adopt wizard (SCOPE-DIFFERENTIATION §4.3) — not a
-  // relabelled needs form. (S2 does the same for "structured-infra".)
+  // relabelled needs form. Scope B's structured-infra wizard lives in
+  // NeedFirstCompose (it needs the deliberation aggregate for its needs trace),
+  // so the aggregate is forwarded there.
   const onComposedProp = onComposed ? { onComposed } : {};
+  const aggregateProp = aggregate !== undefined ? { aggregate } : {};
   if (scope.composeFlow === "narrative-decompose") {
     return (
       <NarrativeCompose
@@ -100,6 +103,7 @@ export function Compose({
       config={config}
       webId={webId}
       trust={trust}
+      {...aggregateProp}
       {...onComposedProp}
     />
   );
@@ -110,12 +114,17 @@ function NeedFirstCompose({
   config,
   webId,
   trust,
+  aggregate,
   onComposed,
 }: {
   scope: ScopeConfig;
   config: DeliberationConfig;
   webId: string | null;
   trust: SessionTrust;
+  /** The deliberation aggregate (the structured-infra wizard's needs-trace
+   * source). Optional so pre-S2 call sites keep working; without it the
+   * scope falls back to the shared need form. */
+  aggregate?: AggregateState;
   onComposed?: () => Promise<void> | void;
 }): React.JSX.Element {
   const controller = useController();

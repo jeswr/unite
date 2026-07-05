@@ -212,9 +212,7 @@ export function App(): React.JSX.Element {
         )}
         {/* Scope-enabled extra views not yet built render the honest,
             phase-labelled preview (never a relabelled apps surface). */}
-        {view === "published-futures" && (
-          <PreviewView view={view} scope={SCOPE} />
-        )}
+        {view === "published-futures" && <PreviewView view={view} scope={SCOPE} />}
       </main>
 
       <p className="footer-note">

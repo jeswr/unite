@@ -8,12 +8,13 @@
 // the adoption invariant makes an unadopted claim unwritable.
 
 import { describe, expect, it, vi } from "vitest";
-import type { Critique, SynthesisCandidate } from "./model.js";
+import type { Critique, Need, SynthesisCandidate } from "./model.js";
 import type { Claim, ValueStatement, VisionStatement } from "./model-society.js";
 import {
   writeClaim,
   writeSocietyCandidate,
   writeSocietyCritique,
+  writeSocietyNeed,
   writeValueStatement,
   writeVision,
 } from "./pod-society.js";
@@ -41,6 +42,13 @@ const claimBody: Omit<Claim, "id"> = {
 const valueBody: Omit<ValueStatement, "id"> = {
   content: "Judge streets by their most vulnerable user.",
   valueConcept: "https://w3id.org/jeswr/sectors/futures#schwartz-universalism",
+  created: "2026-07-01T00:00:00.000Z",
+  creator: WEBID,
+  inDeliberation: DELIB,
+};
+const needBody: Omit<Need, "id"> = {
+  content: "A safe crossing on the high street near the school.",
+  needConcept: "https://w3id.org/jeswr/sectors/futures#maxneef-protection",
   created: "2026-07-01T00:00:00.000Z",
   creator: WEBID,
   inDeliberation: DELIB,
@@ -236,6 +244,42 @@ describe("writeSocietyCandidate / writeSocietyCritique (the Room's C4 write boun
       fetchSpy as unknown as typeof fetch,
       BASE,
       critiqueBody,
+      CONSENT,
+    );
+    const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+    const body = init.body as string;
+    expect(body).toContain(`${url}#consent`);
+    expect(body).toContain("odrl");
+  });
+});
+
+describe("writeSocietyNeed (the C4 write boundary for scope-C needs)", () => {
+  it("REFUSES sensitive need content before any request (screened at the chokepoint, not just the UI)", async () => {
+    const fetchSpy = spy201();
+    await expect(
+      writeSocietyNeed(fetchSpy as unknown as typeof fetch, BASE, {
+        ...needBody,
+        content: "Since my diagnosis I need a pharmacy within walking distance.",
+      }),
+    ).rejects.toThrowError(SensitiveDomainError);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("delegates a CLEAN need to the shared writeNeed (create-only PUT under needs/)", async () => {
+    const fetchSpy = spy201();
+    const { url } = await writeSocietyNeed(fetchSpy as unknown as typeof fetch, BASE, needBody);
+    expect(url.startsWith(`${BASE}needs/`)).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.headers as Record<string, string>)["if-none-match"]).toBe("*");
+  });
+
+  it("a clean society need MAY carry its inline ODRL consent policy through", async () => {
+    const fetchSpy = spy201();
+    const { url } = await writeSocietyNeed(
+      fetchSpy as unknown as typeof fetch,
+      BASE,
+      needBody,
       CONSENT,
     );
     const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];

@@ -61,6 +61,7 @@ function resultWith(overrides: Partial<AggregateResult>): AggregateResult {
     // Both YOU and P2 endorse the subsistence need → a SHARED need concept.
     resonances: [vote(YOU, N1, 1), vote(P2, N1, 2)],
     proposals: [],
+    infraProposals: [],
     candidates: [],
     critiques: [],
     visions: [

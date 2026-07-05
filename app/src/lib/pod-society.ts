@@ -20,7 +20,7 @@
 
 import { type ConsentPolicy, consentQuads, ODRL_NS } from "./consent.js";
 import { NS } from "./fut.js";
-import { type Critique, type SynthesisCandidate, serializeTurtle } from "./model.js";
+import { type Critique, type Need, type SynthesisCandidate, serializeTurtle } from "./model.js";
 import {
   buildClaimQuads,
   buildValueQuads,
@@ -37,6 +37,7 @@ import {
   type WriteResult,
   writeCandidate,
   writeCritique,
+  writeNeed,
 } from "./pod.js";
 import { assertNotSensitive } from "./sensitive.js";
 
@@ -89,6 +90,24 @@ export async function writeClaim(
   });
   const response = await putTurtle(fetchFn, url, body);
   return { url, resource, response };
+}
+
+/**
+ * Write a {@link Need} IN THE SOCIETY SCOPE: the C4 sensitive-domain screen
+ * runs at THIS write boundary (the need content) before delegating to the
+ * shared {@link writeNeed} — so a non-UI caller cannot write sensitive society
+ * need text past the gate, exactly as {@link writeSocietyCandidate} does for
+ * Room candidates. Scope A/B keep calling writeNeed directly (the C4 gate is
+ * scope C's launch constraint, not platform moderation).
+ */
+export async function writeSocietyNeed(
+  fetchFn: typeof fetch,
+  base: string,
+  need: Omit<Need, "id">,
+  consent?: ConsentPolicy,
+): Promise<WriteResult<Need>> {
+  assertNotSensitive(need.content);
+  return writeNeed(fetchFn, base, need, consent);
 }
 
 /**

@@ -56,6 +56,7 @@ function resultWith(overrides: Partial<AggregateResult>): AggregateResult {
     needs: [],
     resonances: [],
     proposals: [],
+    infraProposals: [],
     candidates: [],
     critiques: [],
     visions: [],

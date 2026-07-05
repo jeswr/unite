@@ -26,8 +26,12 @@ import { MAXNEEF_CONCEPTS } from "../../lib/fut.js";
 import { MAX_CLAIM_LENGTH, SCHWARTZ_CONCEPTS, VISION_SCOPES } from "../../lib/fut-society.js";
 import { isHttpIri, MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH, type Need } from "../../lib/model.js";
 import type { Claim, ValueStatement, VisionStatement } from "../../lib/model-society.js";
-import { writeNeed } from "../../lib/pod.js";
-import { writeClaim, writeValueStatement, writeVision } from "../../lib/pod-society.js";
+import {
+  writeClaim,
+  writeSocietyNeed,
+  writeValueStatement,
+  writeVision,
+} from "../../lib/pod-society.js";
 import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
@@ -216,6 +220,22 @@ export function NarrativeCompose({
         setError(`A claim must stay atomic — ≤ ${MAX_CLAIM_LENGTH} characters (split it further).`);
         return;
       }
+      // Need/value content is capped at MAX_CONTENT_LENGTH by their serialisers
+      // (assertStatementCore / buildNeedQuads throw past it). Without this
+      // check an over-length need or value passes here, then throws INSIDE
+      // writeSocietyNeed/writeValueStatement AFTER writeVision already
+      // persisted — a partial submission that duplicates the vision on retry.
+      // Refuse it up front so the multi-write submit is all-or-nothing.
+      if (
+        (a.kind === "need" || a.kind === "value") &&
+        a.content.trim().length > MAX_CONTENT_LENGTH
+      ) {
+        setError(
+          `An adopted ${KIND_LABELS[a.kind]} is too long — keep it under ${MAX_CONTENT_LENGTH} ` +
+            "characters (or split it into more atoms); nothing has been written.",
+        );
+        return;
+      }
       // Assistant-provided METADATA is untrusted input: a malformed concept
       // or provenance IRI must refuse the submit HERE, before ANY write. The
       // atom serialisers would only throw AFTER writeVision already
@@ -280,7 +300,7 @@ export function NarrativeCompose({
             creator: identity,
             inDeliberation: config.deliberation,
           };
-          await writeNeed(session.fetch, session.ownBase, need, consent);
+          await writeSocietyNeed(session.fetch, session.ownBase, need, consent);
         } else {
           const value: Omit<ValueStatement, "id"> = {
             content,
