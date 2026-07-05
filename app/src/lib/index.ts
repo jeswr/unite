@@ -5,6 +5,7 @@
 
 export * from "./adoption.js";
 export * from "./aggregate.js";
+export * from "./channel.js";
 export * from "./convergence.js";
 export * from "./deck.js";
 export * from "./decompose.js";
