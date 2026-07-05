@@ -565,8 +565,13 @@ run in parallel with the rebase.
 ### 5.1 Dependency graph
 
 ```
-SHIPPED on main: S0, S1, S2 (scope B live, read-only adoption board), Phase-2 role credentials.
-IN FLIGHT:       S4 (society voice) — rebase.
+SHIPPED on main: S0–S5 — incl. S4 (society voice), the whole S5 output pipeline (the S5.1–S5.3
+                 libs, the S5.4 steward-signing surface in the Room, the S5.5 Published-futures
+                 renderer), Phase-2 role credentials, S3.3 quorum, UI.1, BL.1–BL.4.
+STILL UNBUILT:   S3.5/S3.6 (the role-cohort endorsement gate + AdoptionDecision signing UI for
+                 scope B), the LDN `as:Announce`-on-publish hand-off (S5.5's notification half —
+                 the S5.4→S5.5 hand-off is in-app state today), and pod persistence of the signed
+                 SharedFuture artifact.
 
 Independent of the S4 rebase (start now, disjoint files):
   UI.1 (component system) ─┬─▶ UI.2, UI.3, UI.6   (hero screens + mobile)

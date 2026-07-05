@@ -11,7 +11,7 @@
 //     user to configure the deliberation IRI, their own container, and the
 //     participant registry (until the fedreg registry wiring lands).
 
-import type { KeyPair } from "@jeswr/federation-trust";
+import type { KeyPair, TrustAnchor } from "@jeswr/federation-trust";
 import {
   DEMO_PEOPLE,
   DEMO_YOU_KEY,
@@ -173,6 +173,17 @@ export interface DeliberationTrust {
   readonly gate: MembershipVerifier;
   /** Steward issuance, when the session holds a steward key (else null). */
   readonly issuance: StewardIssuance | null;
+  /**
+   * The community's PUBLISHED steward verification anchors — the INV-5 quorum
+   * inputs the S5 signing surface (ui/sign-future) needs: the anchor
+   * `authority` IRIs are the registry-backed `trustedStewards` allowlist and
+   * the anchor keys are the `resolveKey` seam. Demo: the seeded steward
+   * anchors (real keys). Pod: EMPTY until the fedreg community-registry
+   * wiring lands (Phase 5) — an empty list keeps the signing surface locked,
+   * fail-closed (lib/shared-future.verifySharedFutureQuorum THROWS without a
+   * non-empty allowlist; nothing here weakens that).
+   */
+  readonly stewardAnchors: readonly TrustAnchor[];
 }
 
 /**
@@ -206,6 +217,7 @@ export async function deliberationTrust(config: DeliberationConfig): Promise<Del
             invalidate: (webId) => resolver.invalidate(webId),
           }
         : null,
+      stewardAnchors: demo.trust.anchors,
     };
   }
   const resolver = new AllowlistTrustResolver(config.participants.map((p) => p.webId));
@@ -213,5 +225,8 @@ export async function deliberationTrust(config: DeliberationConfig): Promise<Del
     resolver,
     gate: new TierParticipationGate(resolver, config.participationFloor),
     issuance: null,
+    // No community registry publishes steward anchors in pod mode yet (Phase
+    // 5): the empty list keeps the S5 signing surface locked, fail-closed.
+    stewardAnchors: [],
   };
 }

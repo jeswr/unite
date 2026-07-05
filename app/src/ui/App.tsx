@@ -7,11 +7,12 @@
 
 import { FeedbackButton, ThemeToggle } from "@jeswr/app-shell";
 import { LoginPanel } from "@jeswr/solid-elements/react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { resolveScope, SCOPE_ORDER, SCOPES, scopeHref } from "../scope/scopes.js";
 import { useController } from "./auth.js";
 import { useAggregate, useLiveUpdates, useTrustProfile } from "./hooks.js";
 import { DEFAULT_VIEW, useHashView, type View } from "./route.js";
+import { type SignedSharedFuture, useStewardSigning } from "./sign-future.js";
 import { collectionKinds, type DeliberationConfig, scopedDefaultConfig } from "./state.js";
 import { AdoptionBoard } from "./views/AdoptionBoard.js";
 import { Bridging } from "./views/Bridging.js";
@@ -22,7 +23,7 @@ import { FuturesGallery } from "./views/FuturesGallery.js";
 import { NeedsBoard } from "./views/NeedsBoard.js";
 import { Overview } from "./views/Overview.js";
 import { Proposals } from "./views/Proposals.js";
-import { PublishedFutures } from "./views/PublishedFutures.js";
+import { PublishedFutures, type PublishedFutureView } from "./views/PublishedFutures.js";
 import { Room } from "./views/Room.js";
 import { enabledViews, isViewEnabled, VIEW_LABELS } from "./views/registry.js";
 import { Trust } from "./views/Trust.js";
@@ -73,6 +74,22 @@ export function App(): React.JSX.Element {
   // Live updates: re-aggregate when any participant container changes
   // (WebSocketChannel2023 with a poll fallback; best-effort; pod mode only).
   useLiveUpdates(config, controller, aggregate.refresh, KINDS);
+
+  // S5.4: the steward-signing context for scope C's Room (null in every other
+  // scope, while resolving, and on any failure — the sign surface then stays
+  // locked, fail-closed), and the S5.5 hand-off state: a signed SharedFuture
+  // from the Room flows to the Published-futures view. Lifted here so the
+  // artifact survives tab switches; keyed to the deliberation (a config
+  // change clears it — a signed artifact never bleeds across deliberations).
+  const signing = useStewardSigning(config, SCOPE.outputKind === "advisory-synthesis");
+  const [publishedFutures, setPublishedFutures] = useState<readonly PublishedFutureView[]>([]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed to the CONFIG on purpose — a deliberation switch clears the signed artifacts (they never bleed across deliberations).
+  useEffect(() => {
+    setPublishedFutures([]);
+  }, [config]);
+  const onSigned = useCallback((signed: SignedSharedFuture) => {
+    setPublishedFutures((prev) => [...prev.filter((f) => f.id !== signed.view.id), signed.view]);
+  }, []);
 
   const needCount = aggregate.result?.needs.length;
 
@@ -201,7 +218,15 @@ export function App(): React.JSX.Element {
           />
         )}
         {view === "room" && (
-          <Room scope={SCOPE} config={config} webId={webId} trust={trust} aggregate={aggregate} />
+          <Room
+            scope={SCOPE}
+            config={config}
+            webId={webId}
+            trust={trust}
+            aggregate={aggregate}
+            signing={signing}
+            onSigned={onSigned}
+          />
         )}
         {/* The S2 scope-B ratification instrument (real fedreg:acceptsSpec reads). */}
         {view === "adoption-board" && <AdoptionBoard scope={SCOPE} config={config} />}
@@ -216,8 +241,11 @@ export function App(): React.JSX.Element {
         )}
         {/* S5: the scope-C publication surface — signed shared futures +
             disagreement maps, rendered only with their verified integrity proof,
-            mandatory dissent annex, bridging evidence and method-provenance. */}
-        {view === "published-futures" && <PublishedFutures scope={SCOPE} />}
+            mandatory dissent annex, bridging evidence and method-provenance.
+            Fed by the Room's S5.4 steward-signing surface (the hand-off above). */}
+        {view === "published-futures" && (
+          <PublishedFutures scope={SCOPE} futures={publishedFutures} />
+        )}
       </main>
 
       <p className="footer-note">

@@ -7,8 +7,9 @@
 // enforced in the draft form before any write. The vote fixtures mirror
 // convergence.test.ts: two clean opinion clusters over two needs.
 
+import { generateKeyPairForSuite, type KeyPair, verifyCredential } from "@jeswr/solid-vc";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AggregateResult } from "../../lib/aggregate.js";
 import { STANCE_CONFLICTS, STANCE_RESONATES } from "../../lib/fut.js";
 import { ROLE_IMPLEMENTER } from "../../lib/fut-draft.js";
@@ -18,6 +19,7 @@ import type { TrustProfile } from "../../lib/trust.js";
 import { SCOPES } from "../../scope/scopes.js";
 import { AuthProvider, DevLoginController } from "../auth.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
+import type { SignedSharedFuture, StewardSigningContext } from "../sign-future.js";
 import { demoConfig } from "../state.js";
 import { Room } from "./Room.js";
 
@@ -403,5 +405,204 @@ describe("the C4 gate in the Room (scope C only)", () => {
     // The write goes through (demo pod) — the form clears, no C4 refusal shown.
     await waitFor(() => expect(box.value).toBe(""));
     expect(screen.queryByText(/This looks like personal health information/)).toBeNull();
+  });
+});
+
+// ── S5.4: the steward signing surface in the SOCIETY room ─────────────────────
+// Real crypto end-to-end: a steward's click drives ui/sign-future →
+// lib/shared-future (build gate + solid-vc attestation + the full verify),
+// the signed artifact flows out through onSigned (the S5.5 hand-off), and an
+// un-signable candidate REFUSES with the lib's reason — no artifact, no
+// hand-off. A non-steward session sees the honestly labelled locked gate.
+
+describe("the S5.4 steward signing surface (society room)", () => {
+  const STEWARD = "https://hana.example/profile/card#me";
+  let stewardKey: KeyPair;
+  let signingCtx: StewardSigningContext;
+
+  beforeAll(async () => {
+    stewardKey = await generateKeyPairForSuite(`${STEWARD}#key`, "Ed25519");
+    const keys = new Map<string, CryptoKey>([
+      [stewardKey.verificationMethod, stewardKey.publicKey],
+    ]);
+    const resolveKey = (vm: string) => keys.get(vm);
+    signingCtx = {
+      steward: { webId: STEWARD, key: stewardKey },
+      trustedStewards: [STEWARD, "https://farah.example/profile/card#me"],
+      resolveKey,
+      verifyVc: (vc) => verifyCredential(vc, { resolveKey }),
+    };
+  });
+
+  /** A 6-participant endorsed room — enough distinct contributors for the
+   *  k-anonymity floor (5): two clean clusters over the needs, everyone
+   *  endorses the candidate, one standing critique. */
+  function signableResult(): AggregateResult {
+    const p5 = "https://p5.example/#me";
+    const p6 = "https://p6.example/#me";
+    const extraClusterVotes: Resonance[] = [
+      vote(p5, NEED_A, STANCE_RESONATES),
+      vote(p5, NEED_B, STANCE_CONFLICTS),
+      vote(p6, NEED_A, STANCE_CONFLICTS),
+      vote(p6, NEED_B, STANCE_RESONATES),
+    ];
+    const endorseVotes: Resonance[] = [...P, p5, p6].map((w) => vote(w, CAND, STANCE_RESONATES));
+    const base = resultWith([]);
+    return {
+      ...base,
+      resonances: [...base.resonances, ...extraClusterVotes, ...endorseVotes],
+    };
+  }
+
+  function renderSocietyRoom(
+    trust: SessionTrust,
+    r: AggregateResult,
+    signing: StewardSigningContext | null,
+    onSigned?: (signed: SignedSharedFuture) => void,
+    /** What the sign-time RE-AGGREGATION returns (defaults to the rendered
+     *  fixture — i.e. the room did not move between review and sign). */
+    freshResult?: AggregateResult,
+  ) {
+    return render(
+      <AuthProvider controller={new DevLoginController()}>
+        <Room
+          scope={SCOPES.society}
+          config={demoConfig("society")}
+          webId={null}
+          trust={trust}
+          aggregate={asAggregate(r)}
+          signing={signing}
+          aggregateForSign={() => Promise.resolve(freshResult ?? r)}
+          {...(onSigned ? { onSigned } : {})}
+        />
+      </AuthProvider>,
+    );
+  }
+
+  it("a NON-steward session sees the locked gate, never a sign control", () => {
+    renderSocietyRoom(asTrust({ tier: 0, roles: [] }), signableResult(), signingCtx);
+    expect(screen.getByText("Signing is steward-gated")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /as steward/ })).toBeNull();
+  });
+
+  it("a STEWARD signs the endorsed outcome: the lib is invoked for real, the artifact hands off, the honest 1-of-≥2 shows", async () => {
+    const onSigned = vi.fn();
+    renderSocietyRoom(
+      asTrust({ tier: 1, roles: ["steward"] }),
+      signableResult(),
+      signingCtx,
+      onSigned,
+    );
+    // The endorsed outcome + the pre-sign review render.
+    expect(screen.getByText(/endorsed — every group leans positive/)).toBeTruthy();
+    expect(screen.getByText(/What your signature attests/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
+    await waitFor(() => expect(onSigned).toHaveBeenCalledTimes(1), { timeout: 8000 });
+    // The hand-off carries a REAL signed artifact: quads + a verified
+    // credential + the lib's quorum verdict (1 distinct steward, floor 2).
+    const signed = onSigned.mock.calls[0]?.[0] as SignedSharedFuture;
+    expect(signed.quads.length).toBeGreaterThan(0);
+    expect(signed.vcs).toHaveLength(1);
+    expect(signed.verification.quorum.distinctStewards).toBe(1);
+    expect(signed.view.kind).toBe("shared-future");
+    expect(signed.view.quorumMet).toBe(false);
+    // …and the surface shows the honest unmet progress + the hand-off link.
+    expect(await screen.findByText(/1 of ≥2 stewards — quorum not met/)).toBeTruthy();
+    expect(screen.getByText(/publishes once the quorum is met/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Published futures" })).toBeTruthy();
+  });
+
+  it("an UN-SIGNABLE candidate (sub-k cohort) refuses with the lib's reason — no artifact, no hand-off", async () => {
+    const onSigned = vi.fn();
+    // The 4-participant fixture: only 4 distinct contributors < the k floor (5).
+    const r = resultWith(P.map((w) => vote(w, CAND, STANCE_RESONATES)));
+    renderSocietyRoom(asTrust({ tier: 1, roles: ["steward"] }), r, signingCtx, onSigned);
+    fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
+    expect(await screen.findByText(/Un-signable:/)).toBeTruthy();
+    expect(screen.getByText(/below the k-threshold/)).toBeTruthy();
+    expect(onSigned).not.toHaveBeenCalled();
+  });
+
+  it("STALE DISSENT is un-signable: a critique that lands AFTER review makes the D2 gate throw — no artifact", async () => {
+    const onSigned = vi.fn();
+    const rendered = signableResult();
+    // A NEW critique lands between the steward's review and the sign click:
+    // the sign-time re-aggregation sees it, the rendered annex does not.
+    const fresh: AggregateResult = {
+      ...rendered,
+      critiques: [
+        ...rendered.critiques,
+        {
+          id: "https://p5.example/critiques/late.ttl",
+          content: "This landed after the steward reviewed the panel.",
+          onStatement: CAND,
+          created: "2026-06-23T00:00:00Z",
+          creator: "https://p5.example/#me",
+          inDeliberation: DELIB,
+        },
+      ],
+    };
+    renderSocietyRoom(
+      asTrust({ tier: 1, roles: ["steward"] }),
+      rendered,
+      signingCtx,
+      onSigned,
+      fresh,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
+    expect(await screen.findByText(/Un-signable:/)).toBeTruthy();
+    expect(screen.getByText(/DROPS a standing critique/)).toBeTruthy();
+    expect(onSigned).not.toHaveBeenCalled();
+  });
+
+  it("MOVED VOTES are un-signable: a reception that changed since review refuses — review again", async () => {
+    const onSigned = vi.fn();
+    const rendered = signableResult();
+    // An extra endorsement vote lands after review: the recomputed reception
+    // no longer equals what the steward reviewed.
+    const fresh: AggregateResult = {
+      ...rendered,
+      resonances: [...rendered.resonances, vote("https://p7.example/#me", CAND, STANCE_RESONATES)],
+      verified: [...rendered.verified, { webId: "https://p7.example/#me", base: "https://p7.example/u/", tier: "T1" as const }],
+    };
+    renderSocietyRoom(
+      asTrust({ tier: 1, roles: ["steward"] }),
+      rendered,
+      signingCtx,
+      onSigned,
+      fresh,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
+    expect(await screen.findByText(/moved since you reviewed/)).toBeTruthy();
+    expect(onSigned).not.toHaveBeenCalled();
+  });
+
+  it("EDITED CANDIDATE MATERIAL is un-signable: content changed at the same id since review refuses", async () => {
+    const onSigned = vi.fn();
+    const rendered = signableResult();
+    // The candidate resource was overwritten (same id, new text) after the
+    // steward reviewed the panel: the sign-time re-aggregation sees it.
+    const fresh: AggregateResult = {
+      ...rendered,
+      candidates: rendered.candidates.map((c) =>
+        c.id === CAND ? { ...c, content: "Silently rewritten after review." } : c,
+      ),
+    };
+    renderSocietyRoom(
+      asTrust({ tier: 1, roles: ["steward"] }),
+      rendered,
+      signingCtx,
+      onSigned,
+      fresh,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
+    expect(await screen.findByText(/changed since you reviewed it/)).toBeTruthy();
+    expect(onSigned).not.toHaveBeenCalled();
+  });
+
+  it("NO signing context (unresolved / pod mode without a registry) stays locked fail-closed", () => {
+    renderSocietyRoom(asTrust({ tier: 1, roles: ["steward"] }), signableResult(), null);
+    expect(screen.getByText("Signing is locked (fail-closed)")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /as steward/ })).toBeNull();
   });
 });
