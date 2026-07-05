@@ -66,6 +66,7 @@ export type ScopeViewId =
   | "proposals"
   | "room"
   | "adoption-board"
+  | "build"
   | "deck"
   | "futures-gallery"
   | "published-futures";
@@ -154,7 +155,10 @@ export const SCOPES: Readonly<Record<ScopeId, ScopeConfig>> = {
     artifactKinds: ["need", "app-proposal"],
     cohortLenses: ["opinion"],
     outputKind: "build-commission",
-    views: ["proposals", "room"],
+    // "build" enables the read-only Build channel (BL.2, PLATFORM-PLAN §5 /
+    // next-phases §3.5): the agentic Slack-style build layer made visible —
+    // gated on `buildLayer` (true for A + B, never C).
+    views: ["proposals", "room", "build"],
     endorsementGate: {
       crossCohort: ["opinion"],
       reviewerRoleRequired: false,
@@ -184,7 +188,7 @@ export const SCOPES: Readonly<Record<ScopeId, ScopeConfig>> = {
     artifactKinds: ["need", "infra-proposal"], // S2 landed the model + parser
     cohortLenses: ["opinion", "role"],
     outputKind: "adoption-decision",
-    views: ["proposals", "room", "adoption-board"],
+    views: ["proposals", "room", "adoption-board", "build"],
     endorsementGate: {
       crossCohort: ["opinion", "role"], // §3.4 — both partitions must clear
       reviewerRoleRequired: true, // spec-review is the reviewer role's scope-B meaning
