@@ -1,15 +1,16 @@
 // AUTHORED-BY Claude Fable 5 (PSS agent)
 //
 // S5.5 — the Published-futures renderer (docs/design/next-phases.md §2.4, §2.6
-// (5)): the LAST unbuilt scope-C surface (it was the only PreviewView placeholder
-// left). It renders a signed fut:SharedFuture ONLY with its full legitimacy
+// (6)). It renders a signed fut:SharedFuture ONLY with its full legitimacy
 // evidence — the mandatory dissent annex, the recomputable bridging evidence, the
 // verified ≥2-steward integrity proof, and the method-provenance label — and a
 // DISAGREEMENT MAP is a CO-EQUAL published outcome, never a failure banner
 // (design/03 §4 (5)). The machinery (lib/shared-future + lib/quorum + lib/dissent
 // + lib/convergence-metrics) is real and exhaustively tested; this view is the
-// honest window onto it, showing an honest "nothing signed yet" empty until the
-// steward signing surface (S5.4) feeds it — never a faked or relabelled surface.
+// honest window onto it, FED by the Room's S5.4 steward-signing surface
+// (ui/sign-future hands each signed artifact's verified view-model here) and
+// showing an honest "nothing signed yet" empty state until a steward signs an
+// outcome — never a faked or relabelled surface.
 
 import type { ClusterBridgingEvidence } from "../../lib/adoption-decision.js";
 import type { DissentRecord } from "../../lib/dissent.js";
@@ -22,9 +23,10 @@ import type { ScopeConfig } from "../../scope/scopes.js";
 import { EmptyState, SectionHeader, ViewHeader } from "../components.js";
 
 // The no-single-owner floor (lib/quorum QUORUM_FLOOR = 2, INV-5). Duplicated as a
-// plain literal HERE rather than imported, so this browser view never pulls
-// lib/quorum's `@jeswr/solid-vc` (node-only crypto/undici) dep chain into the
-// client bundle — verification is a lib/server concern, never the renderer's.
+// plain literal HERE rather than imported, so this renderer stays a pure
+// presentational consumer with no crypto dep chain of its own — verification
+// happens at the signing surface (ui/sign-future invokes the full lib verify
+// path and hands the verified view-model here), never in the renderer.
 const NO_SINGLE_OWNER_FLOOR = 2;
 
 /** The human label for a coded `fut:methodProvenance` concept (design/03 §5). */
@@ -188,8 +190,8 @@ function PublishedFutureCard({ item }: { item: PublishedFutureView }): React.JSX
 /**
  * The Published-futures view. Renders every signed shared future / disagreement
  * map with its full legitimacy evidence, or an honest empty when none are signed
- * yet (the steward signing surface is S5.4 — until it feeds this view, the scope
- * stays honestly labelled, never faked).
+ * yet (a steward signs a computed outcome in the Convergence Room's output
+ * stage — the S5.4 surface — and the signed artifact flows here).
  */
 export function PublishedFutures({
   scope,
@@ -222,9 +224,9 @@ export function PublishedFutures({
             The signing machinery is built and tested: a synthesis is <strong>un-signable</strong>{" "}
             if it drops a standing critique, a sub-quorum or sub-k-anonymous artifact never
             ratifies, and every signature is a verified Data-Integrity proof over the exact content
-            digest. The steward signing surface (which turns an endorsed room outcome into a signed
-            artifact) lands next; until a community signs one here, this view stays honestly empty
-            rather than rendering a placeholder as if it were real.
+            digest. A steward signs a computed outcome in the <a href="#/room">Convergence room</a>
+            's output stage and the signed artifact appears here; until a steward signs one, this
+            view stays honestly empty rather than rendering a placeholder as if it were real.
           </p>
         </EmptyState>
       ) : (

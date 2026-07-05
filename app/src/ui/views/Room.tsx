@@ -18,7 +18,7 @@ import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH } from "../../lib/model.js";
 import { writeCandidate, writeCritique } from "../../lib/pod.js";
 import { writeSocietyCandidate, writeSocietyCritique } from "../../lib/pod-society.js";
 import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive.js";
-import { meetsTier } from "../../lib/trust.js";
+import { hasRole, meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
 import {
@@ -32,6 +32,12 @@ import {
 import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, writeSessionFor } from "../hooks.js";
+import {
+  contributorCountFor,
+  type SignedSharedFuture,
+  type StewardSigningContext,
+  signRoomCandidate,
+} from "../sign-future.js";
 import { configReady, type DeliberationConfig, sessionIdentity } from "../state.js";
 import { DistributionBar } from "./Bridging.js";
 import { SharedFutureOutcome } from "./SharedFutureOutcome.js";
@@ -60,7 +66,8 @@ function outputCopy(scope: ScopeConfig): string {
       return (
         "In this scope an endorsed candidate becomes a signed advisory synthesis with a " +
         "mandatory dissent annex, handed to human decision-makers — nothing executes. The " +
-        "outcome is computed and presented below (S4); the steward-signing surface arrives in S5."
+        "outcome is computed below, and a steward signs it there (≥2 distinct steward " +
+        "signatures publish it to Published futures)."
       );
     default:
       return (
@@ -78,12 +85,18 @@ export function Room({
   webId,
   trust,
   aggregate,
+  signing = null,
+  onSigned,
 }: {
   scope: ScopeConfig;
   config: DeliberationConfig;
   webId: string | null;
   trust: SessionTrust;
   aggregate: AggregateState;
+  /** The S5.4 steward-signing context (App-resolved; null = locked/unavailable). */
+  signing?: StewardSigningContext | null;
+  /** The S5.5 hand-off: a signed SharedFuture flows to Published futures. */
+  onSigned?: (signed: SignedSharedFuture) => void;
 }): React.JSX.Element {
   const controller = useController();
   const { result, loading, error, refresh } = aggregate;
@@ -99,6 +112,14 @@ export function Room({
   const [critique, setCritique] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // The S5.4 sign action (scope C's output stage): per-candidate signed
+  // artifacts + the in-flight/refusal state. The refusal message is the
+  // lib's throw, verbatim — the un-signable state is surfaced, never hidden.
+  const [signedFutures, setSignedFutures] = useState<ReadonlyMap<string, SignedSharedFuture>>(
+    new Map(),
+  );
+  const [signBusy, setSignBusy] = useState(false);
+  const [signError, setSignError] = useState<string | null>(null);
 
   const identity = sessionIdentity(config, webId);
   const floor = config.participationFloor;
@@ -316,6 +337,51 @@ export function Room({
       setFormError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  // A candidate switch clears the previous candidate's sign refusal.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed to the ACTIVE CANDIDATE identity on purpose — the refusal belongs to the candidate it was raised for.
+  useEffect(() => {
+    setSignError(null);
+  }, [active?.id]);
+
+  /**
+   * The S5.4 sign action: invoke the LANDED signing lib on the room's
+   * computed outcome (ui/sign-future → lib/shared-future). Every un-signable
+   * state (dropped dissent D2, missing evidence D3/D4, unconsented lineage
+   * INV-1, sub-k cohort, no steward allowlist INV-5) THROWS in the lib and is
+   * surfaced verbatim — never caught-and-retried, never routed around.
+   */
+  async function signOutcome(): Promise<void> {
+    setSignError(null);
+    if (!active || !reception || !result) return;
+    if (!signing || signing.steward === null) {
+      // The gate upstream keeps the button locked; this is defence in depth.
+      setSignError("no steward signing key is available to this session (fail-closed)");
+      return;
+    }
+    setSignBusy(true);
+    try {
+      const prior = signedFutures.get(active.id);
+      const signed = await signRoomCandidate({
+        candidate: active,
+        reception,
+        reviewedCritiques: activeCritiques,
+        standingCritiqueIds: new Set(activeCritiques.map((c) => c.id)),
+        synthesizable: result.synthesizable,
+        contributorCount: contributorCountFor(result, active, activeCritiques),
+        deliberation: config.deliberation,
+        context: signing,
+        ...(prior !== undefined ? { prior } : {}),
+        stewardFloor: scope.endorsementGate.stewardSignatures,
+      });
+      setSignedFutures((prev) => new Map(prev).set(active.id, signed));
+      onSigned?.(signed);
+    } catch (e) {
+      setSignError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSignBusy(false);
     }
   }
 
@@ -586,15 +652,25 @@ export function Room({
                 </Notice>
               )}
               {reception.outcome === "endorsed" && <Notice tone="info">{outputCopy(scope)}</Notice>}
-              {/* The scope-C output presentation (S4): what publication WILL
-                  be — mandatory dissent annex, method-provenance label, the
-                  ≥2-steward floor shown honestly unmet. The disagreement map
-                  gets the SAME panel (a co-equal outcome), never a failure. */}
+              {/* The scope-C output presentation (S4) + the S5.4 steward
+                  signing surface: mandatory dissent annex, method-provenance
+                  label, the ≥2-steward quorum progress shown honestly, and
+                  the steward-gated sign action that invokes the landed
+                  signing lib. The disagreement map gets the SAME panel (a
+                  co-equal outcome), never a failure. */}
               {scope.outputKind === "advisory-synthesis" && (
                 <SharedFutureOutcome
                   scope={scope}
                   reception={reception}
                   critiques={activeCritiques}
+                  signing={{
+                    isSteward: trust.profile !== null && hasRole(trust.profile, "steward"),
+                    context: signing,
+                    signed: signedFutures.get(active.id) ?? null,
+                    busy: signBusy,
+                    error: signError,
+                    onSign: () => void signOutcome(),
+                  }}
                 />
               )}
             </div>
