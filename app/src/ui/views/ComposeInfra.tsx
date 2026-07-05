@@ -31,6 +31,7 @@ import { isHttpIri, MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH } from "../../lib/model
 import { writeInfraProposal } from "../../lib/pod.js";
 import { meetsTier } from "../../lib/trust.js";
 import { useController } from "../auth.js";
+import { Notice, ViewHeader } from "../components.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { writeSessionFor } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
@@ -196,14 +197,18 @@ export function ComposeInfra({
 
   return (
     <section className="view">
-      <h2 className="view-title">Propose an infrastructure change</h2>
-      <p className="view-lede">
-        Scope B changes <em>running systems</em>, so a proposal here is structured: what it targets,
-        what kind of change, who it touches, whether it breaks anything — and running code before it
-        can be endorsed. Your proposal is stored in{" "}
-        <strong>{config.mode === "demo" ? "the sandboxed demo pod" : "your own pod"}</strong> with
-        your consent policy attached.
-      </p>
+      <ViewHeader
+        title="Propose an infrastructure change"
+        lede={
+          <>
+            Scope B changes <em>running systems</em>, so a proposal here is structured: what it
+            targets, what kind of change, who it touches, whether it breaks anything — and running
+            code before it can be endorsed. Your proposal is stored in{" "}
+            <strong>{config.mode === "demo" ? "the sandboxed demo pod" : "your own pod"}</strong>{" "}
+            with your consent policy attached.
+          </>
+        }
+      />
       <p className="muted small">
         Want to surface a shared need instead of a concrete change?{" "}
         <button type="button" className="chip" onClick={onSwitchToNeed}>
@@ -429,13 +434,13 @@ export function ComposeInfra({
         {saving ? "Saving…" : "Put this change to the deliberation"}
       </button>
 
-      {formError && <p className="notice error">{formError}</p>}
+      {formError && <Notice tone="error">{formError}</Notice>}
       {savedUrl && (
-        <p className="notice ok">
+        <Notice tone="ok">
           Saved to {config.mode === "demo" ? "the demo pod" : "your pod"} —{" "}
           <a href="#/proposals">see it on the proposals board</a>.{" "}
           <span className="data">{savedUrl}</span>
-        </p>
+        </Notice>
       )}
     </section>
   );

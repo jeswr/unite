@@ -15,6 +15,14 @@ import { writeProposal } from "../../lib/pod.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
+import {
+  EmptyState,
+  LoadingRows,
+  Notice,
+  Panel,
+  SectionHeader,
+  ViewHeader,
+} from "../components.js";
 import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, writeSessionFor } from "../hooks.js";
@@ -190,29 +198,31 @@ function AppProposals({
 
   return (
     <section className="view">
-      <div className="row-between">
-        <div>
-          <h2 className="view-title">Proposals</h2>
-          <p className="view-lede">
+      <ViewHeader
+        title="Proposals"
+        lede={
+          <>
             A proposal is a <em>satisfier</em>: it names the shared needs it serves. Rival proposals
             for the same need are a <strong>portfolio of answers</strong>, not a conflict — filter
             by a need to see its portfolio.
-          </p>
-        </div>
-        <button type="button" className="btn" onClick={refresh} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button type="button" className="btn" onClick={refresh} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
 
-      {error && <p className="notice error">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
 
       {/* ── Compose ────────────────────────────────────────────────────── */}
       {!mayParticipate && trust.profile !== null && (
-        <p className="notice info">
+        <Notice tone="info">
           Reading is open to everyone; <strong>proposing and reacting</strong> here requires a
           vouched membership (tier T{floor} — {TIER_MEANING[floor]}). See the{" "}
           <a href="#/trust">Trust</a> view for how vouching works.
-        </p>
+        </Notice>
       )}
 
       {mayParticipate && !composing && (
@@ -224,10 +234,8 @@ function AppProposals({
       )}
 
       {mayParticipate && composing && (
-        <div className="panel">
-          <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
-            Propose an {scope.artifactNoun}
-          </h3>
+        <Panel>
+          <SectionHeader title={`Propose an ${scope.artifactNoun}`} />
           <label className="field">
             <span>
               Short name{" "}
@@ -309,15 +317,15 @@ function AppProposals({
               Cancel
             </button>
           </div>
-        </div>
+        </Panel>
       )}
 
-      {formError && <p className="notice error">{formError}</p>}
+      {formError && <Notice tone="error">{formError}</Notice>}
       {savedUrl && (
-        <p className="notice ok">
+        <Notice tone="ok">
           Saved to {config.mode === "demo" ? "the demo pod" : "your pod"} — it appears on the board
           below. <span className="data">{savedUrl}</span>
-        </p>
+        </Notice>
       )}
 
       {/* ── The portfolio filter ────────────────────────────────────────── */}
@@ -355,39 +363,32 @@ function AppProposals({
       )}
 
       {activeFilter && (
-        <p className="notice info">
+        <Notice tone="info">
           <strong>Portfolio:</strong> {visible.length} proposal{visible.length === 1 ? "" : "s"}{" "}
           answering “{needById.get(activeFilter)?.content ?? activeFilter}” — different satisfiers
           for the same need, side by side.
-        </p>
+        </Notice>
       )}
 
       {/* ── The board ───────────────────────────────────────────────────── */}
-      {showSkeletons && (
-        <ul className="cards" aria-hidden="true">
-          <li className="skel" />
-          <li className="skel" />
-        </ul>
-      )}
+      {showSkeletons && <LoadingRows count={2} />}
 
       {!showSkeletons && !configReady(config) && (
-        <div className="empty">
-          <span className="empty-title">Not connected yet</span>
+        <EmptyState title="Not connected yet">
           <p>
             Configure your deliberation on the <a href="#/overview">Overview</a> — or switch to the
             demo deliberation to explore how unite works.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && result && configReady(config) && proposals.length === 0 && (
-        <div className="empty">
-          <span className="empty-title">No proposals yet</span>
+        <EmptyState title="No proposals yet">
           <p>
             A proposal answers the shared needs on the <a href="#/board">needs board</a>. Be the
             first to propose an {scope.artifactNoun}.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       <ul className="cards">

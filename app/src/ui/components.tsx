@@ -287,6 +287,57 @@ export function Segmented<T extends string | number>({
   );
 }
 
+// ── Step wizard (the multi-step compose stepper) ─────────────────────────────
+
+/** One step in a {@link StepWizard} — an id + its rendered chip label. */
+export interface WizardStep<Id extends string = string> {
+  readonly id: Id;
+  readonly label: ReactNode;
+}
+
+/**
+ * The shared compose stepper — generalises the S4 NarrativeCompose 4-step nav
+ * (the best-structured flow in the app) into the pattern every multi-step
+ * compose form uses. It renders ONLY the numbered step chips; the step panels
+ * stay in the owning view. `canReach(index, currentIndex)` decides which steps
+ * are navigable (default: any earlier step + the immediate next one); a step
+ * past the reachable frontier renders `disabled`, exactly like the hand-written
+ * `chip-row` step nav it replaces — so a migrated form reads identically.
+ */
+export function StepWizard<Id extends string>({
+  steps,
+  current,
+  onStep,
+  canReach,
+  label = "steps",
+}: {
+  steps: readonly WizardStep<Id>[];
+  current: Id;
+  onStep: (id: Id) => void;
+  /** Which steps are navigable from `currentIndex`; defaults to backward + next. */
+  canReach?: (index: number, currentIndex: number) => boolean;
+  label?: string;
+}): React.JSX.Element {
+  const currentIndex = steps.findIndex((s) => s.id === current);
+  const reachable = canReach ?? ((i, cur) => i <= cur + 1);
+  return (
+    <nav className="chip-row" aria-label={label}>
+      {steps.map((s, i) => (
+        <button
+          type="button"
+          key={s.id}
+          className="chip"
+          aria-pressed={s.id === current}
+          disabled={!reachable(i, currentIndex)}
+          onClick={() => onStep(s.id)}
+        >
+          {s.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 // ── Shared reception distribution bar (also imported by the Room via Bridging) ─
 
 /** Stable opinion-group display names. */

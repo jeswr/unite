@@ -14,6 +14,7 @@ import { MAXNEEF_BY_IRI } from "../../lib/fut.js";
 import { VISION_SCOPE_BY_IRI } from "../../lib/fut-society.js";
 import { routeGallery } from "../../lib/gallery.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
+import { EmptyState, LoadingRows, Notice, ViewHeader } from "../components.js";
 import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState } from "../hooks.js";
 import { displayName } from "../hooks.js";
@@ -59,56 +60,50 @@ export function FuturesGallery({
 
   return (
     <section className="view">
-      <div className="row-between">
-        <div>
-          <h2 className="view-title">Futures gallery</h2>
-          <p className="view-lede">
+      <ViewHeader
+        title="Futures gallery"
+        lede={
+          <>
             Whole stories, not soundbites — routed by <em>contact</em>: futures from outside your
             opinion neighbourhood, written by people who share your needs. The shared needs come
             first; the narrative second. Never ranked by engagement.
-          </p>
-        </div>
-        <button type="button" className="btn" onClick={refresh} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button type="button" className="btn" onClick={refresh} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
 
-      {error && <p className="notice error">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
 
       {result && <TierStrip verified={result.verified} />}
 
-      {showSkeletons && (
-        <ul className="cards" aria-hidden="true">
-          <li className="skel" />
-          <li className="skel" />
-        </ul>
-      )}
+      {showSkeletons && <LoadingRows count={2} />}
 
       {!showSkeletons && !configReady(config) && (
-        <div className="empty">
-          <span className="empty-title">Not connected yet</span>
+        <EmptyState title="Not connected yet">
           <p>
             Configure your deliberation on the <a href="#/overview">Overview</a> — or explore the
             seeded demo deliberation.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && result && configReady(config) && result.visions.length === 0 && (
-        <div className="empty">
-          <span className="empty-title">No shared futures yet</span>
+        <EmptyState title="No shared futures yet">
           <p>
             The gallery shows whole vision narratives — <a href="#/compose">share yours</a>; only
             what its author chose to share leaves a pod, under the author's consent policy.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && result && entries.length === 0 && result.visions.length > 0 && (
-        <div className="empty">
-          <span className="empty-title">Only your own visions are here so far</span>
+        <EmptyState title="Only your own visions are here so far">
           <p>The gallery routes you to OTHER people's futures — none have been shared yet.</p>
-        </div>
+        </EmptyState>
       )}
 
       <ul className="cards">

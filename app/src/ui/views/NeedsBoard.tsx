@@ -19,6 +19,7 @@ import { writeResonance } from "../../lib/pod.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
+import { EmptyState, LoadingRows, Notice, ViewHeader } from "../components.js";
 import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, writeSessionFor } from "../hooks.js";
@@ -172,18 +173,15 @@ export function NeedsBoard({
 
   return (
     <section className="view">
-      <div className="row-between">
-        <div>
-          <h2 className="view-title">Needs board</h2>
-          <p className="view-lede">
-            Every card is read live from its author's own pod. React honestly — one voice per person
-            per statement; changing your mind replaces your earlier reaction.
-          </p>
-        </div>
-        <button type="button" className="btn" onClick={refresh} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+      <ViewHeader
+        title="Needs board"
+        lede="Every card is read live from its author's own pod. React honestly — one voice per person per statement; changing your mind replaces your earlier reaction."
+        actions={
+          <button type="button" className="btn" onClick={refresh} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
 
       <div className="board-toolbar">
         <input
@@ -231,15 +229,15 @@ export function NeedsBoard({
         </fieldset>
       )}
 
-      {error && <p className="notice error">{error}</p>}
-      {writeError && <p className="notice error">{writeError}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
+      {writeError && <Notice tone="error">{writeError}</Notice>}
 
       {!canReact && trust.profile !== null && (
-        <p className="notice info">
+        <Notice tone="info">
           Reading is open to everyone; <strong>reacting</strong> in this scope requires a vouched
           membership (tier T{floor}) so tallies stay attributable. See the{" "}
           <a href="#/trust">Trust</a> view for how vouching works.
-        </p>
+        </Notice>
       )}
 
       {result && result.errors.length > 0 && (
@@ -258,29 +256,21 @@ export function NeedsBoard({
         </details>
       )}
 
-      {showSkeletons && (
-        <ul className="cards" aria-hidden="true">
-          <li className="skel" />
-          <li className="skel" />
-          <li className="skel" />
-        </ul>
-      )}
+      {showSkeletons && <LoadingRows count={3} />}
 
       {/* An incomplete pod config clears `result` to null (fail-closed refresh),
           so this guidance must NOT require an aggregate result to render. */}
       {!showSkeletons && !configReady(config) && (
-        <div className="empty">
-          <span className="empty-title">Not connected yet</span>
+        <EmptyState title="Not connected yet">
           <p>
             Configure your deliberation on the <a href="#/overview">Overview</a> — or switch to the
             demo deliberation to explore how unite works.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && result && configReady(config) && result.needs.length === 0 && (
-        <div className="empty">
-          <span className="empty-title">No needs shared yet</span>
+        <EmptyState title="No needs shared yet">
           <p>
             Be the first voice: share a {scope.artifactNoun} and it appears here for every
             participant, straight from your pod.
@@ -288,14 +278,13 @@ export function NeedsBoard({
           <a className="btn primary" href="#/compose">
             Add your voice
           </a>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && visible.length === 0 && (result?.needs.length ?? 0) > 0 && (
-        <div className="empty">
-          <span className="empty-title">Nothing matches</span>
+        <EmptyState title="Nothing matches">
           <p>No needs match the current search/filter.</p>
-        </div>
+        </EmptyState>
       )}
 
       <ul className="cards">

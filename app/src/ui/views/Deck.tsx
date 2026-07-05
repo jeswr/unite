@@ -14,6 +14,7 @@ import { routeDeck } from "../../lib/deck.js";
 import type { Claim } from "../../lib/model-society.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
+import { EmptyState, LoadingRows, Notice, ViewHeader } from "../components.js";
 import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName } from "../hooks.js";
@@ -101,60 +102,55 @@ export function Deck({
 
   return (
     <section className="view">
-      <div className="row-between">
-        <div>
-          <h2 className="view-title">Resonance deck</h2>
-          <p className="view-lede">
+      <ViewHeader
+        title="Resonance deck"
+        lede={
+          <>
             One claim at a time. The deck deals you what your opinion group hasn't assessed yet —
             preferring claims <em>other</em> groups resonated with, so potential common ground
             surfaces instead of each group's own favourites. Reactions only —{" "}
             <strong>no replies anywhere</strong>.
-          </p>
-        </div>
-        <button type="button" className="btn" onClick={refresh} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button type="button" className="btn" onClick={refresh} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
 
-      {error && <p className="notice error">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
 
       {result && <TierStrip verified={result.verified} />}
 
-      {showSkeletons && (
-        <ul className="cards" aria-hidden="true">
-          <li className="skel" />
-        </ul>
-      )}
+      {showSkeletons && <LoadingRows count={1} />}
 
       {!showSkeletons && !configReady(config) && (
-        <div className="empty">
-          <span className="empty-title">Not connected yet</span>
+        <EmptyState title="Not connected yet">
           <p>
             Configure your deliberation on the <a href="#/overview">Overview</a> — or explore the
             seeded demo deliberation.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && result && configReady(config) && (result.claims.length ?? 0) === 0 && (
-        <div className="empty">
-          <span className="empty-title">No claims yet</span>
+        <EmptyState title="No claims yet">
           <p>
             Claims are split out of whole visions — <a href="#/compose">share a vision</a> and adopt
             its atoms; each adopted claim deals onto everyone's deck.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && result && configReady(config) && result.claims.length > 0 && !card && (
-        <div className="empty">
-          <span className="empty-title">Deck cleared — you've seen every claim</span>
+        <EmptyState title="Deck cleared — you've seen every claim">
           <p>
             You reacted to all {result.claims.length} claim
             {result.claims.length === 1 ? "" : "s"} here. See where the groups stand on{" "}
             <a href="#/bridge">Common ground</a>, or <a href="#/compose">add your own vision</a>.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {card && top && (

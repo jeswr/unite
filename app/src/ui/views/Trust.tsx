@@ -17,6 +17,7 @@ import {
   writeCredentialDoc,
 } from "../../lib/trust.js";
 import { scopeHref } from "../../scope/scopes.js";
+import { Notice, Panel, SectionHeader, ViewHeader } from "../components.js";
 import { avatarColor, initials } from "../format.js";
 import type { SessionTrust } from "../hooks.js";
 import { displayName } from "../hooks.js";
@@ -189,19 +190,21 @@ export function Trust({
 
   return (
     <section className="view">
-      <h2 className="view-title">Governance &amp; trust</h2>
-      <p className="view-lede">
-        Two axes decide what anyone may do here: <strong>who you verifiably are</strong> (an
-        identity tier) and <strong>what this community lets you do</strong> (roles, held as signed
-        credentials scoped to this community — never global). Every claim below is verified from
-        credentials, fail-closed: no credential, no standing.
-      </p>
+      <ViewHeader
+        title="Governance & trust"
+        lede={
+          <>
+            Two axes decide what anyone may do here: <strong>who you verifiably are</strong> (an
+            identity tier) and <strong>what this community lets you do</strong> (roles, held as
+            signed credentials scoped to this community — never global). Every claim below is
+            verified from credentials, fail-closed: no credential, no standing.
+          </>
+        }
+      />
 
       {/* Your standing */}
-      <div className="panel">
-        <h3 className="view-title" style={{ fontSize: "1.05rem" }}>
-          Your standing here
-        </h3>
+      <Panel>
+        <SectionHeader title="Your standing here" />
         {identity === null ? (
           <p className="muted">Not signed in — sign in with your WebID to resolve your standing.</p>
         ) : profile === null ? (
@@ -220,26 +223,24 @@ export function Trust({
                 ? "You hold no role credentials in this community."
                 : profile.roles.map((r) => `As ${r}, you may ${ROLE_MEANING[r]}.`).join(" ")}
             </p>
-            <p className={meetsTier(profile, floor) ? "notice ok" : "notice info"}>
+            <Notice tone={meetsTier(profile, floor) ? "ok" : "info"}>
               {meetsTier(profile, floor)
                 ? `You meet this scope's participation floor (T${floor}) — you may compose and react.`
                 : `This scope's participation floor is T${floor} — composing and reacting are locked until a steward issues your membership credential.`}
-            </p>
+            </Notice>
           </>
         )}
-      </div>
+      </Panel>
 
       {/* The community roll */}
-      <div className="panel">
-        <h3 className="view-title" style={{ fontSize: "1.05rem" }}>
-          Community roll
-        </h3>
+      <Panel>
+        <SectionHeader title="Community roll" />
         <p className="muted small">
           Each standing is resolved by verifying the participant's credentials against the
           community's trust anchors (its stewards' published keys) — signature, expiry, status and
           scope all checked, every failure a quiet denial.
         </p>
-        {rollError !== null && <p className="notice error">{rollError}</p>}
+        {rollError !== null && <Notice tone="error">{rollError}</Notice>}
         {!roll && rollError === null && <p className="muted">Verifying credentials…</p>}
         {roll && (
           <ul className="participant-list">
@@ -260,13 +261,11 @@ export function Trust({
             })}
           </ul>
         )}
-      </div>
+      </Panel>
 
       {/* Steward issuance */}
-      <div className="panel">
-        <h3 className="view-title" style={{ fontSize: "1.05rem" }}>
-          Issue a role credential
-        </h3>
+      <Panel>
+        <SectionHeader title="Issue a role credential" />
         {isSteward && issuance ? (
           <>
             <p className="muted small">
@@ -312,12 +311,12 @@ export function Trust({
             <button type="button" className="primary" onClick={issue} disabled={issuing}>
               {issuing ? "Signing…" : "Issue credential"}
             </button>
-            {issueError && <p className="notice error">{issueError}</p>}
+            {issueError && <Notice tone="error">{issueError}</Notice>}
             {issued && (
-              <p className="notice ok">
+              <Notice tone="ok">
                 Issued — the credential now lives in the holder's pod and the roll above re-verified
                 it. <span className="data">{issued}</span>
-              </p>
+              </Notice>
             )}
             <p className="muted small">
               Steward seats themselves are a community-formation act (two-steward rule,
@@ -349,13 +348,11 @@ export function Trust({
             configured yet.
           </p>
         )}
-      </div>
+      </Panel>
 
       {/* The model, in plain language */}
-      <div className="panel">
-        <h3 className="view-title" style={{ fontSize: "1.05rem" }}>
-          How trust works here
-        </h3>
+      <Panel>
+        <SectionHeader title="How trust works here" />
         <ol className="steps">
           <li>
             <div className="step-body">
@@ -387,7 +384,7 @@ export function Trust({
             </div>
           </li>
         </ol>
-      </div>
+      </Panel>
     </section>
   );
 }

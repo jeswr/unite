@@ -19,6 +19,7 @@ import {
   METHOD_RESONANCE_MAPPING,
 } from "../../lib/fut-society.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
+import { EmptyState, SectionHeader, ViewHeader } from "../components.js";
 
 // The no-single-owner floor (lib/quorum QUORUM_FLOOR = 2, INV-5). Duplicated as a
 // plain literal HERE rather than imported, so this browser view never pulls
@@ -101,9 +102,7 @@ function PublishedFutureCard({ item }: { item: PublishedFutureView }): React.JSX
       className="panel"
       aria-label={endorsed ? "published shared future" : "published disagreement map"}
     >
-      <h3 className="view-title" style={{ fontSize: "1.05rem", marginTop: 0 }}>
-        {item.title ?? (endorsed ? "A shared future" : "A disagreement map")}
-      </h3>
+      <SectionHeader title={item.title ?? (endorsed ? "A shared future" : "A disagreement map")} />
       <p>
         {endorsed ? (
           <span className="badge res">shared future</span>
@@ -202,18 +201,23 @@ export function PublishedFutures({
   const floor = Math.max(scope.endorsementGate.stewardSignatures, NO_SINGLE_OWNER_FLOOR);
   return (
     <section className="view">
-      <h2 className="view-title">Published futures</h2>
-      <p className="muted">
-        Signed shared futures and disagreement maps — each rendered only with its verified integrity
-        proof (≥{floor} steward signatures), its mandatory dissent annex, its recomputable bridging
-        evidence and its method-provenance label. A disagreement map is published with the same care
-        as any endorsement.
-      </p>
+      <ViewHeader
+        title="Published futures"
+        lede={
+          <>
+            Signed shared futures and disagreement maps — each rendered only with its verified
+            integrity proof (≥{floor} steward signatures), its mandatory dissent annex, its
+            recomputable bridging evidence and its method-provenance label. A disagreement map is
+            published with the same care as any endorsement.
+          </>
+        }
+      />
 
       {futures.length === 0 ? (
-        <div className="empty">
-          <span className="badge">nothing signed yet — and not faked</span>
-          <span className="empty-title">No published futures</span>
+        <EmptyState
+          title="No published futures"
+          badge={<span className="badge">nothing signed yet — and not faked</span>}
+        >
           <p className="muted small">
             The signing machinery is built and tested: a synthesis is <strong>un-signable</strong>{" "}
             if it drops a standing critique, a sub-quorum or sub-k-anonymous artifact never
@@ -222,7 +226,7 @@ export function PublishedFutures({
             artifact) lands next; until a community signs one here, this view stays honestly empty
             rather than rendering a placeholder as if it were real.
           </p>
-        </div>
+        </EmptyState>
       ) : (
         <div className="cards">
           {futures.map((f) => (

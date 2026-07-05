@@ -13,6 +13,7 @@ import { writeNeed } from "../../lib/pod.js";
 import { meetsTier } from "../../lib/trust.js";
 import { type ScopeConfig, scopeHref } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
+import { LockedGate, Notice, ViewHeader } from "../components.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { writeSessionFor } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
@@ -157,8 +158,7 @@ function NeedFirstCompose({
             <p>Verifying your membership credential for this deliberation.</p>
           </div>
         ) : (
-          <div className="empty locked">
-            <span className="empty-title">Proposing here needs a vouched membership</span>
+          <LockedGate title="Proposing here needs a vouched membership">
             <p>
               This scope changes running systems, so composing requires identity tier{" "}
               <strong>T{floor}</strong> ({TIER_MEANING[floor]}). You currently hold{" "}
@@ -185,7 +185,7 @@ function NeedFirstCompose({
                 — there you hold a steward role and everything unlocks.
               </p>
             )}
-          </div>
+          </LockedGate>
         )}
       </section>
     );
@@ -255,12 +255,17 @@ function NeedFirstCompose({
 
   return (
     <section className="view">
-      <h2 className="view-title">{copy.title}</h2>
-      <p className="view-lede">
-        Your statement is stored in{" "}
-        <strong>{config.mode === "demo" ? "the sandboxed demo pod" : "your own pod"}</strong>, under
-        your identity, with your consent policy attached. Others read it only because you let them.
-      </p>
+      <ViewHeader
+        title={copy.title}
+        lede={
+          <>
+            Your statement is stored in{" "}
+            <strong>{config.mode === "demo" ? "the sandboxed demo pod" : "your own pod"}</strong>,
+            under your identity, with your consent policy attached. Others read it only because you
+            let them.
+          </>
+        }
+      />
 
       {/* The composeFlow seam (S0/S2/S4): the scope-specific wizards
           (structured-infra — S2; narrative-decompose — S4) mount above and
@@ -268,14 +273,14 @@ function NeedFirstCompose({
           (or a call site without an aggregate — the wizard's needs-trace
           source). */}
       {scope.composeFlow === "structured-infra" && (
-        <p className="notice info">
+        <Notice tone="info">
           You are composing a shared <strong>need</strong>.{" "}
           {aggregate !== undefined && (
             <button type="button" className="chip" onClick={() => setNeedMode(false)}>
               Back to the structured proposal wizard
             </button>
           )}
-        </p>
+        </Notice>
       )}
 
       <label className="field">
@@ -345,12 +350,12 @@ function NeedFirstCompose({
         {saving ? "Saving…" : `Share this ${scope.artifactNoun}`}
       </button>
 
-      {error && <p className="notice error">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
       {savedUrl && (
-        <p className="notice ok">
+        <Notice tone="ok">
           Saved to {config.mode === "demo" ? "the demo pod" : "your pod"} —{" "}
           <a href="#/board">see it on the needs board</a>. <span className="data">{savedUrl}</span>
-        </p>
+        </Notice>
       )}
     </section>
   );

@@ -12,6 +12,7 @@ import { PROPOSAL_KIND_LABELS, STAKEHOLDER_ROLE_LABELS } from "../../lib/infra.j
 import type { Need } from "../../lib/model.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
+import { EmptyState, LoadingRows, Notice, ViewHeader } from "../components.js";
 import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName } from "../hooks.js";
@@ -85,30 +86,32 @@ export function InfraProposals({
 
   return (
     <section className="view">
-      <div className="row-between">
-        <div>
-          <h2 className="view-title">Infrastructure proposals</h2>
-          <p className="view-lede">
+      <ViewHeader
+        title="Infrastructure proposals"
+        lede={
+          <>
             Structured changes to shared systems: each names its <em>target</em>, its <em>kind</em>,
             its <em>blast radius</em>, and whether it breaks running implementations — and carries
             running code before it can be endorsed. Endorsement is advisory;{" "}
             <strong>the wire is the ballot box</strong> (see the{" "}
             <a href="#/adoption-board">Adoption board</a>).
-          </p>
-        </div>
-        <button type="button" className="btn" onClick={refresh} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button type="button" className="btn" onClick={refresh} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
 
-      {error && <p className="notice error">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
 
       {!mayParticipate && trust.profile !== null && (
-        <p className="notice info">
+        <Notice tone="info">
           Reading is open to everyone; <strong>proposing and reacting</strong> here requires a
           vouched membership (tier T{floor} — {TIER_MEANING[floor]}). See the{" "}
           <a href="#/trust">Trust</a> view for how vouching works.
-        </p>
+        </Notice>
       )}
 
       {mayParticipate && (
@@ -155,40 +158,33 @@ export function InfraProposals({
       )}
 
       {activeFilter && (
-        <p className="notice info">
+        <Notice tone="info">
           <strong>Portfolio:</strong> {visible.length} proposal{visible.length === 1 ? "" : "s"}{" "}
           answering “{needById.get(activeFilter)?.content ?? activeFilter}” — different satisfiers
           for the same need, side by side.
-        </p>
+        </Notice>
       )}
 
       {/* ── The board ───────────────────────────────────────────────────── */}
-      {showSkeletons && (
-        <ul className="cards" aria-hidden="true">
-          <li className="skel" />
-          <li className="skel" />
-        </ul>
-      )}
+      {showSkeletons && <LoadingRows count={2} />}
 
       {!showSkeletons && !configReady(config) && (
-        <div className="empty">
-          <span className="empty-title">Not connected yet</span>
+        <EmptyState title="Not connected yet">
           <p>
             Configure your deliberation on the <a href="#/overview">Overview</a> — or switch to the
             demo deliberation to explore how unite works.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && result && configReady(config) && proposals.length === 0 && (
-        <div className="empty">
-          <span className="empty-title">No infrastructure proposals yet</span>
+        <EmptyState title="No infrastructure proposals yet">
           <p>
             A proposal answers the shared needs on the <a href="#/board">needs board</a>. Be the
             first to propose an {scope.artifactNoun} — the structured wizard is on{" "}
             <a href="#/compose">Compose</a>.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       <ul className="cards">

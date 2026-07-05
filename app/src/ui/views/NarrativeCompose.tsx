@@ -36,6 +36,7 @@ import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
+import { StepWizard } from "../components.js";
 import type { SessionTrust } from "../hooks.js";
 import { writeSessionFor } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
@@ -358,8 +359,6 @@ export function NarrativeCompose({
     );
   }
 
-  const stepIndex = STEP_ORDER.indexOf(step);
-
   return (
     <section className="view">
       <h2 className="view-title">Share a vision</h2>
@@ -369,21 +368,14 @@ export function NarrativeCompose({
         deliberation as yours without your explicit adoption.
       </p>
 
-      <nav className="chip-row" aria-label="compose steps">
-        {STEP_ORDER.map((s, i) => (
-          <button
-            type="button"
-            key={s}
-            className="chip"
-            aria-pressed={step === s}
-            // Backwards always; forwards only to visited-adjacent steps.
-            disabled={i > stepIndex + 1 || (i > stepIndex && !narrative.trim())}
-            onClick={() => setStep(s)}
-          >
-            {STEP_LABELS[s]}
-          </button>
-        ))}
-      </nav>
+      <StepWizard
+        steps={STEP_ORDER.map((s) => ({ id: s, label: STEP_LABELS[s] }))}
+        current={step}
+        onStep={setStep}
+        // Backwards always; forwards only to visited-adjacent steps.
+        canReach={(i, cur) => i <= cur + 1 && (i <= cur || narrative.trim().length > 0)}
+        label="compose steps"
+      />
 
       {/* ── Step 1 — Tell it ──────────────────────────────────────────────── */}
       {step === "tell" && (

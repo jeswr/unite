@@ -18,6 +18,7 @@
 import type { CandidateReception } from "../../lib/convergence.js";
 import type { Critique } from "../../lib/model.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
+import { SectionHeader } from "../components.js";
 
 /** The §4.4 method-provenance label for the Stage-1 method (resonance mapping). */
 export const METHOD_PROVENANCE_LABEL =
@@ -38,11 +39,13 @@ export function SharedFutureOutcome({
 
   return (
     <section className="panel" aria-label="what publication will be">
-      <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
-        {endorsed
-          ? "What publishes: a shared future"
-          : "What publishes: the disagreement map — a first-class outcome"}
-      </h3>
+      <SectionHeader
+        title={
+          endorsed
+            ? "What publishes: a shared future"
+            : "What publishes: the disagreement map — a first-class outcome"
+        }
+      />
       <p className="muted small">
         {endorsed ? (
           <>

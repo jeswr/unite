@@ -21,6 +21,14 @@ import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
+import {
+  EmptyState,
+  LoadingRows,
+  Notice,
+  Panel,
+  SectionHeader,
+  ViewHeader,
+} from "../components.js";
 import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, writeSessionFor } from "../hooks.js";
@@ -315,52 +323,47 @@ export function Room({
 
   return (
     <section className="view">
-      <div className="row-between">
-        <div>
-          <h2 className="view-title">Convergence room</h2>
-          <p className="view-lede">
+      <ViewHeader
+        title="Convergence room"
+        lede={
+          <>
             A candidate synthesis is endorsed only when <em>every</em> opinion group leans positive
             — computed live from the votes, never declared. Standing critiques travel with the
             outcome as its dissent annex, and a split room publishes an honest{" "}
             <strong>disagreement map</strong> instead of a forced consensus.
-          </p>
-        </div>
-        <button type="button" className="btn" onClick={refresh} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button type="button" className="btn" onClick={refresh} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
 
-      {error && <p className="notice error">{error}</p>}
-      {formError && <p className="notice error">{formError}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
+      {formError && <Notice tone="error">{formError}</Notice>}
 
       {!mayParticipate && trust.profile !== null && (
-        <p className="notice info">
+        <Notice tone="info">
           Reading is open to everyone; <strong>drafting, critiquing and endorsing</strong> here
           requires a vouched membership (tier T{floor} — {TIER_MEANING[floor]}). See the{" "}
           <a href="#/trust">Trust</a> view.
-        </p>
+        </Notice>
       )}
 
-      {showSkeletons && (
-        <ul className="cards" aria-hidden="true">
-          <li className="skel" />
-          <li className="skel" />
-        </ul>
-      )}
+      {showSkeletons && <LoadingRows count={2} />}
 
       {!showSkeletons && !configReady(config) && (
-        <div className="empty">
-          <span className="empty-title">Not connected yet</span>
+        <EmptyState title="Not connected yet">
           <p>
             Configure your deliberation on the <a href="#/overview">Overview</a> — or switch to the
             demo deliberation to explore how the room works.
           </p>
-        </div>
+        </EmptyState>
       )}
 
       {!showSkeletons && result && configReady(config) && candidates.length === 0 && !drafting && (
-        <div className="empty">
-          <span className="empty-title">No candidate synthesis yet</span>
+        <EmptyState title="No candidate synthesis yet">
           <p>
             When the <a href="#/bridge">common ground</a> is visible, someone drafts a candidate:
             one text that tries to carry what every group needs — naming exactly which needs and
@@ -371,7 +374,7 @@ export function Room({
               Draft the first candidate
             </button>
           )}
-        </div>
+        </EmptyState>
       )}
 
       {/* ── Candidate strip ─────────────────────────────────────────────── */}
@@ -402,10 +405,8 @@ export function Room({
 
       {/* ── Draft form ──────────────────────────────────────────────────── */}
       {drafting && mayParticipate && (
-        <div className="panel">
-          <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
-            Draft a candidate synthesis
-          </h3>
+        <Panel>
+          <SectionHeader title="Draft a candidate synthesis" />
           <label className="field">
             <span>
               Short name <span className="hint">(optional)</span>
@@ -492,7 +493,7 @@ export function Room({
               Cancel
             </button>
           </div>
-        </div>
+        </Panel>
       )}
 
       {/* ── The active candidate ────────────────────────────────────────── */}
@@ -577,16 +578,14 @@ export function Room({
                 ))}
               </div>
               {reception.outcome === "disagreement" && (
-                <p className="notice info">
+                <Notice tone="info">
                   This split is a first-class outcome, not a failure: the map of exactly where the
                   groups divide is published alongside any endorsement — dissent is data, never
                   smoothed away. A drafter can put a revision to the room that tries to carry the
                   objecting group too.
-                </p>
+                </Notice>
               )}
-              {reception.outcome === "endorsed" && (
-                <p className="notice info">{outputCopy(scope)}</p>
-              )}
+              {reception.outcome === "endorsed" && <Notice tone="info">{outputCopy(scope)}</Notice>}
               {/* The scope-C output presentation (S4): what publication WILL
                   be — mandatory dissent annex, method-provenance label, the
                   ≥2-steward floor shown honestly unmet. The disagreement map
@@ -611,14 +610,18 @@ export function Room({
           />
 
           {/* ── Critique round ───────────────────────────────────────────── */}
-          <div className="panel">
-            <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
-              Standing critiques{" "}
-              <span className="muted small">
-                — the dissent-annex material; whatever stands at endorsement travels with the
-                outcome
-              </span>
-            </h3>
+          <Panel>
+            <SectionHeader
+              title={
+                <>
+                  Standing critiques{" "}
+                  <span className="muted small">
+                    — the dissent-annex material; whatever stands at endorsement travels with the
+                    outcome
+                  </span>
+                </>
+              }
+            />
             {activeCritiques.length === 0 && (
               <p className="muted small">No standing critiques on this candidate.</p>
             )}
@@ -660,7 +663,7 @@ export function Room({
                 </div>
               </div>
             )}
-          </div>
+          </Panel>
         </div>
       )}
     </section>
