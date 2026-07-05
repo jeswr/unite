@@ -4,6 +4,7 @@
 // in src/ui compose these; all logic lives here.
 
 export * from "./adoption.js";
+export * from "./adoption-decision.js";
 export * from "./aggregate.js";
 export * from "./channel.js";
 export * from "./convergence.js";
@@ -22,5 +23,6 @@ export * from "./pod-society.js";
 export * from "./quorum.js";
 export * from "./ranking.js";
 export * from "./registry.js";
+export * from "./roles.js";
 export * from "./sensitive.js";
 export * from "./trust.js";
