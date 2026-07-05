@@ -464,12 +464,27 @@ export async function aggregateChannel(options: ChannelOptions): Promise<Channel
     eligibleByRef.set(m.resource, m);
   }
 
+  // The CANONICAL room identity for a same-thread comparison: a thread's many
+  // accepted IRI forms (its `#it` subject vs its bare resource url) collapse to the
+  // one thread id, and any channel-root form (the caller IRI / fragmentless doc /
+  // `#this` subject) collapses to one channel key — so two messages in the same
+  // logical room compare equal regardless of which accepted alias each used.
+  const channelKey = channelDoc ?? channel;
+  const roomKeyOf = (room: string | undefined): string | undefined => {
+    if (room === undefined) return undefined;
+    const t = threadRefs.get(room);
+    if (t !== undefined) return t.id;
+    if (channelIris.has(room)) return channelKey;
+    return room;
+  };
+
   // Edit-fold ORDER-INDEPENDENTLY (a newest-first read cannot overwrite a newer
   // edit). A message is superseded iff its replacement is an ELIGIBLE (surviving,
   // in-channel) message, distinct from it, BY THE SAME AUTHOR IN THE SAME THREAD —
-  // an edit stays same-author/same-thread, so a cross-author or cross-thread
-  // `replacedBy` never hides another participant's message. Chain-safe (M1→M2→M3
-  // leaves only M3). Computed from the data, never from read order.
+  // an edit stays same-author/same-thread (compared on CANONICAL room identity, not
+  // raw IRI form), so a cross-author or cross-thread `replacedBy` never hides another
+  // participant's message. Chain-safe (M1→M2→M3 leaves only M3). From data, not read
+  // order.
   const superseded = new Set<string>();
   for (const m of eligibleById.values()) {
     const replacedBy = m.message.replacedBy;
@@ -479,7 +494,7 @@ export async function aggregateChannel(options: ChannelOptions): Promise<Channel
       repl !== undefined &&
       repl.id !== m.id &&
       repl.author === m.author &&
-      repl.room === m.room
+      roomKeyOf(repl.room) === roomKeyOf(m.room)
     ) {
       superseded.add(m.id);
     }

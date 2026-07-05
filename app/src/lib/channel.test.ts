@@ -758,6 +758,52 @@ describe("aggregateChannel", () => {
     expect(result.timeline.map((m) => m.message.content)).toEqual(["original"]);
   });
 
+  it("supersession compares CANONICAL room identity across equivalent room IRI forms", async () => {
+    // m1's room is the thread SUBJECT (#it); its edit m2's room is the BARE thread
+    // RESOURCE url — an equivalent alias for the same thread. The same-thread check
+    // must canonicalise both to the one thread id, so m2 supersedes m1 (roborev
+    // round-2 Medium: raw string room equality would wrongly keep both).
+    const t1sub = threadSubject(ALICE_BASE, "t1"); // ${resource}#it
+    const t1resource = threadUrl(ALICE_BASE, "t1"); // the bare resource url alias
+    const m2sub = as2MessageSubject(messageUrl(ALICE_BASE, "m2"));
+    const pod = await podFrom(
+      [
+        {
+          base: ALICE_BASE,
+          threads: [{ name: "t1", task: { title: "X", state: "open", creator: ALICE } }],
+          messages: [
+            {
+              name: "m1",
+              msg: {
+                content: "v1",
+                author: ALICE,
+                room: t1sub,
+                replacedBy: m2sub,
+                published: "2026-07-01T09:00:00Z",
+              },
+            },
+            {
+              name: "m2",
+              msg: {
+                content: "v2 (edited)",
+                author: ALICE,
+                room: t1resource,
+                published: "2026-07-01T09:05:00Z",
+              },
+            },
+          ],
+        },
+      ],
+      { [CHANNEL]: await trackerDoc() },
+    );
+    const result = await run({
+      pod,
+      parts: [{ webId: ALICE, base: ALICE_BASE }],
+      vouched: [ALICE],
+    });
+    expect(result.timeline.map((m) => m.message.content)).toEqual(["v2 (edited)"]);
+  });
+
   it("rejects a message asserting BOTH a human author AND an agent attribution (even both = owner)", async () => {
     // The forbidden both-set shape (roborev Low): a message is a human note XOR an
     // agent turn, never both — dropped even when both name the pod owner.
