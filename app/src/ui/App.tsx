@@ -21,8 +21,9 @@ import { FuturesGallery } from "./views/FuturesGallery.js";
 import { NeedsBoard } from "./views/NeedsBoard.js";
 import { Overview } from "./views/Overview.js";
 import { Proposals } from "./views/Proposals.js";
+import { PublishedFutures } from "./views/PublishedFutures.js";
 import { Room } from "./views/Room.js";
-import { enabledViews, isViewEnabled, PreviewView, VIEW_LABELS } from "./views/registry.js";
+import { enabledViews, isViewEnabled, VIEW_LABELS } from "./views/registry.js";
 import { Trust } from "./views/Trust.js";
 
 // One codebase, three nested scope modes (docs/PLATFORM-PLAN.md §1–2).
@@ -210,9 +211,10 @@ export function App(): React.JSX.Element {
         {view === "futures-gallery" && (
           <FuturesGallery scope={SCOPE} config={config} webId={webId} aggregate={aggregate} />
         )}
-        {/* Scope-enabled extra views not yet built render the honest,
-            phase-labelled preview (never a relabelled apps surface). */}
-        {view === "published-futures" && <PreviewView view={view} scope={SCOPE} />}
+        {/* S5: the scope-C publication surface — signed shared futures +
+            disagreement maps, rendered only with their verified integrity proof,
+            mandatory dissent annex, bridging evidence and method-provenance. */}
+        {view === "published-futures" && <PublishedFutures scope={SCOPE} />}
       </main>
 
       <p className="footer-note">

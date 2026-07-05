@@ -4,18 +4,11 @@
 // The S0 view scaffolding: canonical tab order, per-scope enablement, the
 // fail-closed view guard, and the honest phase-labelled preview stub.
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { SCOPE_ORDER, SCOPES, type ScopeViewId } from "../../scope/scopes.js";
 import type { View } from "../route.js";
-import {
-  BASE_VIEWS,
-  enabledViews,
-  isViewEnabled,
-  PreviewView,
-  VIEW_LABELS,
-  VIEW_ORDER,
-} from "./registry.js";
+import { BASE_VIEWS, enabledViews, isViewEnabled, VIEW_LABELS, VIEW_ORDER } from "./registry.js";
 
 afterEach(cleanup);
 
@@ -77,25 +70,12 @@ describe("view registry", () => {
     );
     expect(SCOPES.apps.views).toEqual(["proposals", "room"]);
   });
-});
 
-describe("PreviewView (the honest placeholder)", () => {
-  it("names the view, its build phase, and what it will do", () => {
-    // "adoption-board" graduated out of the preview set in S2 (the real
-    // fedreg:acceptsSpec matrix landed); "published-futures" (S5) is the
-    // longest-lived remaining preview.
-    render(<PreviewView view="published-futures" scope={SCOPES.society} />);
-    expect(screen.getByText("Published futures")).toBeTruthy();
-    expect(screen.getByText(/arrives in S5/)).toBeTruthy();
-    expect(screen.getByText(/dissent annex/)).toBeTruthy();
-  });
-
-  it("labels society's one remaining preview with its phase (S5), never a fake surface", () => {
-    // S4 landed the deck + futures gallery as REAL views — they left the
-    // preview set; only the S5 publication surface still previews.
-    const { unmount } = render(<PreviewView view="published-futures" scope={SCOPES.society} />);
-    expect(screen.getByText(/arrives in S5/)).toBeTruthy();
-    expect(screen.getByText("Not built yet — and not faked")).toBeTruthy();
-    unmount();
+  it("S5: 'published-futures' is now a REAL enabled view, no longer a preview stub", () => {
+    // Every scope view is built as of S5 — the last preview ("published-futures")
+    // graduated to ui/views/PublishedFutures, so no enabled-but-unbuilt view
+    // remains and the PreviewView placeholder was retired.
+    expect(enabledViews(SCOPES.society)).toContain("published-futures");
+    expect(isViewEnabled(SCOPES.society, "published-futures")).toBe(true);
   });
 });
