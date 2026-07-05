@@ -30,6 +30,14 @@ import {
   type Resonance,
   type SynthesisCandidate,
 } from "./model.js";
+import {
+  type Claim,
+  parseClaims,
+  parseValueStatements,
+  parseVisions,
+  type ValueStatement,
+  type VisionStatement,
+} from "./model-society.js";
 import { DEFAULT_MAX_BODY_BYTES, isWithinBase, listContainer, readBodyCapped } from "./pod.js";
 import type { DeliberationRegistry, Participant } from "./registry.js";
 
@@ -41,8 +49,9 @@ export { DEFAULT_MAX_BODY_BYTES } from "./pod.js";
  * The statement kinds aggregation can collect (scope-blind — the SCOPE decides
  * which it enables via `ScopeConfig.artifactKinds` + its room view; the S0
  * seam). Resonances are ALWAYS collected. Kinds without landed machinery yet
- * ("vision"/"claim"/"value" S4) are accepted but collect nothing until their
- * parsers land — honest no-ops, never a crash. "infra-proposal" landed in S2.
+ * are accepted but collect nothing until their parsers land — honest no-ops,
+ * never a crash. "infra-proposal" landed in S2 (lib/infra.ts); the scope-C
+ * expression kinds ("vision"/"claim"/"value") landed in S4 (model-society.ts).
  */
 export type StatementKind =
   | "need"
@@ -73,7 +82,16 @@ export interface AggregateOptions {
 export interface SourceError {
   readonly webId: string;
   readonly base: string;
-  readonly stage: "membership" | "needs" | "resonances" | "proposals" | "syntheses" | "critiques";
+  readonly stage:
+    | "membership"
+    | "needs"
+    | "resonances"
+    | "proposals"
+    | "syntheses"
+    | "critiques"
+    | "visions"
+    | "claims"
+    | "values";
   /** The specific member resource that failed, when the failure was per-member. */
   readonly resource?: string;
   readonly message: string;
@@ -105,14 +123,25 @@ export interface AggregateResult {
   readonly candidates: SynthesisCandidate[];
   /** Collected only when `kinds` includes "critique" (S1, the room). */
   readonly critiques: Critique[];
+  /** Collected only when `kinds` includes "vision" (S4, scope C). */
+  readonly visions: VisionStatement[];
+  /**
+   * Collected only when `kinds` includes "claim" (S4, scope C). The adoption
+   * invariant is enforced upstream in parseClaims (adoptedBy must equal
+   * creator) AND by this aggregation's creator-owns-the-pod gate — an
+   * unadopted or foreign-adopted claim never enters the aggregate.
+   */
+  readonly claims: Claim[];
+  /** Collected only when `kinds` includes "value" (S4, scope C). */
+  readonly values: ValueStatement[];
   /**
    * The ids of collected expression statements (needs / app proposals / infra
-   * proposals) whose author's inline ODRL consent policy PERMITS
-   * `fut:synthesize` — the ONLY statements a Convergence-Room candidate may
-   * derive from. FAIL-CLOSED: a statement with no policy, an unparseable
-   * policy, or a synthesize prohibition is NOT in the set (design/01: the
-   * consent layer gates what the federation may DO with a statement; deriving
-   * a synthesis is exactly the governed act).
+   * proposals / visions / claims / values) whose author's inline ODRL consent
+   * policy PERMITS `fut:synthesize` — the ONLY statements a Convergence-Room
+   * candidate may derive from. FAIL-CLOSED: a statement with no policy, an
+   * unparseable policy, or a synthesize prohibition is NOT in the set
+   * (design/01: the consent layer gates what the federation may DO with a
+   * statement; deriving a synthesis is exactly the governed act).
    */
   readonly synthesizable: ReadonlySet<string>;
   readonly verified: VerifiedParticipant[];
@@ -237,6 +266,9 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
   const infraProposals: InfraProposal[] = [];
   const candidates: SynthesisCandidate[] = [];
   const critiques: Critique[] = [];
+  const visions: VisionStatement[] = [];
+  const claims: Claim[] = [];
+  const values: ValueStatement[] = [];
   const rawResonances: Resonance[] = [];
   const synthesizable = new Set<string>();
   const verified: VerifiedParticipant[] = [];
@@ -279,9 +311,7 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
     // consent — their synthesize permission is evaluated here so the room can
     // fail-closed on derivation inputs.
     if (kinds.has("need")) needs.push(...(await read("needs", parseNeeds, synthesizable)));
-    // The scope-A proposal layer (S1). Remaining proposal-shaped kinds
-    // ("vision"/"claim"/"value" S4) collect nothing until their parsers land —
-    // an honestly-empty result, never a crash.
+    // The scope-A proposal layer (S1).
     if (kinds.has("app-proposal")) {
       proposals.push(...(await read("proposals", parseProposals, synthesizable)));
     }
@@ -292,6 +322,16 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
     // inline ODRL policy permits fut:synthesize.
     if (kinds.has("infra-proposal")) {
       infraProposals.push(...(await read("proposals", parseInfraProposals, synthesizable)));
+    }
+    // The scope-C expression layer (S4): visions/claims/values are expression
+    // statements carrying inline ODRL consent, so their synthesize permission
+    // is evaluated into the same fail-closed `synthesizable` set — a scope-C
+    // SharedFuture candidate may derive ONLY from consented statements, the
+    // identical gate as S1's needs/proposals.
+    if (kinds.has("vision")) visions.push(...(await read("visions", parseVisions, synthesizable)));
+    if (kinds.has("claim")) claims.push(...(await read("claims", parseClaims, synthesizable)));
+    if (kinds.has("value")) {
+      values.push(...(await read("values", parseValueStatements, synthesizable)));
     }
     if (kinds.has("synthesis")) candidates.push(...(await read("syntheses", parseCandidates)));
     if (kinds.has("critique")) critiques.push(...(await read("critiques", parseCritiques)));
@@ -304,8 +344,9 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
   // collected whose author permits fut:synthesize. A violating candidate is
   // excluded and the exclusion recorded honestly. Runs AFTER the participant
   // loop because `synthesizable` accumulates across all participants.
-  // Consequence for callers: collect the expression kinds ("need" /
-  // "app-proposal") alongside "synthesis", or every candidate fails the gate.
+  // Consequence for callers: collect the scope's expression kinds ("need" /
+  // "app-proposal" / "vision" / "claim" / "value") alongside "synthesis", or
+  // every candidate fails the gate.
   const gatedCandidates: SynthesisCandidate[] = [];
   for (const c of candidates) {
     if (c.derivedFrom.every((input) => synthesizable.has(input))) {
@@ -331,6 +372,9 @@ export async function aggregateDeliberation(options: AggregateOptions): Promise<
     infraProposals,
     candidates: gatedCandidates,
     critiques,
+    visions,
+    claims,
+    values,
     synthesizable,
     verified,
     unverified,

@@ -16,7 +16,12 @@
 //   • WIRED in S2 (scope B live): InfraProposal + its properties (lib/infra.ts)
 //     and the AdoptionObservation SHAPE as computed data (lib/adoption.ts —
 //     the signed fut:AdoptionDecision artifact itself is S3).
-//   • NOT yet wired (S4 flips scope C): methodProvenance, decomposedBy.
+//   • WIRED in S4 (scope C's voice layer): fut:decomposedBy (the Claim
+//     round-trip in model-society.ts carries it for the assistant seam;
+//     manual decomposition omits it).
+//   • NOT yet wired: fut:methodProvenance (S5 serialises it onto the signed
+//     SharedFuture — S4 presents the method label, ui/views/SharedFutureOutcome).
+
 //
 // These are IRI constants only — serialisation stays in model.ts (n3.Writer),
 // parsing stays guarded (foreign RDF is hostile input). Nothing here mints

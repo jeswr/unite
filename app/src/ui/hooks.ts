@@ -173,8 +173,10 @@ const KIND_DIRS: Partial<Record<StatementKind, string>> = {
   "infra-proposal": "proposals/",
   synthesis: "syntheses/",
   critique: "critiques/",
-  // Kinds without landed machinery ("vision", "claim", "value") have no
-  // container to watch yet — honest no-ops, like aggregation.
+  // The scope-C expression layer (S4 — lib/pod-society.ts write dirs).
+  vision: "visions/",
+  claim: "claims/",
+  value: "values/",
 };
 
 /**

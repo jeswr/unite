@@ -62,6 +62,15 @@ describe("view registry", () => {
     }
   });
 
+  it("society's extra tabs are exactly its declared views (S4: room + deck + gallery + published)", () => {
+    expect(enabledViews(SCOPES.society).filter((v) => !BASE_VIEWS.includes(v))).toEqual([
+      "room",
+      "deck",
+      "futures-gallery",
+      "published-futures",
+    ]);
+  });
+
   it("apps' extra tabs are exactly its declared views (S1: proposals + room)", () => {
     expect(enabledViews(SCOPES.apps).filter((v) => !BASE_VIEWS.includes(v))).toEqual(
       SCOPES.apps.views.slice(),
@@ -81,16 +90,12 @@ describe("PreviewView (the honest placeholder)", () => {
     expect(screen.getByText(/dissent annex/)).toBeTruthy();
   });
 
-  it("labels every society preview with its phase (S4/S5), never a fake surface", () => {
-    for (const [v, phase] of [
-      ["deck", "S4"],
-      ["futures-gallery", "S4"],
-      ["published-futures", "S5"],
-    ] as const) {
-      const { unmount } = render(<PreviewView view={v} scope={SCOPES.society} />);
-      expect(screen.getByText(new RegExp(`arrives in ${phase}`))).toBeTruthy();
-      expect(screen.getByText("Not built yet — and not faked")).toBeTruthy();
-      unmount();
-    }
+  it("labels society's one remaining preview with its phase (S5), never a fake surface", () => {
+    // S4 landed the deck + futures gallery as REAL views — they left the
+    // preview set; only the S5 publication surface still previews.
+    const { unmount } = render(<PreviewView view="published-futures" scope={SCOPES.society} />);
+    expect(screen.getByText(/arrives in S5/)).toBeTruthy();
+    expect(screen.getByText("Not built yet — and not faked")).toBeTruthy();
+    unmount();
   });
 });

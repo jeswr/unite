@@ -55,13 +55,16 @@ describe("Compose participation gate", () => {
   });
 
   it("keeps a floor-0 scope (society) open to pseudonymous voice — even at T0", () => {
+    // S4: society mounts its OWN grammar — the narrative→decompose→adopt
+    // wizard (the composeFlow seam), open at T0.
     renderCompose("society", asTrust({ tier: 0, roles: [] }));
     expect(screen.queryByText(/needs a vouched membership/)).toBeNull();
-    expect(screen.getByRole("button", { name: /Share this vision statement/ })).toBeTruthy();
+    expect(screen.getByText("Share a vision")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Next: split it/ })).toBeTruthy();
   });
 
   it("keeps society open even while the profile is resolving (floor 0 needs no proof)", () => {
     renderCompose("society", asTrust(null));
-    expect(screen.getByRole("button", { name: /Share this vision statement/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Next: split it/ })).toBeTruthy();
   });
 });

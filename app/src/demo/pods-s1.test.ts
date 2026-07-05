@@ -107,9 +107,14 @@ describe("the seeded S1 artifact spine through the REAL pipeline", () => {
     expect(onSpine).toHaveLength(1);
   });
 
-  it("the society demo seeds NO artifact spine yet (its layer lands in S4)", async () => {
-    // (infrastructure grew its OWN S2 artifacts — asserted in pods-s2.test.ts.)
-    for (const scope of ["society"] as const) {
+  it("neither non-apps scope seeds the scope-A app-proposal layer", async () => {
+    // Each non-apps scope grows its OWN room artifacts with its scope —
+    // infrastructure's S2 artifacts are asserted in pods-s2.test.ts, society's
+    // S4 expression + room artifacts in pods-society.test.ts. What stays empty
+    // in BOTH is the scope-A proposal layer (parseProposals selects by
+    // rdf:type, so an infra proposal in the shared proposals/ container is
+    // skipped, not mis-collected as an app proposal).
+    for (const scope of ["infrastructure", "society"] as const) {
       const demo = await getDemoDeliberation(scope);
       const registry = new StaticRegistry(demo.deliberation, [...demo.participants]);
       const verifier = new StubMembershipVerifier(demo.participants.map((p) => p.webId));
@@ -117,11 +122,9 @@ describe("the seeded S1 artifact spine through the REAL pipeline", () => {
         registry,
         verifier,
         fetch: demo.fetch,
-        kinds: ["need", "app-proposal", "synthesis", "critique"],
+        kinds: ["app-proposal"],
       });
       expect(result.proposals).toEqual([]);
-      expect(result.candidates).toEqual([]);
-      expect(result.critiques).toEqual([]);
       expect(result.errors).toEqual([]);
     }
   });

@@ -18,6 +18,7 @@ const { close, watchContainers } = vi.hoisted(() => {
 });
 vi.mock("../lib/notifications.js", () => ({ watchContainers }));
 
+import type { StatementKind } from "../lib/index.js";
 import { deliberationContainers, useLiveUpdates } from "./hooks.js";
 import type { DeliberationConfig } from "./state.js";
 
@@ -128,9 +129,24 @@ describe("deliberationContainers with the S1 kinds seam", () => {
     ]);
   });
 
-  it("a not-yet-landed kind maps to NO container (honest no-op, like aggregation)", () => {
+  it("adds visions/ + claims/ + values/ for the S4 scope-C expression kinds", () => {
     const one = { ...config, participants: config.participants.slice(0, 1) };
-    expect(deliberationContainers(one, ["need", "vision", "claim"])).toEqual([
+    expect(deliberationContainers(one, ["need", "vision", "claim", "value"])).toEqual([
+      "https://alice.example/unite/d/needs/",
+      "https://alice.example/unite/d/visions/",
+      "https://alice.example/unite/d/claims/",
+      "https://alice.example/unite/d/values/",
+      "https://alice.example/unite/d/resonances/",
+    ]);
+  });
+
+  it("an unknown kind maps to NO container (defensive no-op, like aggregation)", () => {
+    // Every landed StatementKind now has a container (need/app-proposal/
+    // infra-proposal/vision/claim/value/synthesis/critique), so the no-op
+    // branch is exercised with an unknown kind: KIND_DIRS has no entry, the
+    // derivation filters it out rather than emitting a bogus container.
+    const one = { ...config, participants: config.participants.slice(0, 1) };
+    expect(deliberationContainers(one, ["need", "not-a-real-kind" as StatementKind])).toEqual([
       "https://alice.example/unite/d/needs/",
       "https://alice.example/unite/d/resonances/",
     ]);

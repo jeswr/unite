@@ -24,6 +24,7 @@ import {
   type Stance,
 } from "../lib/fut.js";
 import { isProposalKind, isStakeholderRole } from "../lib/fut-draft.js";
+import { SCHWARTZ_CONCEPTS, VISION_SCOPES } from "../lib/fut-society.js";
 import { buildInfraProposalQuads, type InfraProposal } from "../lib/infra.js";
 import {
   type AppProposal,
@@ -38,11 +39,21 @@ import {
   serializeResonance,
   serializeTurtle,
 } from "../lib/model.js";
+import {
+  buildClaimQuads,
+  buildValueQuads,
+  buildVisionQuads,
+  type Claim,
+  type ValueStatement,
+  type VisionStatement,
+} from "../lib/model-society.js";
 import type { ScopeId } from "../scope/scopes.js";
 import {
   type CandidateSpec,
+  type ClaimSpec,
   type CritiqueSpec,
   DEMO_CANDIDATES,
+  DEMO_CLAIMS,
   DEMO_CRITIQUES,
   DEMO_INFRA_PROPOSALS,
   DEMO_NAMES,
@@ -51,6 +62,8 @@ import {
   DEMO_PEOPLE,
   DEMO_PROPOSALS,
   DEMO_STORAGES,
+  DEMO_VALUES,
+  DEMO_VISIONS,
   DEMO_YOU_KEY,
   demoBase,
   demoDeliberationIri,
@@ -58,6 +71,8 @@ import {
   type InfraProposalSpec,
   type NeedSpec,
   type ProposalSpec,
+  type ValueSpec,
+  type VisionSpec,
   type VoteCode,
 } from "./fixtures.js";
 import { type DemoTrust, seedDemoTrust } from "./trust.js";
@@ -388,6 +403,97 @@ async function seedCandidate(
   return url;
 }
 
+const SCOPE_LADDER_BY_NAME = new Map(VISION_SCOPES.map((s) => [s.name, s.iri]));
+const SCHWARTZ_BY_NAME = new Map(SCHWARTZ_CONCEPTS.map((c) => [c.name, c.iri]));
+
+/** Seed one whole-narrative vision (the writeVision shape — S4, scope C). */
+async function seedVision(
+  pods: MemoryPods,
+  scope: ScopeId,
+  spec: VisionSpec,
+  deliberation: string,
+): Promise<string> {
+  const base = demoBase(spec.author, scope);
+  const url = new URL(`visions/${spec.slug}.ttl`, base).toString();
+  const scopeIri = spec.scope === undefined ? undefined : SCOPE_LADDER_BY_NAME.get(spec.scope);
+  if (spec.scope !== undefined && scopeIri === undefined) {
+    throw new Error(`demo fixture ${spec.slug}: unknown vision scope ${spec.scope}`);
+  }
+  const vision: VisionStatement = {
+    id: url,
+    content: spec.content,
+    created: spec.created,
+    creator: demoWebId(spec.author),
+    inDeliberation: deliberation,
+    ...(spec.title !== undefined ? { title: spec.title } : {}),
+    ...(scopeIri !== undefined ? { scope: scopeIri } : {}),
+    ...(spec.horizon !== undefined ? { horizon: spec.horizon } : {}),
+  };
+  const quads = [
+    ...buildVisionQuads(vision),
+    ...consentQuads(url, DEFAULT_CONSENT, vision.creator),
+  ];
+  pods.set(url, await serializeTurtle(quads, { odrl: ODRL_NS }));
+  return url;
+}
+
+/** Seed one ADOPTED claim (the writeClaim shape) + its votes (S4, scope C). */
+async function seedClaim(
+  pods: MemoryPods,
+  scope: ScopeId,
+  spec: ClaimSpec,
+  deliberation: string,
+  visionUrls: ReadonlyMap<string, string>,
+): Promise<string> {
+  const base = demoBase(spec.author, scope);
+  const url = new URL(`claims/${spec.slug}.ttl`, base).toString();
+  let derivedFrom: string | undefined;
+  if (spec.from !== undefined) {
+    derivedFrom = visionUrls.get(spec.from);
+    if (!derivedFrom)
+      throw new Error(`demo fixture ${spec.slug}: unknown vision slug ${spec.from}`);
+  }
+  const creator = demoWebId(spec.author);
+  const claim: Claim = {
+    id: url,
+    content: spec.content,
+    adoptedBy: creator, // the C6 adoption invariant — the serialiser enforces it
+    created: spec.created,
+    creator,
+    inDeliberation: deliberation,
+    ...(derivedFrom !== undefined ? { derivedFrom } : {}),
+  };
+  const quads = [...buildClaimQuads(claim), ...consentQuads(url, DEFAULT_CONSENT, creator)];
+  pods.set(url, await serializeTurtle(quads, { prov: NS.prov, odrl: ODRL_NS }));
+  await seedVotes(pods, scope, spec.slug, url, spec.created, spec.votes, deliberation);
+  return url;
+}
+
+/** Seed one value statement (the writeValueStatement shape — S4, scope C). */
+async function seedValue(
+  pods: MemoryPods,
+  scope: ScopeId,
+  spec: ValueSpec,
+  deliberation: string,
+): Promise<string> {
+  const base = demoBase(spec.author, scope);
+  const url = new URL(`values/${spec.slug}.ttl`, base).toString();
+  const valueConcept = SCHWARTZ_BY_NAME.get(spec.value);
+  if (!valueConcept)
+    throw new Error(`demo fixture ${spec.slug}: unknown Schwartz value ${spec.value}`);
+  const value: ValueStatement = {
+    id: url,
+    content: spec.content,
+    valueConcept,
+    created: spec.created,
+    creator: demoWebId(spec.author),
+    inDeliberation: deliberation,
+  };
+  const quads = [...buildValueQuads(value), ...consentQuads(url, DEFAULT_CONSENT, value.creator)];
+  pods.set(url, await serializeTurtle(quads, { odrl: ODRL_NS }));
+  return url;
+}
+
 /** Seed one standing critique on a candidate (the Room's writeCritique shape). */
 async function seedCritique(
   pods: MemoryPods,
@@ -418,9 +524,15 @@ async function buildDemo(scope: ScopeId): Promise<DemoDeliberation> {
   for (const spec of DEMO_NEEDS[scope]) {
     needUrls.set(spec.slug, await seedNeed(pods, scope, spec, deliberation));
   }
+  // The S4 scope-C expression layer: visions first (claims derive from them),
+  // then claims + values — all through the production build/serialise shapes.
+  const visionUrls = new Map<string, string>();
+  for (const spec of DEMO_VISIONS[scope]) {
+    visionUrls.set(spec.slug, await seedVision(pods, scope, spec, deliberation));
+  }
   // The S1 artifact spine: proposals answer seeded needs; candidates derive
-  // from needs/proposals; critiques stand on candidates. Refs resolve against
-  // what was actually seeded — an unknown slug is a fixture bug, fail-loud.
+  // from needs/proposals/claims; critiques stand on candidates. Refs resolve
+  // against what was actually seeded — an unknown slug is a fixture bug, fail-loud.
   const statementUrls = new Map<string, string>();
   for (const [slug, url] of needUrls) statementUrls.set(`need:${slug}`, url);
   for (const spec of DEMO_PROPOSALS[scope]) {
@@ -444,6 +556,14 @@ async function buildDemo(scope: ScopeId): Promise<DemoDeliberation> {
       });
       pods.set(`${DEMO_ORIGIN}/registry/${s.name}.ttl`, await doc.toString());
     }
+  }
+  // The S4 scope-C expression layer: claims (derive from visions) + values.
+  for (const spec of DEMO_CLAIMS[scope]) {
+    const url = await seedClaim(pods, scope, spec, deliberation, visionUrls);
+    statementUrls.set(`claim:${spec.slug}`, url);
+  }
+  for (const spec of DEMO_VALUES[scope]) {
+    await seedValue(pods, scope, spec, deliberation);
   }
   const candidateUrls = new Map<string, string>();
   for (const spec of DEMO_CANDIDATES[scope]) {

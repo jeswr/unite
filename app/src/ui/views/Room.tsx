@@ -16,6 +16,8 @@ import { STANCE_CONFLICTS, STANCE_RESONATES, STANCE_UNSURE } from "../../lib/fut
 import type { Critique, SynthesisCandidate } from "../../lib/model.js";
 import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH } from "../../lib/model.js";
 import { writeCandidate, writeCritique } from "../../lib/pod.js";
+import { writeSocietyCandidate, writeSocietyCritique } from "../../lib/pod-society.js";
+import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive.js";
 import { meetsTier } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
@@ -24,6 +26,7 @@ import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, writeSessionFor } from "../hooks.js";
 import { configReady, type DeliberationConfig, sessionIdentity } from "../state.js";
 import { DistributionBar } from "./Bridging.js";
+import { SharedFutureOutcome } from "./SharedFutureOutcome.js";
 import { StanceButtons } from "./StanceButtons.js";
 import { TIER_MEANING } from "./Trust.js";
 
@@ -48,8 +51,8 @@ function outputCopy(scope: ScopeConfig): string {
     case "advisory-synthesis":
       return (
         "In this scope an endorsed candidate becomes a signed advisory synthesis with a " +
-        "mandatory dissent annex, handed to human decision-makers — nothing executes. That " +
-        "publication pipeline (steward signing, method-provenance labels) arrives in S5."
+        "mandatory dissent annex, handed to human decision-makers — nothing executes. The " +
+        "outcome is computed and presented below (S4); the steward-signing surface arrives in S5."
       );
     default:
       return (
@@ -92,6 +95,13 @@ export function Room({
   const identity = sessionIdentity(config, webId);
   const floor = config.participationFloor;
   const mayParticipate = floor === 0 || (trust.profile !== null && meetsTier(trust.profile, floor));
+
+  // Scope C routes Room writes through the C4-screened chokepoints
+  // (lib/pod-society.ts) — the write BOUNDARY enforces the gate, the UI
+  // pre-checks below only make the refusal friendly. A/B rooms are untouched.
+  const societyRoom = scope.outputKind === "advisory-synthesis";
+  const writeRoomCandidate = societyRoom ? writeSocietyCandidate : writeCandidate;
+  const writeRoomCritique = societyRoom ? writeSocietyCritique : writeCritique;
 
   const candidates = useMemo(() => orderCandidates(result?.candidates ?? []), [result]);
   // The active candidate: the selected one if it still exists, else the newest.
@@ -202,6 +212,17 @@ export function Room({
       );
       return;
     }
+    // The C4 sensitive-domain launch gate covers scope C's Room text too
+    // (SCOPE-DIFFERENTIATION §4.5): a candidate in the society scope must not
+    // carry personal health/finance disclosure. Same screen as the wizard +
+    // the pod-society chokepoints; scope-gated so A/B rooms are untouched.
+    if (scope.outputKind === "advisory-synthesis") {
+      const hit = screenSensitiveDomain(`${draftTitle}\n${draftContent}`);
+      if (hit) {
+        setFormError(describeSensitiveHit(hit));
+        return;
+      }
+    }
     // Defence in depth (fail-closed): every input must STILL be consented to
     // synthesis at submit time — a stale selection (e.g. the author revoked
     // consent and the aggregate refreshed) must never be derived from.
@@ -223,7 +244,7 @@ export function Room({
         ...(draftTitle.trim() ? { title: draftTitle.trim() } : {}),
         ...(draftRevises && active ? { revisionOf: active.id } : {}),
       };
-      const { url } = await writeCandidate(session.fetch, session.ownBase, body);
+      const { url } = await writeRoomCandidate(session.fetch, session.ownBase, body);
       setDraftTitle("");
       setDraftContent("");
       setDraftInputs([]);
@@ -257,6 +278,15 @@ export function Room({
       setFormError("Write the critique first.");
       return;
     }
+    // The C4 gate covers society critiques too (dissent-annex material may be
+    // published verbatim under quoteVerbatim — it must not carry disclosure).
+    if (scope.outputKind === "advisory-synthesis") {
+      const hit = screenSensitiveDomain(critique);
+      if (hit) {
+        setFormError(describeSensitiveHit(hit));
+        return;
+      }
+    }
     setSaving(true);
     try {
       const session = await writeSessionFor(config, controller, webId);
@@ -267,7 +297,7 @@ export function Room({
         creator: identity,
         inDeliberation: config.deliberation,
       };
-      await writeCritique(session.fetch, session.ownBase, body);
+      await writeRoomCritique(session.fetch, session.ownBase, body);
       setCritique("");
       try {
         await refresh();
@@ -556,6 +586,17 @@ export function Room({
               )}
               {reception.outcome === "endorsed" && (
                 <p className="notice info">{outputCopy(scope)}</p>
+              )}
+              {/* The scope-C output presentation (S4): what publication WILL
+                  be — mandatory dissent annex, method-provenance label, the
+                  ≥2-steward floor shown honestly unmet. The disagreement map
+                  gets the SAME panel (a co-equal outcome), never a failure. */}
+              {scope.outputKind === "advisory-synthesis" && (
+                <SharedFutureOutcome
+                  scope={scope}
+                  reception={reception}
+                  critiques={activeCritiques}
+                />
               )}
             </div>
           )}

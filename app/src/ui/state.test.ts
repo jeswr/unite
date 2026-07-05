@@ -117,7 +117,25 @@ describe("collectionKinds", () => {
   });
 
   it("a scope without the room collects only its board artifacts (no dead fetches)", () => {
-    expect(collectionKinds(SCOPES.society)).toEqual(["need"]);
+    // No live scope lacks the Convergence Room now (all three enable it), so we
+    // exercise the no-room branch directly: collectionKinds must omit the
+    // room's synthesis/critique fetches when a config has no "room" view.
+    const roomless = {
+      ...SCOPES.society,
+      views: SCOPES.society.views.filter((v) => v !== "room"),
+    };
+    expect(collectionKinds(roomless)).toEqual(["need", "vision", "claim", "value"]);
+  });
+
+  it("society (S4) collects its expression layer PLUS the room artifacts", () => {
+    expect(collectionKinds(SCOPES.society)).toEqual([
+      "need",
+      "vision",
+      "claim",
+      "value",
+      "synthesis",
+      "critique",
+    ]);
   });
 
   it("every scope's collection includes the universal kind", () => {
