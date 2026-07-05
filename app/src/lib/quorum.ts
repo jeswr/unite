@@ -119,8 +119,11 @@ export interface QuorumOptions {
    */
   readonly verifyVc: (vc: VerifiableCredential) => Promise<VerificationResult>;
   /**
-   * The quorum threshold (default + minimum {@link QUORUM_FLOOR}). Clamped UP to the
-   * floor — a value below it is raised, never honoured (INV-5: never lower the floor).
+   * The quorum threshold (default + minimum {@link QUORUM_FLOOR}). Normalised
+   * FAIL-SAFE: a fractional value is rounded UP (`Math.ceil`, so 2.5 ⇒ 3, never
+   * lowered), a non-finite/non-numeric value falls back to the floor, and the result
+   * is clamped up to {@link QUORUM_FLOOR} — always ≥ the request AND ≥ the floor
+   * (INV-5: a caller may raise the bar, never lower it).
    */
   readonly threshold?: number;
   /**
@@ -227,9 +230,15 @@ export async function buildQuorumAttestation(
   stewardVCs: readonly VerifiableCredential[],
   options: QuorumOptions,
 ): Promise<QuorumAttestation> {
-  const requested = Number.isInteger(options.threshold)
-    ? (options.threshold as number)
-    : QUORUM_FLOOR;
+  // Normalise the threshold FAIL-SAFE: a finite numeric threshold is rounded UP
+  // (`Math.ceil`) so a fractional bar like 2.5 becomes 3, never silently lowered to
+  // the floor; a non-finite / non-numeric threshold (undefined / NaN / Infinity)
+  // falls back to the floor. Then clamp up to {@link QUORUM_FLOOR} — the result is
+  // ALWAYS ≥ what the caller asked AND ≥ the no-single-owner floor (never below).
+  const requested =
+    typeof options.threshold === "number" && Number.isFinite(options.threshold)
+      ? Math.ceil(options.threshold)
+      : QUORUM_FLOOR;
   const threshold = Math.max(requested, QUORUM_FLOOR);
   const digestFn = options.digest ?? solidVcDigestQuads;
 
@@ -322,7 +331,12 @@ export async function buildQuorumAttestation(
     contentDigest,
     stewards,
     rejected,
-    bootstrapping: !met && distinctStewards >= 1,
+    // "bootstrapping" is specifically the single-steward reality — at least one valid
+    // steward but the no-single-owner FLOOR not yet reached. It is measured against
+    // QUORUM_FLOOR, NOT the (possibly raised) threshold: a community that requires 3
+    // of 5 and has 2 signed stewards has cleared the floor (not "bootstrapping") — it
+    // is merely short of its own raised bar, which `met` already reports.
+    bootstrapping: distinctStewards >= 1 && distinctStewards < QUORUM_FLOOR,
   };
 }
 

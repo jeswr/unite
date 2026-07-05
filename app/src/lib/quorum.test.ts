@@ -348,6 +348,41 @@ describe("buildQuorumAttestation — fake-seam unit tests", () => {
     });
     expect(two.met).toBe(false);
     expect(two.distinctStewards).toBe(2);
+    // The FLOOR is cleared (2 ≥ 2) — short of the RAISED bar is NOT "bootstrapping".
+    expect(two.bootstrapping).toBe(false);
+  });
+
+  it("rounds a FRACTIONAL threshold UP (never silently lowers it to the floor)", async () => {
+    const vcs = [STEWARD_A, STEWARD_B, STEWARD_C].map((s, i) =>
+      makeVc({ issuer: s, digest: digestA, id: `urn:vc:${i}` }),
+    );
+    const results = new Map(vcs.map((v) => [v, verified(v.issuer)]));
+    // 2.5 must become 3, so two stewards do NOT meet it (a naive `Number.isInteger`
+    // fallback would drop 2.5 to the floor of 2 and wrongly attest).
+    const two = await buildQuorumAttestation(artifactQuads(), vcs.slice(0, 2), {
+      verifyVc: verifyByMap(results),
+      threshold: 2.5,
+    });
+    expect(two.threshold).toBe(3);
+    expect(two.met).toBe(false);
+    const three = await buildQuorumAttestation(artifactQuads(), vcs, {
+      verifyVc: verifyByMap(results),
+      threshold: 2.5,
+    });
+    expect(three.threshold).toBe(3);
+    expect(three.met).toBe(true);
+  });
+
+  it("falls back to the floor on a non-finite / non-numeric threshold", async () => {
+    const vc = makeVc({ issuer: STEWARD_A, digest: digestA });
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      const att = await buildQuorumAttestation(artifactQuads(), [vc], {
+        verifyVc: verifyByMap(new Map([[vc, verified(STEWARD_A)]])),
+        threshold: bad,
+      });
+      expect(att.threshold).toBe(QUORUM_FLOOR);
+      expect(att.met).toBe(false);
+    }
   });
 
   it("verifyQuorumAttestation is the boolean mirror of `met`", async () => {
