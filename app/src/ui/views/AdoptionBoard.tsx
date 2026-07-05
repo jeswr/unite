@@ -31,6 +31,7 @@ import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
 import { EmptyState, Notice, Panel, SectionHeader, ViewHeader } from "../components.js";
 import { readFetchFor } from "../hooks.js";
+import type { SignedAdoptionDecision } from "../sign-decision.js";
 import type { DeliberationConfig } from "../state.js";
 
 /** A stored snapshot, tagged with the config key it was observed under. */
@@ -74,9 +75,15 @@ function cellObservations(column: VersionAdoption, party: string): readonly Adop
 export function AdoptionBoard({
   scope,
   config,
+  decisions = [],
 }: {
   scope: ScopeConfig;
   config: DeliberationConfig;
+  /** Signed fut:AdoptionDecisions from the Room (S3.5) — each is LINKED to
+   *  its live evidence column here (S3.6): the board recomputes the wire
+   *  status for the recommended version from ITS OWN live observations; the
+   *  signature attests the recommendation, never the status (INV-3). */
+  decisions?: readonly SignedAdoptionDecision[];
 }): React.JSX.Element {
   const controller = useController();
   const isDemo = config.mode === "demo";
@@ -260,8 +267,89 @@ export function AdoptionBoard({
         <span className="data">fedreg:acceptsSpec</span> — implementation independence still needs
         human judgement, so "bar met" here means the <em>observable</em> half.
         {scope.status === "live" &&
-          " Reviewer/steward endorsement gating and the signed fut:AdoptionDecision arrive in S3."}
+          " Reviewer/steward endorsement gating and the signed fut:AdoptionDecision are live in" +
+            " the Convergence room (S3.5) — a signed decision links to its evidence column here."}
       </p>
+
+      {/* ── S3.6: signed decisions ↔ their live evidence columns ─────────── */}
+      {decisions.length > 0 && (
+        <Panel>
+          <SectionHeader
+            title="Signed adoption decisions"
+            sub={
+              <>
+                Each signature attests the <strong>recommendation</strong> (version + bar +
+                re-checkable evidence) — the status beside it is recomputed from THIS board's live
+                observations, never read from the artifact (INV-3).
+              </>
+            }
+          />
+          <ul className="cards">
+            {decisions.map((d) => {
+              const parsed = d.verification.decision;
+              if (parsed === undefined) return null; // fail-closed: never render an unparsed artifact
+              // The LIVE evidence column for the recommended version, recomputed
+              // against THIS decision's OWN adoptionBar (not the board's default
+              // DEFAULT_ADOPTION_BAR): a decision signed with a higher bar must
+              // not be shown as "current" on the board's default-bar column when
+              // its own bar is not met (INV-3 — status is computed vs the bar
+              // the decision actually names).
+              const { matrices: decisionMatrices } = computeAdoption(
+                GOVERNED_SYSTEMS,
+                activeSnapshot?.observations ?? [],
+                parsed.adoptionBar,
+              );
+              const column = decisionMatrices
+                .flatMap((m) => m.versions)
+                .find((v) => v.version.iri === parsed.proposesVersion);
+              return (
+                <li key={d.id} className="card">
+                  <strong>{parsed.title ?? "Adoption decision"}</strong>
+                  <p className="need-content">{parsed.content}</p>
+                  <div className="chip-row">
+                    <span className="badge">
+                      recommends <span className="data">{parsed.proposesVersion}</span>
+                    </span>
+                    {d.verification.quorum.met ? (
+                      <span className="badge res">
+                        {d.verification.quorum.distinctStewards} of ≥
+                        {d.verification.quorum.threshold} stewards — quorum met
+                        {d.verification.ratified ? ", ratified" : ", not fully verified"}
+                      </span>
+                    ) : (
+                      <span className="badge con">
+                        {d.verification.quorum.distinctStewards} of ≥
+                        {d.verification.quorum.threshold} stewards — quorum not met
+                      </span>
+                    )}
+                    {column !== undefined ? (
+                      <StatusBadge column={column} />
+                    ) : (
+                      <span className="badge con">
+                        recommended version is outside the governed lineages — no live column
+                      </span>
+                    )}
+                  </div>
+                  <p className="muted small">
+                    Live wire evidence for this version:{" "}
+                    {column !== undefined ? (
+                      <>
+                        {column.parties.length} of ≥{parsed.adoptionBar} advertising{" "}
+                        {column.parties.length === 1 ? "party" : "parties"} observed in the matrix
+                        above (this decision's own bar; each cell re-checkable at its source)
+                      </>
+                    ) : (
+                      "none observed"
+                    )}
+                    ; the decision itself carries {parsed.adoptionEvidence.length} observation
+                    {parsed.adoptionEvidence.length === 1 ? "" : "s"} from sign time.
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        </Panel>
+      )}
 
       {undeclared.length > 0 && (
         <Panel>

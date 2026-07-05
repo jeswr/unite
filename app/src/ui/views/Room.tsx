@@ -11,20 +11,30 @@
 // via prov:wasRevisionOf. Thin over src/lib (convergence.ts does the math).
 
 import { useEffect, useMemo, useState } from "react";
+import { DEMO_ADOPTION_SOURCES } from "../../demo/fixtures.js";
+import { observeAdoption } from "../../lib/adoption.js";
+import { reviewerEndorsementGate, stewardSigningGate } from "../../lib/adoption-decision.js";
 import { type AggregateResult, aggregateDeliberation } from "../../lib/aggregate.js";
-import { candidateReception, orderCandidates, standingCritiques } from "../../lib/convergence.js";
+import {
+  candidateReception,
+  infraCandidateReception,
+  orderCandidates,
+  standingCritiques,
+} from "../../lib/convergence.js";
 import { STANCE_CONFLICTS, STANCE_RESONATES, STANCE_UNSURE } from "../../lib/fut.js";
 import type { Critique, SynthesisCandidate } from "../../lib/model.js";
 import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH } from "../../lib/model.js";
 import { writeCandidate, writeCritique } from "../../lib/pod.js";
 import { writeSocietyCandidate, writeSocietyCritique } from "../../lib/pod-society.js";
+import { type VerifiedStakeholderRole, verifiedRoleMap } from "../../lib/roles.js";
 import { describeSensitiveHit, screenSensitiveDomain } from "../../lib/sensitive.js";
-import { hasRole, meetsTier } from "../../lib/trust.js";
+import { hasRole, meetsTier, UNTRUSTED } from "../../lib/trust.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
 import {
   EmptyState,
   LoadingRows,
+  LockedGate,
   Notice,
   Panel,
   SectionHeader,
@@ -34,11 +44,17 @@ import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, readFetchFor, writeSessionFor } from "../hooks.js";
 import {
+  roleCohortLabels,
+  type SignedAdoptionDecision,
+  sameInfraReception,
+  signAdoptionCandidate,
+} from "../sign-decision.js";
+import {
   contributorCountFor,
-  sameCandidateMaterial,
-  sameReception,
   type SignedSharedFuture,
   type StewardSigningContext,
+  sameCandidateMaterial,
+  sameReception,
   signRoomCandidate,
 } from "../sign-future.js";
 import {
@@ -46,10 +62,13 @@ import {
   collectionKinds,
   configReady,
   type DeliberationConfig,
+  deliberationKey,
   deliberationTrust,
   sessionIdentity,
 } from "../state.js";
+import { AdoptionDecisionOutcome } from "./AdoptionDecisionOutcome.js";
 import { DistributionBar } from "./Bridging.js";
+import { RoleDeclarationPanel } from "./RoleDeclaration.js";
 import { SharedFutureOutcome } from "./SharedFutureOutcome.js";
 import { StanceButtons } from "./StanceButtons.js";
 import { TIER_MEANING } from "./Trust.js";
@@ -69,8 +88,9 @@ function outputCopy(scope: ScopeConfig): string {
         "In this scope an endorsed candidate is an adoption RECOMMENDATION — advisory by " +
         "design. Ratification is measured on the wire: watch the Adoption board for who " +
         "actually advertises the version (fedreg:acceptsSpec); Current is computed from those " +
-        "observations, never asserted. Reviewer/steward gating and the SIGNED " +
-        "fut:AdoptionDecision arrive in S3."
+        "observations, never asserted. The S3 machinery is live below: the endorsement gate " +
+        "must clear BOTH the opinion and verified-role partitions, and ≥2 stewards sign the " +
+        "fut:AdoptionDecision — whose status is still recomputed from evidence, never signed."
       );
     case "advisory-synthesis":
       return (
@@ -97,6 +117,9 @@ export function Room({
   aggregate,
   signing = null,
   onSigned,
+  onDecisionSigned,
+  signedDecisions = [],
+  verifiedRoles = [],
   aggregateForSign,
 }: {
   scope: ScopeConfig;
@@ -104,10 +127,26 @@ export function Room({
   webId: string | null;
   trust: SessionTrust;
   aggregate: AggregateState;
-  /** The S5.4 steward-signing context (App-resolved; null = locked/unavailable). */
+  /** The steward-signing context (App-resolved; null = locked/unavailable).
+   *  Shared by the S5.4 SharedFuture surface (scope C) and the S3.5
+   *  AdoptionDecision surface (scope B) — the same INV-5 quorum inputs. */
   signing?: StewardSigningContext | null;
   /** The S5.5 hand-off: a signed SharedFuture flows to Published futures. */
   onSigned?: (signed: SignedSharedFuture) => void;
+  /** The S3.6 hand-off: a signed AdoptionDecision flows to the Adoption
+   *  board (its live evidence column). */
+  onDecisionSigned?: (signed: SignedAdoptionDecision) => void;
+  /** The App-lifted signed AdoptionDecisions (CONTROLLED — the single source
+   *  of truth). Lifting them out of Room means a co-signature survives a tab
+   *  switch that unmounts the Room: the prior artifact is looked up here, so a
+   *  second steward EXTENDS the existing quorum instead of restarting it. */
+  signedDecisions?: readonly SignedAdoptionDecision[];
+  /** The verified stakeholder declarations known to this client BEYOND the
+   *  session's own (scope B's role lens input). Each MUST come from
+   *  lib/roles.verifyStakeholderRole — a declaration is only ever a COMPUTED,
+   *  fail-closed fact; today the app passes none (the session verifies only
+   *  its own standing), and every verifier recomputes independently. */
+  verifiedRoles?: readonly VerifiedStakeholderRole[];
   /** TEST SEAM for the sign-time re-aggregation; defaults to a LIVE re-read
    *  of the configured deliberation (the freshness gate below). */
   aggregateForSign?: () => Promise<AggregateResult>;
@@ -134,10 +173,49 @@ export function Room({
   );
   const [signBusy, setSignBusy] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
+  // The S3.5 sign action (scope B's output stage): the in-flight/refusal state
+  // + the session's verified stakeholder standing (computed, never persisted —
+  // it feeds the role lens) + the sign-time observation sources (keyed to the
+  // config, the AdoptionBoard pattern, so a demo↔pod switch never leaks a
+  // source list). The signed decisions themselves are CONTROLLED by App (the
+  // `signedDecisions` prop) so a co-signature survives a Room unmount.
+  const [decisionBusy, setDecisionBusy] = useState(false);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
+  // The session's verified stakeholder standing, KEYED to (config, identity)
+  // and DERIVED AT RENDER: a declaration verified for one session/deliberation
+  // must never feed the role gate for a DIFFERENT one (a login or deliberation
+  // switch exposes null synchronously — no stale role state, not even for a
+  // frame; the useTrustProfile pattern).
+  const [declaredRoleState, setDeclaredRoleState] = useState<{
+    readonly key: string;
+    readonly role: VerifiedStakeholderRole;
+  } | null>(null);
+  const [editedSources, setEditedSources] = useState<{ key: string; text: string } | null>(null);
+  const sourcesKey = JSON.stringify([config.mode, config.deliberation]);
+  const decisionSources =
+    editedSources !== null && editedSources.key === sourcesKey
+      ? editedSources.text
+      : config.mode === "demo"
+        ? DEMO_ADOPTION_SOURCES.join("\n")
+        : "";
 
   const identity = sessionIdentity(config, webId);
+  // The verified stakeholder standing, derived at render for the CURRENT
+  // (config, identity): a declaration from another session/deliberation resolves
+  // to null and never feeds this session's role gate.
+  const roleKey = deliberationKey(config, webId);
+  const declaredRole: VerifiedStakeholderRole | null =
+    declaredRoleState !== null && declaredRoleState.key === roleKey ? declaredRoleState.role : null;
   const floor = config.participationFloor;
   const mayParticipate = floor === 0 || (trust.profile !== null && meetsTier(trust.profile, floor));
+  const infraScope = scope.outputKind === "adoption-decision";
+  // The S3.5 reviewer gate (design §1.3(c), lib/adoption-decision): moving a
+  // candidate INTO the endorsement round — drafting/putting a synthesis to
+  // this room — needs a verified reviewer role where the scope requires it
+  // (infrastructure). Fail-closed on an unresolved profile; scopes with
+  // reviewerRoleRequired=false are untouched (the gate allows).
+  const reviewerGate = reviewerEndorsementGate(trust.profile ?? UNTRUSTED, scope.endorsementGate);
+  const mayDraft = mayParticipate && reviewerGate.allowed;
 
   // Scope C routes Room writes through the C4-screened chokepoints
   // (lib/pod-society.ts) — the write BOUNDARY enforces the gate, the UI
@@ -165,6 +243,49 @@ export function Room({
     () => (active ? standingCritiques(result?.critiques ?? [], active.id) : []),
     [result, active],
   );
+
+  // The S3.2 verified-role partition inputs (scope B): the session's verified
+  // stakeholder standing (declared → verified by lib/roles, fail-closed) folds
+  // into the role map; every WebID absent from it is the base ParticipantRole.
+  // Declarations are COMPUTED facts — this client can only fold in what it has
+  // verified itself; every verifier recomputes independently from the wire.
+  const roleMap = useMemo(
+    () => verifiedRoleMap([...verifiedRoles, ...(declaredRole !== null ? [declaredRole] : [])]),
+    [verifiedRoles, declaredRole],
+  );
+  const roleLabels = useMemo(
+    () =>
+      result
+        ? roleCohortLabels(
+            result.verified.map((v) => v.webId),
+            roleMap,
+          )
+        : [],
+    [result, roleMap],
+  );
+  // The scope-B both-partitions reception (§3.4): the endorsement gate is met
+  // only when the opinion partition AND the verified-role partition EACH clear
+  // the bridging threshold (lib/convergence infraCandidateReception, S3.2).
+  const infraReception = useMemo(() => {
+    if (!infraScope || !result || !active) return null;
+    return infraCandidateReception(
+      result.verified.map((v) => v.webId),
+      result.needs.map((n) => n.id),
+      result.resonances,
+      active.id,
+      roleMap,
+    );
+  }, [infraScope, result, active, roleMap]);
+
+  // The signed-decision lookup by candidate (from the CONTROLLED App-lifted
+  // list) — the co-sign prior + the panel's rendered state both read it, so a
+  // quorum survives a Room unmount and a second steward extends it, never
+  // restarts it.
+  const decisionByCandidate = useMemo(() => {
+    const m = new Map<string, SignedAdoptionDecision>();
+    for (const d of signedDecisions) m.set(d.candidate, d);
+    return m;
+  }, [signedDecisions]);
 
   // The scope-B running-code gate chip (S2 — SCOPE-DIFFERENTIATION §3.4):
   // design/04 §2 requires running code before ENDORSEMENT — the SHACL binds it
@@ -243,6 +364,16 @@ export function Room({
     }
     if (!mayParticipate) {
       setFormError(`Drafting here requires identity tier T${floor} — see the Trust view.`);
+      return;
+    }
+    // Defence in depth for the S3.5 reviewer gate (the button is hidden; the
+    // refusal here only makes a forced submit friendly — same posture as the
+    // tier pre-check above).
+    if (!reviewerGate.allowed) {
+      setFormError(
+        reviewerGate.reason ??
+          "moving a candidate into endorsement requires a verified reviewer role credential",
+      );
       return;
     }
     if (!draftContent.trim()) {
@@ -354,10 +485,12 @@ export function Room({
     }
   }
 
-  // A candidate switch clears the previous candidate's sign refusal.
+  // A candidate switch clears the previous candidate's sign refusals (both
+  // the S5.4 SharedFuture one and the S3.5 AdoptionDecision one).
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed to the ACTIVE CANDIDATE identity on purpose — the refusal belongs to the candidate it was raised for.
   useEffect(() => {
     setSignError(null);
+    setDecisionError(null);
   }, [active?.id]);
 
   /** The sign-time re-aggregation: a LIVE re-read of the deliberation (the
@@ -458,6 +591,121 @@ export function Room({
     }
   }
 
+  /**
+   * The S3.5 sign action: invoke the LANDED signing lib on the scope-B room's
+   * computed outcome (ui/sign-decision → lib/adoption-decision). Every
+   * un-signable state (unconsented lineage INV-1, a missing/incomplete dissent
+   * annex INV-2, an uncleared partition §3.4, missing running code design/04
+   * §2, no steward allowlist INV-5) THROWS in the lib/glue and is surfaced
+   * verbatim — never caught-and-retried, never routed around. No artifact
+   * exists on a throw.
+   *
+   * FRESHNESS (the S5.4 discipline): the gate inputs are RE-AGGREGATED at sign
+   * time, the adoption evidence is OBSERVED at sign time (credential-free,
+   * capped, fail-isolated), and moved votes / edited material / late dissent
+   * all refuse with an explicit review-again message.
+   */
+  async function signDecision(proposesVersion: string): Promise<void> {
+    setDecisionError(null);
+    if (!active || !infraReception || !result) return;
+    if (!signing || signing.steward === null) {
+      // The gate upstream keeps the button locked; this is defence in depth.
+      setDecisionError("no steward signing key is available to this session (fail-closed)");
+      return;
+    }
+    setDecisionBusy(true);
+    try {
+      // Re-aggregate NOW: the CURRENT room state gates the sign.
+      const fresh = await currentAggregate();
+      const freshCandidate = fresh.candidates.find((c) => c.id === active.id);
+      if (freshCandidate === undefined) {
+        throw new Error(
+          "this candidate is no longer in the current aggregate — refresh and re-review",
+        );
+      }
+      if (!sameCandidateMaterial(freshCandidate, active)) {
+        throw new Error(
+          "this candidate's text, title or lineage changed since you reviewed it — " +
+            "refresh, review the current candidate, and sign again",
+        );
+      }
+      const freshCritiques = standingCritiques(fresh.critiques, active.id);
+      const freshParticipants = fresh.verified.map((v) => v.webId);
+      const freshInfra = infraCandidateReception(
+        freshParticipants,
+        fresh.needs.map((n) => n.id),
+        fresh.resonances,
+        active.id,
+        roleMap,
+      );
+      // The steward reviewed the RENDERED both-partitions outcome; if the
+      // votes (or the verified-role partition) moved it, refuse and refresh.
+      if (!sameInfraReception(infraReception, freshInfra)) {
+        throw new Error(
+          "the endorsement round moved since you reviewed this outcome (votes or verified " +
+            "roles changed) — refresh, review the current outcome, and sign again",
+        );
+      }
+      // The dissent annex is built from the RENDERED activeCritiques (what the
+      // steward reviewed). If the standing critiques moved since then — one
+      // ADDED, EDITED (same id, new content), or WITHDRAWN — the annex would
+      // publish content the steward never reviewed (or omit new dissent). The
+      // glue's D2 ID check catches additions, but not edits or withdrawals, so
+      // refuse here on ANY (id, content) divergence: the steward signs exactly
+      // the dissent they reviewed, or reviews again.
+      const critiqueKey = (c: Critique) => `${c.id} ${c.content}`;
+      const reviewedCritiqueKeys = activeCritiques.map(critiqueKey).sort();
+      const freshCritiqueKeys = freshCritiques.map(critiqueKey).sort();
+      if (
+        reviewedCritiqueKeys.length !== freshCritiqueKeys.length ||
+        reviewedCritiqueKeys.some((k, i) => k !== freshCritiqueKeys[i])
+      ) {
+        throw new Error(
+          "the standing critiques changed since you reviewed them (one was added, edited, or " +
+            "withdrawn) — refresh, review the current dissent, and sign again",
+        );
+      }
+      // The re-checkable fut:AdoptionObservation evidence, observed NOW.
+      const fetchFn = await readFetchFor(config, controller);
+      const sources = decisionSources
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      const snapshot = await observeAdoption(sources, { fetch: fetchFn });
+      const prior = decisionByCandidate.get(active.id);
+      const signed = await signAdoptionCandidate({
+        candidate: freshCandidate,
+        infra: freshInfra,
+        participants: freshParticipants,
+        roleMap,
+        // What the steward REVIEWED is the annex material; the glue refuses
+        // when a critique standing NOW is not accounted for (D2 discipline).
+        reviewedCritiques: activeCritiques,
+        standingCritiqueIds: new Set(freshCritiques.map((c) => c.id)),
+        synthesizable: fresh.synthesizable,
+        lineageProposals: fresh.infraProposals.filter((p) =>
+          freshCandidate.derivedFrom.includes(p.id),
+        ),
+        adoptionEvidence: snapshot.observations,
+        proposesVersion,
+        deliberation: config.deliberation,
+        context: signing,
+        ...(prior !== undefined ? { prior } : {}),
+        stewardFloor: scope.endorsementGate.stewardSignatures,
+      });
+      // App owns the signed-decision list (controlled): the hand-off updates
+      // it, and Room re-renders from the new prop — no Room-local copy to drift.
+      onDecisionSigned?.(signed);
+    } catch (e) {
+      setDecisionError(e instanceof Error ? e.message : String(e));
+      // A refusal usually means the room moved — re-aggregate the panel so
+      // the steward reviews the CURRENT state (best-effort).
+      void refresh().catch(() => {});
+    } finally {
+      setDecisionBusy(false);
+    }
+  }
+
   const showSkeletons = loading && !result;
 
   return (
@@ -490,6 +738,22 @@ export function Room({
         </Notice>
       )}
 
+      {/* The S3.5 reviewer gate (design §1.3(c)): in a reviewerRoleRequired
+          scope, putting a candidate to the room — moving it INTO the
+          endorsement round — is the spec-review act and needs the verified
+          reviewer role. Honest locked state; everything else stays open. */}
+      {mayParticipate && !reviewerGate.allowed && (
+        <LockedGate title="Moving a candidate into endorsement is reviewer-gated">
+          <p className="muted small">
+            {reviewerGate.reason ??
+              "moving a candidate into endorsement requires a verified reviewer role credential"}{" "}
+            — in this scope, putting a candidate synthesis to the room is the spec-review act.
+            Reading, critiquing and endorsing stay open per the participation floor; see the{" "}
+            <a href="#/trust">Trust</a> view for role credentials.
+          </p>
+        </LockedGate>
+      )}
+
       {showSkeletons && <LoadingRows count={2} />}
 
       {!showSkeletons && !configReady(config) && (
@@ -508,7 +772,7 @@ export function Room({
             one text that tries to carry what every group needs — naming exactly which needs and
             proposals it derives from.
           </p>
-          {mayParticipate && (
+          {mayDraft && (
             <button type="button" className="btn primary" onClick={() => setDrafting(true)}>
               Draft the first candidate
             </button>
@@ -534,7 +798,7 @@ export function Room({
               </button>
             ))}
           </fieldset>
-          {mayParticipate && !drafting && (
+          {mayDraft && !drafting && (
             <button type="button" className="btn" onClick={() => setDrafting(true)}>
               Draft a candidate
             </button>
@@ -543,7 +807,7 @@ export function Room({
       )}
 
       {/* ── Draft form ──────────────────────────────────────────────────── */}
-      {drafting && mayParticipate && (
+      {drafting && mayDraft && (
         <Panel>
           <SectionHeader title="Draft a candidate synthesis" />
           <label className="field">
@@ -746,6 +1010,31 @@ export function Room({
                   }}
                 />
               )}
+              {/* The scope-B output presentation + the S3.5 steward signing
+                  surface: the §3.4 both-partitions gate shown honestly, the
+                  mandatory dissent annex, the ≥2-steward quorum progress, and
+                  the steward-gated sign action that invokes the landed
+                  lib/adoption-decision — whose status is always RECOMPUTED
+                  from evidence, never signed (INV-3). */}
+              {infraScope && infraReception && (
+                <AdoptionDecisionOutcome
+                  scope={scope}
+                  infra={infraReception}
+                  critiques={activeCritiques}
+                  roleLabels={roleLabels}
+                  signing={{
+                    isSteward: trust.profile !== null && hasRole(trust.profile, "steward"),
+                    gate: stewardSigningGate(trust.profile ?? UNTRUSTED),
+                    context: signing,
+                    signed: decisionByCandidate.get(active.id) ?? null,
+                    busy: decisionBusy,
+                    error: decisionError,
+                    onSign: (version) => void signDecision(version),
+                    sources: decisionSources,
+                    onSourcesChange: (text) => setEditedSources({ key: sourcesKey, text }),
+                  }}
+                />
+              )}
             </div>
           )}
 
@@ -814,6 +1103,17 @@ export function Room({
             )}
           </Panel>
         </div>
+      )}
+
+      {/* ── The S3.5 role-declaration control (scope B) ──────────────────── */}
+      {infraScope && (
+        <RoleDeclarationPanel
+          config={config}
+          webId={webId}
+          verified={declaredRole}
+          onVerified={(role) => setDeclaredRoleState({ key: roleKey, role })}
+          onCleared={() => setDeclaredRoleState(null)}
+        />
       )}
     </section>
   );

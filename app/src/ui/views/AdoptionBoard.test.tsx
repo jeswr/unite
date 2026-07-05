@@ -10,17 +10,58 @@
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import type { AdoptionDecisionVerification } from "../../lib/adoption-decision.js";
 import { SCOPES } from "../../scope/scopes.js";
 import { AuthProvider, DevLoginController } from "../auth.js";
+import type { SignedAdoptionDecision } from "../sign-decision.js";
 import { demoConfig, podConfig } from "../state.js";
 import { AdoptionBoard, activeAdoptionSnapshot } from "./AdoptionBoard.js";
 
-function renderBoard(config = demoConfig("infrastructure")) {
+function renderBoard(
+  config = demoConfig("infrastructure"),
+  decisions: readonly SignedAdoptionDecision[] = [],
+) {
   return render(
     <AuthProvider controller={new DevLoginController()}>
-      <AdoptionBoard scope={SCOPES.infrastructure} config={config} />
+      <AdoptionBoard scope={SCOPES.infrastructure} config={config} decisions={decisions} />
     </AuthProvider>,
   );
+}
+
+/** A signed-decision stub recommending a governed version at a given bar. */
+function decisionStub(version: string, bar: number, id: string): SignedAdoptionDecision {
+  return {
+    id,
+    candidate: `${id}#cand`,
+    quads: [],
+    vcs: [],
+    verification: {
+      decision: {
+        id,
+        content: `Recommend ${version} at bar ${bar}.`,
+        proposesVersion: version,
+        adoptionBar: bar,
+        adoptionEvidence: [],
+        derivedFrom: [`${id}#cand`],
+        bridgingEvidence: [],
+        created: "2026-07-05T00:00:00Z",
+        creator: "https://hana.example/#me",
+        inDeliberation: "https://demo.unite.example/deliberations/infrastructure",
+        hasDissentAnnex: true,
+      },
+      quorum: {
+        met: true,
+        threshold: 2,
+        distinctStewards: 2,
+        stewards: [],
+        rejected: [],
+        bootstrapping: false,
+      },
+      ratified: true,
+      lineageConsented: true,
+      computedStatus: "current",
+    } as unknown as AdoptionDecisionVerification,
+  };
 }
 
 afterEach(cleanup);
@@ -75,7 +116,23 @@ describe("AdoptionBoard (the ratification instrument)", () => {
     await waitFor(() => {
       expect(screen.getByText(/implementation independence still/i)).toBeTruthy();
     });
-    expect(screen.getByText(/arrive in S3/)).toBeTruthy();
+    expect(screen.getByText(/live in.*Convergence room/)).toBeTruthy();
+  });
+
+  it("S3.6: a signed decision's live status honors ITS OWN adoptionBar, not the board default (roborev Medium)", async () => {
+    // The demo advertises 0.1.0 with 2 storages. A decision recommending 0.1.0
+    // at a HIGHER bar (5) must render "2 of ≥5" (its own bar, unmet) — never
+    // shown as met against the board's default bar of 2.
+    const V010 = "https://w3id.org/jeswr/sectors/futures/0.1.0";
+    renderBoard(demoConfig("infrastructure"), [
+      decisionStub(V010, 5, "https://d.example/high#adoption-decision"),
+    ]);
+    await waitFor(() => {
+      expect(screen.getByText("Signed adoption decisions")).toBeTruthy();
+    });
+    // The decision card recomputes against its OWN bar of 5 (2 advertisers < 5).
+    expect(await screen.findByText(/2 of ≥5 advertising/)).toBeTruthy();
+    expect(screen.getByText(/this decision's own bar/)).toBeTruthy();
   });
 
   it("resets the source list on a demo→pod config switch (roborev Low: never observes the previous mode's sources)", async () => {

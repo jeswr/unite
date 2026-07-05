@@ -298,10 +298,7 @@ describe("SharedFutureOutcome — the S5.4 steward signing surface", () => {
         critiques={[]}
         signing={signingProps({
           // quorum met, but the FULL verify verdict (lineage/k-anon/D2) is false.
-          signed: signedStub(
-            { distinctStewards: 2, quorumMet: true, bootstrapping: false },
-            false,
-          ),
+          signed: signedStub({ distinctStewards: 2, quorumMet: true, bootstrapping: false }, false),
         })}
       />,
     );
