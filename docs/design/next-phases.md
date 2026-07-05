@@ -569,17 +569,18 @@ SHIPPED on main: S0, S1, S2 (scope B live, read-only adoption board), Phase-2 ro
 IN FLIGHT:       S4 (society voice) — rebase.
 
 Independent of the S4 rebase (start now, disjoint files):
-  UI.1 (component system) ─┬─▶ UI.2, UI.3, UI.5, UI.6   (hero screens + density + mobile)
+  UI.1 (component system) ─┬─▶ UI.2, UI.3, UI.6   (hero screens + mobile)
                            └─▶ (render foundation for S3/S5/BL views)
   UI.7 (honest landing)
   S3.1 (roles) ─▶ S3.2 (role lens) ─▶ S3.6
   S3.3 (quorum) ──▶ S3.4 (AdoptionDecision) ─▶ S3.5   [S3.3 is the SHARED keystone]
   BL.1 (channel aggregator) ─▶ BL.2 ─▶ BL.3 ─▶ BL.4 (reuses S3.3)
 
-Blocked on S4 merging:
+Blocked on S4 merging (share files the S4 rebase touched — Room/Compose):
   S5.1 (dissent materialiser) ─▶ S5.2 (un-signable guard, reuses S3.3) ─▶ S5.4, S5.5
   S5.3 (k-anon metrics)
   UI.4 (compose-form uplift — file conflict with S4)
+  UI.5 (density + progressive disclosure — touches Room.tsx; see §4.4)
 
 needs:user (human wiring, not opinion):
   BL.5 (which agent runtime / keys)  ·  a second steward (snaps the ≥2 floor)  ·
