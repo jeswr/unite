@@ -278,6 +278,26 @@ describe("podChannelIri (the pod-mode channel derivation)", () => {
     expect(podChannelIri("urn:not-a-web-iri")).toBeUndefined();
     expect(podChannelIri("")).toBeUndefined();
   });
+
+  it("derives from the deliberation's PATH: a #fragment IRI resolves to the correct channel", () => {
+    // The roborev Medium: appending "/" to the RAW string glued it onto the
+    // fragment ("…apps#this/"), so new URL resolved against the WRONG parent
+    // path. A hash-IRI deliberation must still derive its channel from the
+    // document path.
+    expect(podChannelIri("https://d.example/deliberations/apps#this")).toBe(
+      "https://d.example/deliberations/apps/build/channel",
+    );
+    // Slash-terminated path + fragment: the fragment is dropped, not resolved into.
+    expect(podChannelIri("https://d.example/deliberations/apps/#this")).toBe(
+      "https://d.example/deliberations/apps/build/channel",
+    );
+  });
+
+  it("derives from the deliberation's PATH: a ?query IRI resolves to the correct channel", () => {
+    expect(podChannelIri("https://d.example/deliberations/apps?x=1")).toBe(
+      "https://d.example/deliberations/apps/build/channel",
+    );
+  });
 });
 
 describe("BuildChannelBoard (presentation)", () => {

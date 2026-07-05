@@ -341,17 +341,27 @@ async function fetchThreadEvents(
 
 /**
  * The pod-mode channel IRI: the deliberation's conventional `build/channel`
- * CHILD. The deliberation IRI is treated as a CONTAINER base — a trailing "/"
- * is ensured before resolving, so a slashless deliberation
+ * CHILD. The channel derives from the deliberation's PATH — the deliberation
+ * IRI is parsed FIRST, its query/fragment cleared (a hash IRI like
+ * `…/deliberations/apps#this` names the deliberation *within* its document;
+ * the build channel still lives under the document's path), and a trailing
+ * "/" ensured on the PATHNAME so a slashless deliberation
  * (`…/deliberations/apps`) yields `…/deliberations/apps/build/channel`, not
  * `…/deliberations/build/channel` (which `new URL(rel, base)` would produce by
  * replacing the last path segment, silently reading the wrong — usually empty —
- * channel).
+ * channel). Appending "/" to the RAW string instead would glue it onto the
+ * fragment/query (`…apps#this/`) and resolve against the WRONG parent path.
+ * The result stays same-origin and strictly under the deliberation's path
+ * (INV-4): the base is the parsed deliberation origin+path and the relative
+ * `build/channel` contains no `..`/authority.
  */
 export function podChannelIri(deliberation: string): string | undefined {
   if (!isHttpIri(deliberation)) return undefined;
   try {
-    const base = deliberation.endsWith("/") ? deliberation : `${deliberation}/`;
+    const base = new URL(deliberation);
+    base.hash = "";
+    base.search = "";
+    if (!base.pathname.endsWith("/")) base.pathname += "/";
     return new URL("build/channel", base).toString();
   } catch {
     return undefined;
