@@ -15,10 +15,12 @@ import { STANCE_CONFLICTS, STANCE_RESONATES } from "../../lib/fut.js";
 import { ROLE_IMPLEMENTER } from "../../lib/fut-draft.js";
 import type { InfraProposal } from "../../lib/infra.js";
 import type { Resonance } from "../../lib/model.js";
+import type { VerifiedStakeholderRole } from "../../lib/roles.js";
 import type { TrustProfile } from "../../lib/trust.js";
 import { SCOPES } from "../../scope/scopes.js";
 import { AuthProvider, DevLoginController } from "../auth.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
+import type { SignedAdoptionDecision } from "../sign-decision.js";
 import type { SignedSharedFuture, StewardSigningContext } from "../sign-future.js";
 import { demoConfig } from "../state.js";
 import { Room } from "./Room.js";
@@ -268,14 +270,21 @@ const infraProposal = (id: string, title: string): InfraProposal => ({
   inDeliberation: DELIB,
 });
 
-function renderInfraRoom(r: AggregateResult) {
+/** The infra room renders with a REVIEWER-role session by default: in scope B
+ *  the S3.5 reviewer gate governs moving a candidate into endorsement (drafting
+ *  it), so a non-reviewer legitimately has no draft controls. Tests that assert
+ *  the gate itself pass their own trust. */
+function renderInfraRoom(
+  r: AggregateResult,
+  trust: SessionTrust = asTrust({ tier: 1, roles: ["reviewer"] }),
+) {
   return render(
     <AuthProvider controller={new DevLoginController()}>
       <Room
         scope={SCOPES.infrastructure}
         config={demoConfig("infrastructure")}
         webId={null}
-        trust={asTrust({ tier: 1, roles: [] })}
+        trust={trust}
         aggregate={asAggregate(r)}
       />
     </AuthProvider>,
@@ -294,7 +303,8 @@ describe("Convergence Room in scope B (S2)", () => {
     expect(screen.getByText(/endorsed — every group leans positive/)).toBeTruthy();
     expect(screen.getByText(/Ratification is measured on the wire/)).toBeTruthy();
     expect(screen.getByText(/never asserted/)).toBeTruthy();
-    expect(screen.getByText(/arrive in S3/)).toBeTruthy();
+    // S3.5 landed: the copy now says the S3 machinery is LIVE (not "arrives").
+    expect(screen.getByText(/S3 machinery is live/)).toBeTruthy();
   });
 
   it("shows the running-code gate chip: missing on a lineage proposal without a reference implementation", () => {
@@ -349,6 +359,212 @@ describe("Convergence Room in scope B (S2)", () => {
     expect(screen.getByRole("button", { name: /proposal · Consented change/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /proposal · Unconsented change/ })).toBeNull();
     expect(screen.getByText(/1 statement is not offered/)).toBeTruthy();
+  });
+});
+
+// ── S3.5: the scope-B governance surface (reviewer gate + decision panel) ────
+
+describe("the S3.5 scope-B governance surface", () => {
+  it("a NON-reviewer session is LOCKED out of moving a candidate into endorsement (no draft controls)", () => {
+    renderInfraRoom(resultWith([]), asTrust({ tier: 1, roles: [] }));
+    expect(screen.getByText("Moving a candidate into endorsement is reviewer-gated")).toBeTruthy();
+    expect(
+      screen.getByText(/moving a candidate into endorsement requires a verified reviewer role/),
+    ).toBeTruthy();
+    // The reviewer-gated draft controls are absent (a non-reviewer cannot draft).
+    expect(screen.queryByRole("button", { name: "Draft a candidate" })).toBeNull();
+  });
+
+  it("a REVIEWER session sees the draft (endorsement) action — the gate opens", () => {
+    renderInfraRoom(resultWith([]), asTrust({ tier: 1, roles: ["reviewer"] }));
+    expect(screen.queryByText("Moving a candidate into endorsement is reviewer-gated")).toBeNull();
+    expect(screen.getByRole("button", { name: "Draft a candidate" })).toBeTruthy();
+  });
+
+  it("renders the AdoptionDecision output stage + the role-declaration control in scope B", () => {
+    const r = resultWith([
+      vote(P[0] as string, CAND, STANCE_RESONATES),
+      vote(P[1] as string, CAND, STANCE_RESONATES),
+      vote(P[2] as string, CAND, STANCE_RESONATES),
+      vote(P[3] as string, CAND, STANCE_RESONATES),
+    ]);
+    renderInfraRoom(r);
+    // The §3.4 gate panel renders. The role lens is unpopulated (only the
+    // session's own declaration is fed in), so it reads "open" and its
+    // confirmation is honestly shown as pending the S3.6 cross-participant
+    // role data — not faked as cleared.
+    expect(screen.getByText(/verified-role lens: open/)).toBeTruthy();
+    expect(screen.getByText(/verified-role confirmation pending \(S3.6\)/)).toBeTruthy();
+    // The role-declaration control is present (declare→verify against the web).
+    expect(screen.getByText("Your stakeholder standing")).toBeTruthy();
+  });
+
+  it("the AdoptionDecision sign is steward-gated: a reviewer (non-steward) sees the locked gate, not a sign control", () => {
+    const r = resultWith([
+      vote(P[0] as string, CAND, STANCE_RESONATES),
+      vote(P[1] as string, CAND, STANCE_RESONATES),
+      vote(P[2] as string, CAND, STANCE_RESONATES),
+      vote(P[3] as string, CAND, STANCE_RESONATES),
+    ]);
+    renderInfraRoom(r, asTrust({ tier: 1, roles: ["reviewer"] }));
+    expect(screen.getByText("Signing is steward-gated")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Sign this adoption decision as steward" }),
+    ).toBeNull();
+  });
+});
+
+// ── S3.5: the AdoptionDecision sign path, reachable end-to-end ───────────────
+// With verified role declarations supplied (the S3.6 data flow, injected here
+// via the `verifiedRoles` prop), the §3.4 both-partitions gate CLEARS and a
+// steward signs a real fut:AdoptionDecision through ui/sign-decision →
+// lib/adoption-decision. Also covers the critiques-freshness guard: a critique
+// edited after review refuses (no artifact).
+
+describe("the S3.5 AdoptionDecision sign path (reachable with verified roles)", () => {
+  const STEWARD = "https://hana.example/profile/card#me";
+  const I1 = "https://i1.example/#me";
+  const I2 = "https://i2.example/#me";
+  const IP = "https://a.example/proposals/ip.ttl";
+  let stewardKey: KeyPair;
+  let signingCtx: StewardSigningContext;
+
+  beforeAll(async () => {
+    stewardKey = await generateKeyPairForSuite(`${STEWARD}#key`, "Ed25519");
+    const keys = new Map<string, CryptoKey>([
+      [stewardKey.verificationMethod, stewardKey.publicKey],
+    ]);
+    const resolveKey = (vm: string) => keys.get(vm);
+    signingCtx = {
+      steward: { webId: STEWARD, key: stewardKey },
+      trustedStewards: [STEWARD, "https://farah.example/profile/card#me"],
+      resolveKey,
+      verifyVc: (vc) => verifyCredential(vc, { resolveKey }),
+    };
+  });
+
+  const verifiedRoles: VerifiedStakeholderRole[] = [
+    { webId: I1, declaredRole: ROLE_IMPLEMENTER, verifiedRole: ROLE_IMPLEMENTER, verified: true },
+    { webId: I2, declaredRole: ROLE_IMPLEMENTER, verifiedRole: ROLE_IMPLEMENTER, verified: true },
+  ];
+
+  /** 6 participants (4 P + 2 implementers). Need votes form two mixed opinion
+   *  clusters; every participant ENDORSES the candidate (so both opinion
+   *  clusters AND both role cohorts lean positive → bothCleared). The candidate
+   *  derives from an infra proposal WITH running code + a need. */
+  function infraSignResult(
+    critiqueContent = "It underweights the migration cost.",
+  ): AggregateResult {
+    const parts = [...P, I1, I2];
+    const clusterA = [P[0] as string, P[1] as string, I1];
+    const clusterB = [P[2] as string, P[3] as string, I2];
+    const needVotes: Resonance[] = [
+      ...clusterA.flatMap((w) => [
+        vote(w, NEED_A, STANCE_RESONATES),
+        vote(w, NEED_B, STANCE_CONFLICTS),
+      ]),
+      ...clusterB.flatMap((w) => [
+        vote(w, NEED_A, STANCE_CONFLICTS),
+        vote(w, NEED_B, STANCE_RESONATES),
+      ]),
+    ];
+    const endorseVotes: Resonance[] = parts.map((w) => vote(w, CAND, STANCE_RESONATES));
+    return {
+      deliberation: DELIB,
+      needs: [need(NEED_A, "Need A content."), need(NEED_B, "Need B content.")],
+      resonances: [...needVotes, ...endorseVotes],
+      proposals: [],
+      infraProposals: [
+        {
+          ...infraProposal(IP, "The change"),
+          referenceImplementation: "https://github.com/jeswr/unite/commit/abc123",
+        },
+      ],
+      candidates: [
+        {
+          id: CAND,
+          title: "The 0.2.0 recommendation",
+          content: "Recommend the scope-B layer.",
+          derivedFrom: [IP, NEED_A],
+          created: "2026-06-21T00:00:00Z",
+          creator: P[0] as string,
+          inDeliberation: DELIB,
+        },
+      ],
+      critiques: [
+        {
+          id: "https://p3.example/critiques/c1.ttl",
+          content: critiqueContent,
+          onStatement: CAND,
+          created: "2026-06-22T00:00:00Z",
+          creator: P[2] as string,
+          inDeliberation: DELIB,
+        },
+      ],
+      visions: [],
+      claims: [],
+      values: [],
+      synthesizable: new Set<string>([NEED_A, NEED_B, IP]),
+      verified: parts.map((webId) => ({ webId, base: `${webId}/u/`, tier: "T1" as const })),
+      unverified: [],
+      errors: [],
+    };
+  }
+
+  function renderInfraSignRoom(
+    r: AggregateResult,
+    onDecisionSigned?: (s: SignedAdoptionDecision) => void,
+    freshResult?: AggregateResult,
+  ) {
+    return render(
+      <AuthProvider controller={new DevLoginController()}>
+        <Room
+          scope={SCOPES.infrastructure}
+          config={demoConfig("infrastructure")}
+          webId={null}
+          trust={asTrust({ tier: 1, roles: ["steward"] })}
+          aggregate={asAggregate(r)}
+          signing={signingCtx}
+          verifiedRoles={verifiedRoles}
+          aggregateForSign={() => Promise.resolve(freshResult ?? r)}
+          {...(onDecisionSigned ? { onDecisionSigned } : {})}
+        />
+      </AuthProvider>,
+    );
+  }
+
+  it("both partitions clear with verified roles → a steward signs a real AdoptionDecision (INV-3 status computed)", async () => {
+    const onDecisionSigned = vi.fn();
+    renderInfraSignRoom(infraSignResult(), onDecisionSigned);
+    // The gate is cleared (both partitions endorse) → the sign control shows.
+    const btn = await screen.findByRole("button", {
+      name: "Sign this adoption decision as steward",
+    });
+    fireEvent.click(btn);
+    await waitFor(() => expect(onDecisionSigned).toHaveBeenCalledTimes(1), { timeout: 8000 });
+    const signed = onDecisionSigned.mock.calls[0]?.[0] as SignedAdoptionDecision;
+    expect(signed.vcs).toHaveLength(1);
+    expect(signed.verification.quorum.distinctStewards).toBe(1);
+    expect(signed.verification.decision?.proposesVersion).toBe(
+      "https://w3id.org/jeswr/sectors/futures/0.2.0",
+    );
+    // INV-3: the status is COMPUTED from evidence, never signed (a value is present).
+    expect(["current", "superseded", "proposed"]).toContain(signed.verification.computedStatus);
+  });
+
+  it("EDITED DISSENT is un-signable: a critique edited after review refuses — no artifact", async () => {
+    const onDecisionSigned = vi.fn();
+    const rendered = infraSignResult("It underweights the migration cost.");
+    const fresh = infraSignResult("A completely rewritten critique after review.");
+    renderInfraSignRoom(rendered, onDecisionSigned, fresh);
+    const btn = await screen.findByRole("button", {
+      name: "Sign this adoption decision as steward",
+    });
+    fireEvent.click(btn);
+    expect(
+      await screen.findByText(/standing critiques changed since you reviewed them/),
+    ).toBeTruthy();
+    expect(onDecisionSigned).not.toHaveBeenCalled();
   });
 });
 
@@ -563,7 +779,10 @@ describe("the S5.4 steward signing surface (society room)", () => {
     const fresh: AggregateResult = {
       ...rendered,
       resonances: [...rendered.resonances, vote("https://p7.example/#me", CAND, STANCE_RESONATES)],
-      verified: [...rendered.verified, { webId: "https://p7.example/#me", base: "https://p7.example/u/", tier: "T1" as const }],
+      verified: [
+        ...rendered.verified,
+        { webId: "https://p7.example/#me", base: "https://p7.example/u/", tier: "T1" as const },
+      ],
     };
     renderSocietyRoom(
       asTrust({ tier: 1, roles: ["steward"] }),

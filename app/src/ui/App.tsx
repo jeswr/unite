@@ -12,8 +12,14 @@ import { resolveScope, SCOPE_ORDER, SCOPES, scopeHref } from "../scope/scopes.js
 import { useController } from "./auth.js";
 import { useAggregate, useLiveUpdates, useTrustProfile } from "./hooks.js";
 import { DEFAULT_VIEW, useHashView, type View } from "./route.js";
+import type { SignedAdoptionDecision } from "./sign-decision.js";
 import { type SignedSharedFuture, useStewardSigning } from "./sign-future.js";
-import { collectionKinds, type DeliberationConfig, scopedDefaultConfig } from "./state.js";
+import {
+  collectionKinds,
+  type DeliberationConfig,
+  deliberationKey,
+  scopedDefaultConfig,
+} from "./state.js";
 import { AdoptionBoard } from "./views/AdoptionBoard.js";
 import { Bridging } from "./views/Bridging.js";
 import { BuildChannel } from "./views/BuildChannel.js";
@@ -75,21 +81,48 @@ export function App(): React.JSX.Element {
   // (WebSocketChannel2023 with a poll fallback; best-effort; pod mode only).
   useLiveUpdates(config, controller, aggregate.refresh, KINDS);
 
-  // S5.4: the steward-signing context for scope C's Room (null in every other
-  // scope, while resolving, and on any failure — the sign surface then stays
-  // locked, fail-closed), and the S5.5 hand-off state: a signed SharedFuture
-  // from the Room flows to the Published-futures view. Lifted here so the
-  // artifact survives tab switches; keyed to the deliberation (a config
-  // change clears it — a signed artifact never bleeds across deliberations).
-  const signing = useStewardSigning(config, SCOPE.outputKind === "advisory-synthesis");
+  // The steward-signing context for the Room's output stages (null in a
+  // scope with no signing surface, while resolving, and on any failure — the
+  // sign surface then stays locked, fail-closed). Shared by S5.4 (scope C's
+  // SharedFuture) and S3.5 (scope B's AdoptionDecision) — the same INV-5
+  // quorum inputs. Plus the hand-off state: a signed SharedFuture flows to
+  // Published futures (S5.5); a signed AdoptionDecision flows to the Adoption
+  // board's live evidence column (S3.6). Lifted here so the artifacts survive
+  // tab switches; keyed to the deliberation (a config change clears them — a
+  // signed artifact never bleeds across deliberations).
+  const signing = useStewardSigning(
+    config,
+    SCOPE.outputKind === "advisory-synthesis" || SCOPE.outputKind === "adoption-decision",
+  );
   const [publishedFutures, setPublishedFutures] = useState<readonly PublishedFutureView[]>([]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed to the CONFIG on purpose — a deliberation switch clears the signed artifacts (they never bleed across deliberations).
+  // Signed AdoptionDecisions, KEYED to the deliberation they were signed in and
+  // DERIVED AT RENDER: a decision from a previous deliberation resolves to []
+  // synchronously under a new config — never rendered for even one frame (the
+  // useTrustProfile / AdoptionBoard keyed-derivation pattern; no passive-effect
+  // clear window). "never bleeds across deliberations" holds by construction.
+  const configKey = deliberationKey(config);
+  const [decisionStore, setDecisionStore] = useState<{
+    readonly key: string;
+    readonly list: readonly SignedAdoptionDecision[];
+  }>({ key: configKey, list: [] });
+  const adoptionDecisions: readonly SignedAdoptionDecision[] =
+    decisionStore.key === configKey ? decisionStore.list : [];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed to the CONFIG on purpose — a deliberation switch clears the published-future view models (they never bleed across deliberations); the signed decisions are handled by the keyed derivation above.
   useEffect(() => {
     setPublishedFutures([]);
   }, [config]);
   const onSigned = useCallback((signed: SignedSharedFuture) => {
     setPublishedFutures((prev) => [...prev.filter((f) => f.id !== signed.view.id), signed.view]);
   }, []);
+  const onDecisionSigned = useCallback(
+    (signed: SignedAdoptionDecision) => {
+      setDecisionStore((prev) => {
+        const base = prev.key === configKey ? prev.list : [];
+        return { key: configKey, list: [...base.filter((d) => d.id !== signed.id), signed] };
+      });
+    },
+    [configKey],
+  );
 
   const needCount = aggregate.result?.needs.length;
 
@@ -226,10 +259,16 @@ export function App(): React.JSX.Element {
             aggregate={aggregate}
             signing={signing}
             onSigned={onSigned}
+            onDecisionSigned={onDecisionSigned}
+            signedDecisions={adoptionDecisions}
           />
         )}
-        {/* The S2 scope-B ratification instrument (real fedreg:acceptsSpec reads). */}
-        {view === "adoption-board" && <AdoptionBoard scope={SCOPE} config={config} />}
+        {/* The S2 scope-B ratification instrument (real fedreg:acceptsSpec
+            reads) + the S3.6 wiring: signed AdoptionDecisions link to their
+            live evidence columns. */}
+        {view === "adoption-board" && (
+          <AdoptionBoard scope={SCOPE} config={config} decisions={adoptionDecisions} />
+        )}
         {/* BL.2: the read-only agentic build channel (scope A/B, buildLayer). */}
         {view === "build" && <BuildChannel scope={SCOPE} config={config} />}
         {/* The S4 scope-C voice layer: the Resonance deck + the Futures gallery. */}
