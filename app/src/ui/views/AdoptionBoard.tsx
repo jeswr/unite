@@ -10,12 +10,16 @@
 // matrix is the CORRECT display while the network hasn't adopted anything
 // (§9: that emptiness is honest, not a bug to paper over).
 //
-// Reads are credential-free (publicFetch / the demo sandbox fetch),
-// https-only, byte-capped, fail-isolated per source (lib/adoption.ts).
+// This view renders the matrix as an actual table (advertisers × versions),
+// the shape the copy has always promised: rows are the storages advertising a
+// lineage, columns are its versions, and each filled cell is a re-checkable
+// observation. Reads are credential-free (publicFetch / the demo sandbox
+// fetch), https-only, byte-capped, fail-isolated per source (lib/adoption.ts).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEMO_ADOPTION_SOURCES } from "../../demo/fixtures.js";
 import {
+  type AdoptionObservation,
   type AdoptionSnapshot,
   computeAdoption,
   DEFAULT_ADOPTION_BAR,
@@ -25,6 +29,7 @@ import {
 } from "../../lib/adoption.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
 import { useController } from "../auth.js";
+import { EmptyState, Notice, Panel, SectionHeader, ViewHeader } from "../components.js";
 import { readFetchFor } from "../hooks.js";
 import type { DeliberationConfig } from "../state.js";
 
@@ -59,6 +64,11 @@ function StatusBadge({ column }: { column: VersionAdoption }): React.JSX.Element
     return <span className="badge">superseded — a newer version meets the bar</span>;
   }
   return <span className="badge con">proposed — the wire hasn't adopted it</span>;
+}
+
+/** The observation(s) for a given advertiser in a given version column, if any. */
+function cellObservations(column: VersionAdoption, party: string): readonly AdoptionObservation[] {
+  return column.observations.filter((o) => o.party === party);
 }
 
 export function AdoptionBoard({
@@ -135,73 +145,113 @@ export function AdoptionBoard({
 
   return (
     <section className="view">
-      <div className="row-between">
-        <div>
-          <h2 className="view-title">Adoption board</h2>
-          <p className="view-lede">
+      <ViewHeader
+        title="Adoption board"
+        lede={
+          <>
             <strong>The wire is the ballot box.</strong> The room's endorsement is advisory — a
             version becomes <em>Current</em> only when the network's storages actually advertise it
             (<span className="data">fedreg:acceptsSpec</span>). Every cell below is an observation
             you can re-check at its source; nothing here is asserted.
-          </p>
-        </div>
-        <button type="button" className="btn" onClick={observe} disabled={loading}>
-          {loading ? "Observing…" : "Observe now"}
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button type="button" className="btn" onClick={observe} disabled={loading}>
+            {loading ? "Observing…" : "Observe now"}
+          </button>
+        }
+      />
 
-      {error && <p className="notice error">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
 
       {matrices.map(({ system, versions, advertisers }) => (
-        <div key={system.id} className="panel">
-          <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
-            {system.label}
-          </h3>
-          <p className="muted small">
-            lineage: <span className="data">{system.id}</span>
-          </p>
-          <div className="chip-row">
-            {versions.map((col) => (
-              <div key={col.version.iri} className="card" style={{ flex: 1 }}>
-                <div className="row-between">
-                  <strong>{col.version.label}</strong>
-                  <StatusBadge column={col} />
-                </div>
-                {col.version.note && <p className="muted small">{col.version.note}</p>}
-                <p className="muted small">
-                  {col.parties.length} of ≥{DEFAULT_ADOPTION_BAR} advertising{" "}
-                  {col.parties.length === 1 ? "party" : "parties"} observed
-                </p>
-                {col.observations.length === 0 ? (
-                  <p className="muted small">No advertisers observed.</p>
-                ) : (
-                  <ul>
-                    {col.observations.map((o) => (
-                      <li key={`${o.party} ${o.source}`} className="muted small">
-                        <span className="data">{o.party}</span>{" "}
-                        <a href={o.source} rel="noopener noreferrer" target="_blank">
-                          re-check
-                        </a>{" "}
-                        <span className="when">observed {o.observedAt.slice(0, 10)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-          {advertisers.length === 0 && (
-            <div className="empty">
-              <span className="empty-title">Nobody advertises this lineage yet</span>
+        <Panel key={system.id} className="u-matrix-panel">
+          <SectionHeader
+            title={system.label}
+            sub={
+              <>
+                lineage: <span className="data">{system.id}</span>
+              </>
+            }
+          />
+          {advertisers.length === 0 ? (
+            <EmptyState title="Nobody advertises this lineage yet">
               <p>
                 An empty matrix is the honest display, not a bug: adoption is measured, and the
                 network hasn't voted. It fills as independent storages publish{" "}
                 <span className="data">fedreg:StorageDescription</span> documents advertising a
                 version.
               </p>
+            </EmptyState>
+          ) : (
+            <div className="matrix-scroll">
+              <table className="adoption-matrix">
+                <caption className="u-visually-hidden">
+                  Which storage advertises which version of {system.label}
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col" className="am-corner">
+                      Advertising storage
+                    </th>
+                    {versions.map((col) => (
+                      <th key={col.version.iri} scope="col" className="am-version">
+                        <span className="am-version-label">{col.version.label}</span>
+                        <StatusBadge column={col} />
+                        {col.version.note && (
+                          <span className="am-version-note">{col.version.note}</span>
+                        )}
+                        <span className="am-version-count">
+                          {col.parties.length} of ≥{DEFAULT_ADOPTION_BAR} advertising{" "}
+                          {col.parties.length === 1 ? "party" : "parties"}
+                        </span>
+                        {col.observations.length === 0 && (
+                          <span className="am-none">No advertisers observed.</span>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {advertisers.map((party) => (
+                    <tr key={party}>
+                      <th scope="row" className="am-party">
+                        <span className="data">{party}</span>
+                      </th>
+                      {versions.map((col) => {
+                        const obs = cellObservations(col, party);
+                        return (
+                          <td
+                            key={col.version.iri}
+                            className={obs.length > 0 ? "am-cell am-yes" : "am-cell am-no"}
+                          >
+                            {obs.length > 0 ? (
+                              obs.map((o) => (
+                                <span key={`${o.party} ${o.source}`} className="am-obs">
+                                  <span className="am-check" aria-hidden="true">
+                                    ✓
+                                  </span>
+                                  <a href={o.source} rel="noopener noreferrer" target="_blank">
+                                    re-check
+                                  </a>
+                                  <span className="when">obs. {o.observedAt.slice(0, 10)}</span>
+                                </span>
+                              ))
+                            ) : (
+                              <span className="am-dash" role="img" aria-label="not advertised">
+                                —
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-        </div>
+        </Panel>
       ))}
 
       <p className="muted small">
@@ -214,10 +264,8 @@ export function AdoptionBoard({
       </p>
 
       {undeclared.length > 0 && (
-        <div className="panel">
-          <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
-            Observed versions outside the governed lineages
-          </h3>
+        <Panel>
+          <SectionHeader title="Observed versions outside the governed lineages" />
           <ul>
             {undeclared.map((o) => (
               <li key={`${o.party} ${o.version}`} className="muted small">
@@ -229,14 +277,12 @@ export function AdoptionBoard({
               </li>
             ))}
           </ul>
-        </div>
+        </Panel>
       )}
 
       {(activeSnapshot?.errors.length ?? 0) > 0 && (
-        <div className="panel">
-          <h3 className="view-title" style={{ fontSize: "1rem", marginTop: 0 }}>
-            Sources that could not be observed
-          </h3>
+        <Panel>
+          <SectionHeader title="Sources that could not be observed" />
           <ul>
             {(activeSnapshot?.errors ?? []).map((e) => (
               <li key={e.source} className="muted small">
@@ -244,7 +290,7 @@ export function AdoptionBoard({
               </li>
             ))}
           </ul>
-        </div>
+        </Panel>
       )}
 
       <label className="field">
