@@ -6,6 +6,7 @@
 export * from "./adoption.js";
 export * from "./adoption-decision.js";
 export * from "./aggregate.js";
+export * from "./build-wiring.js";
 export * from "./channel.js";
 export * from "./commission.js";
 export * from "./convergence.js";
