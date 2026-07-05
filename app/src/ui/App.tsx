@@ -15,6 +15,7 @@ import { DEFAULT_VIEW, useHashView, type View } from "./route.js";
 import { collectionKinds, type DeliberationConfig, scopedDefaultConfig } from "./state.js";
 import { AdoptionBoard } from "./views/AdoptionBoard.js";
 import { Bridging } from "./views/Bridging.js";
+import { BuildChannel } from "./views/BuildChannel.js";
 import { Compose } from "./views/Compose.js";
 import { Deck } from "./views/Deck.js";
 import { FuturesGallery } from "./views/FuturesGallery.js";
@@ -204,6 +205,8 @@ export function App(): React.JSX.Element {
         )}
         {/* The S2 scope-B ratification instrument (real fedreg:acceptsSpec reads). */}
         {view === "adoption-board" && <AdoptionBoard scope={SCOPE} config={config} />}
+        {/* BL.2: the read-only agentic build channel (scope A/B, buildLayer). */}
+        {view === "build" && <BuildChannel scope={SCOPE} config={config} />}
         {/* The S4 scope-C voice layer: the Resonance deck + the Futures gallery. */}
         {view === "deck" && (
           <Deck scope={SCOPE} config={config} webId={webId} trust={trust} aggregate={aggregate} />

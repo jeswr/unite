@@ -215,7 +215,7 @@ describe("scope seams (S0)", () => {
 
   it("B's S2 surface: the infra artifact, the shared spine views, the adoption board", () => {
     expect(SCOPES.infrastructure.artifactKinds).toEqual(["need", "infra-proposal"]);
-    expect(SCOPES.infrastructure.views).toEqual(["proposals", "room", "adoption-board"]);
+    expect(SCOPES.infrastructure.views).toEqual(["proposals", "room", "adoption-board", "build"]);
     expect(SCOPES.infrastructure.composeFlow).toBe("structured-infra");
   });
 

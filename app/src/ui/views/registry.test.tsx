@@ -64,11 +64,11 @@ describe("view registry", () => {
     ]);
   });
 
-  it("apps' extra tabs are exactly its declared views (S1: proposals + room)", () => {
+  it("apps' extra tabs are exactly its declared views (S1: proposals + room; BL.2: build)", () => {
     expect(enabledViews(SCOPES.apps).filter((v) => !BASE_VIEWS.includes(v))).toEqual(
       SCOPES.apps.views.slice(),
     );
-    expect(SCOPES.apps.views).toEqual(["proposals", "room"]);
+    expect(SCOPES.apps.views).toEqual(["proposals", "room", "build"]);
   });
 
   it("S5: 'published-futures' is now a REAL enabled view, no longer a preview stub", () => {

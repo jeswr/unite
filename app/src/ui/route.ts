@@ -27,6 +27,7 @@ const VIEW_SET: ReadonlySet<string> = new Set([
   "proposals",
   "room",
   "adoption-board",
+  "build",
   "deck",
   "futures-gallery",
   "published-futures",

@@ -1742,3 +1742,75 @@ details.sources code {
     min-width: 9.5rem;
   }
 }
+
+/* ── Build channel (BL.2 — the read-only agentic build layer) ─────────────── */
+/* A channel/thread layout: petrol-accented thread panels, a per-thread
+   commission-state badge + audit chain, and a cross-pod message feed where an
+   agent turn is always visibly attributed (never a human). */
+.bc-thread {
+  border-left: 3px solid var(--u-petrol);
+}
+.bc-commission {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+.bc-audit {
+  flex-basis: 100%;
+}
+.bc-audit summary {
+  cursor: pointer;
+  color: var(--u-petrol);
+}
+.bc-chain {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.bc-feed {
+  margin-top: 0.5rem;
+}
+.bc-msg {
+  border-left: 2px solid var(--u-line);
+}
+.bc-msg-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--u-slate);
+}
+.bc-msg-head .who {
+  font-weight: 600;
+  color: var(--u-ink);
+}
+.bc-msg-head .when {
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  margin-left: auto;
+}
+.bc-attribution {
+  margin: 0.35rem 0 0;
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  background: var(--u-petrol-soft);
+  overflow-wrap: anywhere;
+}
+/* The self-claimed owner is an UNVERIFIED claim (no reciprocal binding yet) —
+   marked distinctly so it never reads as a verified back-link. */
+.bc-unverified {
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  padding: 0.02rem 0.3rem;
+  border-radius: 6px;
+  border: 1px solid var(--u-gold);
+  color: var(--u-gold);
+}

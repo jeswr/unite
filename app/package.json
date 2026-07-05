@@ -22,6 +22,7 @@
     "@jeswr/federation-trust": "git+https://github.com/jeswr/federation-trust.git#75ec53d33d23cf1f18b9a44258dcbee94c5f41de",
     "@jeswr/fetch-rdf": "0.1.0",
     "@jeswr/guarded-fetch": "git+https://github.com/jeswr/guarded-fetch.git#bd4490927fd36d62f6b78a0021e8d40bbb572c3b",
+    "@jeswr/solid-agent-card": "git+https://github.com/jeswr/solid-agent-card.git#6e930e9ef6bc81358caa3dc0d011773903ae2201",
     "@jeswr/solid-chat-interop": "git+https://github.com/jeswr/solid-chat-interop.git#0740bb0d9b39cf823e8df0c4fdf44be5287f4255",
     "@jeswr/solid-elements": "git+https://github.com/jeswr/solid-elements.git#2c00745d3b834a7f645b1ca17b6ff8ffac3b1a8e",
     "@jeswr/solid-odrl": "git+https://github.com/jeswr/solid-odrl.git#e12f284db4fa53d51bbf870e6ed57c1d72395eaa",
