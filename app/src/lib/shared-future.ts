@@ -498,15 +498,23 @@ export interface ParsedSharedFuture {
   readonly inDeliberation: string;
   /** True iff the mandatory dissent annex is present + well-formed (D1). */
   readonly hasDissentAnnex: boolean;
-  /** The count of content-bearing fut:DissentRecords — the re-checkable D2 floor
-   *  (the annex is materialised 1:1 with the standing critiques, so a signed graph
-   *  whose count is below the endorsement-time standing-critique count DROPPED
-   *  dissent). */
+  /** The count of content-bearing fut:DissentRecords. The honest materializeDissent
+   *  builds the annex 1:1 with (⊇) the standing critiques, so at verify D2 requires
+   *  `>= standing.size` — FEWER records dropped dissent. (Verify uses `>=` not `===`
+   *  to mirror the build gate's `standingCritiqueIds ⊆ accountedFor` subset
+   *  semantics, which permits over-coverage; count-PADDING via duplicate quotes is
+   *  caught by {@link verbatimDissentRecordCount}, not the count comparison.) */
   readonly dissentRecordCount: number;
-  /** The source-critique IRIs of the VERBATIM records — re-checkable at verify:
-   *  every one must be a standing critique (a quote of a non-standing critique is
-   *  caught). */
+  /** The DISTINCT source-critique IRIs of the VERBATIM records (deduped) —
+   *  re-checkable at verify: every one must be a standing critique (a quote of a
+   *  non-standing critique is caught) AND, combined with {@link
+   *  verbatimDissentRecordCount}, DISTINCT coverage is recomputed (duplicate
+   *  quotes of one critique that pad the count while dropping others are caught). */
   readonly verbatimDissentCritiques: readonly string[];
+  /** The RAW count of VERBATIM records (WITH duplicates). Equals
+   *  `verbatimDissentCritiques.length` iff no critique is quoted twice — the D2
+   *  distinct-coverage test that defeats a count-padding duplicate-quote forgery. */
+  readonly verbatimDissentRecordCount: number;
 }
 
 /** A single xsd:nonNegativeInteger (or xsd:integer) literal ≥ 0, else undefined. */
@@ -584,13 +592,18 @@ function readBridgingEvidence(ds: DatasetCore, s: Term): ClusterBridgingEvidence
 interface ParsedAnnex {
   /** D1: ≥1 content-bearing fut:dissent XOR fut:noDissentRecorded true. */
   readonly valid: boolean;
-  /** The number of content-bearing fut:DissentRecords (materialised 1:1 with the
-   *  standing critiques, so this is the count the D2 floor compares against). */
+  /** The number of content-bearing fut:DissentRecords (materialised 1:1 with (⊇) the
+   *  standing critiques, so the D2 re-check requires this to be `>=` the
+   *  endorsement-time standing-critique count — a shortfall dropped dissent). */
   readonly recordCount: number;
-  /** The prov:wasDerivedFrom source-critique IRIs of the VERBATIM records — these
-   *  MUST be a subset of the endorsement-time standing critiques (a verbatim quote
-   *  of a non-standing/fabricated critique is caught at verify). */
+  /** The DISTINCT prov:wasDerivedFrom source-critique IRIs of the VERBATIM records
+   *  (deduped) — these MUST be a subset of the endorsement-time standing critiques
+   *  (a verbatim quote of a non-standing/fabricated critique is caught at verify). */
   readonly verbatimCritiques: readonly string[];
+  /** The RAW number of VERBATIM records (WITH duplicates) — compared against the
+   *  DISTINCT `verbatimCritiques` count to reject duplicate quotes that pad the
+   *  total while dropping other standing critiques (the D2 distinct-coverage test). */
+  readonly verbatimRecordCount: number;
 }
 
 /**
@@ -602,8 +615,14 @@ interface ParsedAnnex {
  * against a hostile fan-out.
  */
 function parseDissentAnnex(ds: DatasetCore, s: Term): ParsedAnnex {
-  const invalid: ParsedAnnex = { valid: false, recordCount: 0, verbatimCritiques: [] };
+  const invalid: ParsedAnnex = {
+    valid: false,
+    recordCount: 0,
+    verbatimCritiques: [],
+    verbatimRecordCount: 0,
+  };
   let recordCount = 0;
+  let verbatimRecordCount = 0;
   const verbatimCritiques = new Set<string>();
   let seen = 0;
   for (const q of ds.match(s, namedNode(FUT_DISSENT), null, null)) {
@@ -622,13 +641,27 @@ function parseDissentAnnex(ds: DatasetCore, s: Term): ParsedAnnex {
     if (!typed) return invalid;
     const content = readString(ds, rec, AS_CONTENT, MAX_CONTENT_LENGTH);
     if (content === undefined || content.length === 0) return invalid;
+    // COUNT the creator + lineage triples DIRECTLY — readIri (via `single`) collapses
+    // BOTH "absent" and "multiple" to undefined, so relying on it would silently
+    // reclassify a MALFORMED multi-valued verbatim record (e.g. two prov:wasDerivedFrom
+    // triples) as aggregate-only and hide it from the distinct-coverage D2 check.
+    // Mirror the builder EXACTLY: a record is VERBATIM iff EXACTLY ONE http(s) creator
+    // AND EXACTLY ONE http(s) lineage; AGGREGATE iff ZERO of BOTH; anything else is
+    // malformed and INVALIDATES the annex (a hand-signed graph cannot smuggle a
+    // malformed record past verify).
+    const creatorCount = ds.match(rec, namedNode(DCT_CREATOR), null, null).size;
+    const lineageCount = ds.match(rec, namedNode(PROV_WAS_DERIVED_FROM), null, null).size;
+    if (creatorCount === 0 && lineageCount === 0) {
+      recordCount += 1; // aggregate record — NEITHER attribution nor lineage
+      continue;
+    }
+    if (creatorCount !== 1 || lineageCount !== 1) return invalid; // malformed multi-valued
     const creator = readIri(ds, rec, DCT_CREATOR);
     const lineage = readIri(ds, rec, PROV_WAS_DERIVED_FROM);
-    const hasCreator = creator !== undefined;
-    const hasLineage = lineage !== undefined;
-    if (hasCreator !== hasLineage) return invalid; // verbatim needs BOTH; aggregate NEITHER
+    if (creator === undefined || lineage === undefined) return invalid; // single but non-http(s)
     recordCount += 1;
-    if (hasCreator && hasLineage) verbatimCritiques.add(lineage);
+    verbatimRecordCount += 1; // RAW count (with duplicates) for the distinct-coverage test
+    verbatimCritiques.add(lineage); // DISTINCT set (deduped)
   }
   let flagCount = 0;
   let flagTrue = false;
@@ -652,6 +685,7 @@ function parseDissentAnnex(ds: DatasetCore, s: Term): ParsedAnnex {
     valid: hasDissent !== flagTrue, // XOR
     recordCount,
     verbatimCritiques: [...verbatimCritiques],
+    verbatimRecordCount,
   };
 }
 
@@ -727,6 +761,7 @@ export function parseSharedFutures(ds: DatasetCore): ParsedSharedFuture[] {
       hasDissentAnnex: annex.valid,
       dissentRecordCount: annex.recordCount,
       verbatimDissentCritiques: annex.verbatimCritiques,
+      verbatimDissentRecordCount: annex.verbatimRecordCount,
       ...(title !== undefined ? { title } : {}),
     });
   }
@@ -756,13 +791,21 @@ export interface SharedFutureVerification {
   readonly kAnonymous: boolean;
   /**
    * D2 re-check (dissent faithfulness), present only when `standingCritiqueIds` is
-   * supplied. It soundly catches the two RE-CHECKABLE forgeries: (1) the annex has
-   * FEWER records than critiques stood (dropped dissent — under-representation); and
-   * (2) a VERBATIM quote of a critique that was NOT standing (a fabricated quote).
-   * `true` iff neither holds. LIMIT (by design, not an oversight): a swap AMONG
+   * supplied. It soundly catches the THREE RE-CHECKABLE forgeries by DISTINCT
+   * COVERAGE (mirroring the build-time `standingCritiqueIds ⊆ accountedFor` SUBSET
+   * check on the SIGNED graph), not a mere count comparison:
+   *   (1) the annex record count `<` the standing count — dropped dissent
+   *       (under-representation). (Verify uses `>=` not `===` to match the build
+   *       gate's subset semantics, which permits an over-covering annex.)
+   *   (2) a VERBATIM quote of a critique that was NOT standing (a fabricated quote);
+   *   (3) DUPLICATE verbatim quotes of one critique that pad the count while
+   *       silently dropping OTHER standing critiques (the raw verbatim-record count
+   *       must equal the DISTINCT verbatim-critique count) — THIS is what defeats the
+   *       count-padding forgery a bare count comparison ratified.
+   * `true` iff none holds. LIMIT (by design, not an oversight): a swap AMONG
    * anonymous aggregate records that keeps the count is NOT re-checkable — aggregate
    * records are deliberately non-identifying (privacy / k-anonymity), so per-critique
-   * coverage of aggregated dissent cannot be recomputed post-hoc without weakening
+   * coverage of *aggregated* dissent cannot be recomputed post-hoc without weakening
    * that privacy. That residual is covered by the BUILD-time D2 throw (a faithful
    * builder cannot construct it) + the ≥2-steward attestation (INV-5). `undefined`
    * when the verifier did not supply the standing set.
@@ -798,13 +841,17 @@ export async function verifySharedFuture(
     readonly kThreshold?: number;
     /**
      * The critique IRIs STANDING at endorsement time. When supplied, D2 is
-     * RE-CHECKED against the signed graph (the SOUND, re-checkable part): the annex
-     * must carry ≥ this many records (no dropped dissent) AND every verbatim quote
-     * must be OF a standing critique (no fabricated quote) — so a hand-built graph
-     * that under-represents or fabricates a quote cannot be ratified even though it
-     * was signed. The community verifier HAS this set (it recomputed the room). See
-     * {@link SharedFutureVerification.dissentComplete} for the design-intended
-     * residual (anonymous-aggregate swap) covered by build enforcement + attestation.
+     * RE-CHECKED against the signed graph by DISTINCT COVERAGE (the SOUND,
+     * re-checkable part): the annex must carry AT LEAST this many records (fewer
+     * dropped dissent; `>=` mirrors the build gate's subset semantics), every verbatim
+     * quote must be OF a standing critique (no fabricated quote), AND no critique may
+     * be quoted twice to pad the count while dropping another (raw verbatim-record
+     * count = distinct verbatim-critique count) — so a hand-built graph that
+     * under-represents or duplicates a quote cannot be ratified even though it was
+     * signed. The community verifier HAS this
+     * set (it recomputed the room). See {@link
+     * SharedFutureVerification.dissentComplete} for the design-intended residual
+     * (anonymous-aggregate swap) covered by build enforcement + attestation.
      */
     readonly standingCritiqueIds?: ReadonlySet<string>;
   },
@@ -828,18 +875,33 @@ export async function verifySharedFuture(
   const kAnonymous = metricsAreKAnonymous(parseConvergenceMetrics(ds), options.kThreshold);
 
   // 5. D2 re-check (dissent faithfulness) — only when the standing set is supplied.
-  //    The annex is materialised 1:1 with the standing critiques, so a record count
-  //    below the standing count means dissent was DROPPED; and every verbatim quote
-  //    must be OF a standing critique (a quote of a fabricated/non-standing critique
-  //    is rejected). Fail-closed: any shortfall ⇒ dissentComplete false. (A swap
-  //    among ANONYMOUS aggregate records that keeps the count is not re-checkable by
-  //    design — see dissentComplete's doc; it is covered by the build throw + the
-  //    ≥2-steward attestation, not this heuristic.)
+  //    DISTINCT COVERAGE, not a bare count comparison (the count-only check ratified a
+  //    forgery of 3 duplicate verbatim quotes of ONE critique that padded the total
+  //    while dropping the other two). All THREE must hold:
+  //      (a) recordCount ≥ standing.size — a shortfall DROPPED dissent (the honest
+  //          annex is materialised 1:1 with ⊇ the standing critiques, so it can never
+  //          have FEWER records than critiques stood). This MIRRORS the build-time
+  //          `standingCritiqueIds ⊆ accountedFor` SUBSET semantics — the builder
+  //          permits an annex that OVER-covers, so verify must not reject a surplus
+  //          (that would be a build/verify contract mismatch);
+  //      (b) NO duplicate verbatim quote — the raw verbatim-record count equals the
+  //          DISTINCT verbatim-critique count, so a critique quoted twice (to pad the
+  //          count while dropping another) cannot slip through (THIS is what closes
+  //          the count-padding forgery, independent of the count comparison); AND
+  //      (c) every DISTINCT verbatim quote is OF a standing critique (no fabricated
+  //          quote).
+  //    (a)+(b) force at least |standing.size − distinctVerbatim| aggregate records to
+  //    exist for the remaining standing critiques (pigeonhole → coverage). Fail-closed:
+  //    any violation ⇒ dissentComplete false. (A swap among ANONYMOUS aggregate
+  //    records that keeps the count is not re-checkable by design — see
+  //    dissentComplete's doc; it is covered by the build throw + the ≥2-steward
+  //    attestation, not this re-check.)
   const standing = options.standingCritiqueIds;
   const dissentComplete =
     standing === undefined || sharedFuture === undefined
       ? undefined
       : sharedFuture.dissentRecordCount >= standing.size &&
+        sharedFuture.verbatimDissentRecordCount === sharedFuture.verbatimDissentCritiques.length &&
         sharedFuture.verbatimDissentCritiques.every((c) => standing.has(c));
 
   return {

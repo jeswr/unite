@@ -351,12 +351,26 @@ export function parseConvergenceMetrics(ds: DatasetCore): ParsedConvergenceMetri
  * confirm no cell fell below k, INCLUDING via subtraction). Two checks, both
  * fail-closed:
  *   (a) every node that publishes a `participantCount` has it ≥ k; AND
- *   (b) no SUBTRACTION leak — per deliberation, an aggregate total published
+ *   (b) no SUBTRACTION leak — per DELIBERATION, an aggregate total published
  *       alongside a proper subset of the tier strata must not reveal a sub-k
- *       remainder: `aggregateTotal − Σ(strata) ∈ {0} ∪ [k, ∞)`. A hand-built graph
- *       carrying total=12 + T0=5 + T1=6 (hiding T2=1) is caught here even though
- *       every published cell is individually ≥ k.
+ *       remainder: `aggregateTotal − Σ(strata for that deliberation) ∈ {0} ∪ [k, ∞)`.
+ *       A hand-built graph carrying total=12 + T0=5 + T1=6 (hiding T2=1) is caught
+ *       here even though every published cell is individually ≥ k — AND even when
+ *       the attacker SPLITS the aggregate and the strata across DIFFERENT documents
+ *       that share the same `fut:inDeliberation` (grouping by document would have
+ *       missed that; grouping by deliberation does not).
  * An unknown k uses the conservative default; an empty set is vacuously k-anonymous.
+ *
+ * INTENTIONAL fail-closed rule (NOT an oversight): a deliberation has ONE coherent
+ * participant count, and the honest flow embeds exactly ONE metrics resource per
+ * deliberation per signed graph (see `publishConvergenceMetrics`). So a deliberation
+ * carrying MORE THAN ONE aggregate total is rejected OUTRIGHT — it is either
+ * malformed or an aggregate-minus-aggregate leak (10 − 8 = 2 discloses a k=2 delta
+ * cohort) the strata-subtraction check alone would miss. The single permitted
+ * aggregate is then checked against the deliberation's FULL strata sum (any sub-k or
+ * negative remainder fails). Grouping by document/publication instead would let a
+ * cross-document split evade the check, so it is deliberately rejected here rather
+ * than re-partitioned.
  */
 export function metricsAreKAnonymous(
   metrics: readonly ParsedConvergenceMetrics[],
@@ -367,48 +381,41 @@ export function metricsAreKAnonymous(
   for (const m of metrics) {
     if (m.participantCount !== undefined && m.participantCount < kThreshold) return false;
   }
-  // (b) no subtraction leak. Group by the metrics RESOURCE DOCUMENT (the IRI with
-  //     its fragment stripped) — the publisher emits an aggregate `<m>#it` and its
-  //     strata `<m>#metrics-T0` in the SAME document, so a stratum groups with its
-  //     own aggregate; INDEPENDENT metrics resources for one deliberation live in
-  //     DIFFERENT documents and never cross-contaminate (an aggregate is only ever
-  //     compared against ITS OWN strata).
-  const byDoc = new Map<string, { aggregate?: number; strataSum: number }>();
+  // (b) no subtraction leak. Group by `fut:inDeliberation` — NOT the metrics document.
+  //     A stratum discloses part of a deliberation's cohort regardless of which
+  //     document it lives in, so an aggregate total for a deliberation must be checked
+  //     against ALL strata sharing that deliberation; otherwise an attacker defeats
+  //     the defence by SPLITTING the aggregate `<m-agg>#it` and the strata
+  //     `<m-strata>#T0/#T1` into two documents that share one `fut:inDeliberation`
+  //     (total 12 − 5 − 6 = 1 re-identifies a k=1 cohort). Every published aggregate
+  //     total for a deliberation is checked against that deliberation's full strata
+  //     sum; ANY sub-k (non-zero) remainder fails. FAIL-CLOSED: multiple aggregates
+  //     for one deliberation are each checked (and a negative remainder — an
+  //     inconsistent/hostile total below the strata sum — also fails). Distinct
+  //     deliberations never pool, so genuinely independent metrics do not
+  //     cross-contaminate.
+  const byDelib = new Map<string, { aggregates: number[]; strataSum: number }>();
   for (const m of metrics) {
-    const doc = documentOf(m.id);
-    const g = byDoc.get(doc) ?? { strataSum: 0 };
+    const g = byDelib.get(m.deliberation) ?? { aggregates: [], strataSum: 0 };
     if (m.tier === undefined) {
       // An aggregate node (no tier). Only a published total can leak by subtraction.
-      // (Fail-closed on the malformed case of >1 aggregate in one document: keep the
-      // SMALLEST total, so the strictest remainder is checked.)
-      if (m.participantCount !== undefined) {
-        g.aggregate =
-          g.aggregate === undefined
-            ? m.participantCount
-            : Math.min(g.aggregate, m.participantCount);
-      }
+      if (m.participantCount !== undefined) g.aggregates.push(m.participantCount);
     } else if (m.participantCount !== undefined) {
       g.strataSum += m.participantCount;
     }
-    byDoc.set(doc, g);
+    byDelib.set(m.deliberation, g);
   }
-  for (const g of byDoc.values()) {
-    if (g.aggregate === undefined) continue; // no published total → nothing to subtract
-    const remainder = g.aggregate - g.strataSum;
-    if (remainder !== 0 && remainder < kThreshold) return false; // sub-k remainder leaks
+  for (const g of byDelib.values()) {
+    // A deliberation may carry AT MOST ONE aggregate total. More than one is rejected
+    // OUTRIGHT (fail-closed): the honest flow emits exactly one metrics resource per
+    // deliberation per signed graph, and two totals for one deliberation are either
+    // malformed or an aggregate-minus-aggregate leak (e.g. 10 − 8 = 2 discloses a k=2
+    // delta cohort) that the strata-subtraction check below would not catch.
+    if (g.aggregates.length > 1) return false;
+    for (const total of g.aggregates) {
+      const remainder = total - g.strataSum;
+      if (remainder !== 0 && remainder < kThreshold) return false; // sub-k remainder leaks
+    }
   }
   return true;
-}
-
-/** The document IRI of a node (its IRI with any fragment stripped) — the grouping
- *  key that ties an aggregate to ITS OWN strata (same document). A non-parseable
- *  IRI falls back to itself (its own singleton group). */
-function documentOf(iri: string): string {
-  try {
-    const u = new URL(iri);
-    u.hash = "";
-    return u.toString();
-  } catch {
-    return iri;
-  }
 }

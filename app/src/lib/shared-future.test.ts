@@ -26,7 +26,7 @@ import type { Quad } from "@rdfjs/types";
 import { DataFactory, Store } from "n3";
 import { beforeAll, describe, expect, it } from "vitest";
 import { publishConvergenceMetrics } from "./convergence-metrics.js";
-import { type MaterializedDissent, materializeDissent } from "./dissent.js";
+import { buildDissentAnnexQuads, type MaterializedDissent, materializeDissent } from "./dissent.js";
 import { NS, RDF_TYPE } from "./fut.js";
 import { FUT_NO_DISSENT_RECORDED, FUT_SHARED_FUTURE } from "./fut-draft.js";
 import { METHOD_MEDIATED_SYNTHESIS, METHOD_RESONANCE_MAPPING } from "./fut-society.js";
@@ -51,6 +51,7 @@ const INPUT_A = "https://a.example/visions/v1.ttl#it";
 const INPUT_B = "https://b.example/claims/c1.ttl#it";
 const CRIT_1 = "https://c.example/critiques/k1.ttl#it";
 const CRIT_2 = "https://d2.example/critiques/k2.ttl#it";
+const CRIT_3 = "https://d3.example/critiques/k3.ttl#it";
 
 const STEWARD_A = "https://alice.example/profile/card#me";
 const STEWARD_B = "https://bob.example/profile/card#me";
@@ -350,6 +351,38 @@ describe("parseSharedFutures — parse mirrors build", () => {
     }
   });
 
+  it("parse mirrors build: a verbatim record with MULTIPLE lineage triples INVALIDATES the annex", () => {
+    // A record carrying two prov:wasDerivedFrom triples is MALFORMED. It must not be
+    // silently reclassified as an aggregate record (readIri collapses "multiple" to
+    // undefined) — that would hide a duplicate/forged lineage from the D2
+    // distinct-coverage check. The whole item drops (fail-closed).
+    const verbatim = annex([critique(CRIT_1, STEWARD_C)], new Set([CRIT_1]));
+    const quads = buildSharedFutureQuads(validInput({ dissent: verbatim }), GATE);
+    const recNode = quads.find((q) => q.predicate.value === `${NS.fut}dissent`)?.object;
+    expect(recNode?.termType).toBe("BlankNode");
+    if (recNode?.termType === "BlankNode") {
+      const malformed = [
+        ...quads,
+        // second prov:wasDerivedFrom on the same verbatim record → multi-valued
+        quad(recNode, namedNode(`${NS.prov}wasDerivedFrom`), namedNode(CRIT_2)),
+      ];
+      expect(parseSharedFutures(new Store(malformed))).toHaveLength(0);
+    }
+  });
+
+  it("parse mirrors build: a record with MULTIPLE creator triples INVALIDATES the annex", () => {
+    const verbatim = annex([critique(CRIT_1, STEWARD_C)], new Set([CRIT_1]));
+    const quads = buildSharedFutureQuads(validInput({ dissent: verbatim }), GATE);
+    const recNode = quads.find((q) => q.predicate.value === `${NS.fut}dissent`)?.object;
+    if (recNode?.termType === "BlankNode") {
+      const malformed = [
+        ...quads,
+        quad(recNode, namedNode(`${NS.dct}creator`), namedNode("https://other.example/#me")),
+      ];
+      expect(parseSharedFutures(new Store(malformed))).toHaveLength(0);
+    }
+  });
+
   it("parse mirrors build: a dissent record NOT typed fut:DissentRecord is rejected", () => {
     const quads = buildSharedFutureQuads(validInput(), GATE);
     // strip the rdf:type fut:DissentRecord from the record node
@@ -589,6 +622,108 @@ describe("verifySharedFuture — full ratification", () => {
       standingCritiqueIds: new Set([CRIT_2]), // CRIT_1 is NOT standing here
     });
     expect(v.dissentComplete).toBe(false);
+    expect(v.ratified).toBe(false);
+  });
+
+  // ── Finding 1 (MEDIUM): the distinct-coverage D2 re-check ────────────────────
+  it("D2 re-check: DUPLICATE verbatim quotes that PAD the count while dropping critiques are NOT ratified", async () => {
+    // The execution-proven exploit the Opus verify found: THREE verbatim records all
+    // quoting the SAME critique CRIT_1, dropping CRIT_2 + CRIT_3 entirely. The count
+    // (3) matches the standing count (3) and the DE-DUPED verbatim set {CRIT_1} is
+    // trivially ⊆ standing — so the OLD count-based check ratified it. The DISTINCT
+    // coverage re-check (raw verbatim-record count ≠ distinct verbatim-critique count)
+    // catches it.
+    const base = buildSharedFutureQuads(
+      validInput({ dissent: annex([]), noDissentRecorded: true }),
+      { ...GATE, standingCritiqueIds: new Set() },
+    );
+    const withoutFlag = base.filter((q) => q.predicate.value !== FUT_NO_DISSENT_RECORDED);
+    const dup = {
+      content: "CRIT_1 quoted verbatim",
+      verbatim: true as const,
+      creator: STEWARD_C,
+      derivedFromCritique: CRIT_1,
+    };
+    // Three DISTINCT blank-node records, all deriving from the one critique CRIT_1.
+    const forged = [...withoutFlag, ...buildDissentAnnexQuads(FUTURE, [dup, dup, dup])];
+    const vcs = [await steward(STEWARD_A, keyA, forged), await steward(STEWARD_B, keyB, forged)];
+    const standing = new Set([CRIT_1, CRIT_2, CRIT_3]); // three stood; annex covers ONE
+    const v = await verifySharedFuture(forged, vcs, { ...opts(), standingCritiqueIds: standing });
+
+    // The quorum is genuinely met + the graph parses (the forgery is signable) …
+    expect(v.quorum.met).toBe(true);
+    expect(v.sharedFuture?.dissentRecordCount).toBe(3);
+    expect(v.sharedFuture?.verbatimDissentRecordCount).toBe(3);
+    expect(v.sharedFuture?.verbatimDissentCritiques).toEqual([CRIT_1]);
+    // … and the OLD count-based predicate WOULD have ratified this forgery:
+    const sf = v.sharedFuture;
+    expect(
+      sf !== undefined &&
+        sf.dissentRecordCount >= standing.size &&
+        sf.verbatimDissentCritiques.every((c) => standing.has(c)),
+    ).toBe(true);
+    // … but the DISTINCT-coverage re-check catches it → NOT ratified.
+    expect(v.dissentComplete).toBe(false);
+    expect(v.ratified).toBe(false);
+  });
+
+  it("D2 re-check: ratifies a legitimate all-verbatim annex with DISTINCT quotes per standing critique", async () => {
+    // The honest distinct-verbatim path must NOT false-positive: one verbatim record
+    // per standing critique (CRIT_1, CRIT_2), distinct lineages, count 2 = standing 2.
+    const gate: SharedFutureGate = { ...GATE, standingCritiqueIds: new Set([CRIT_1, CRIT_2]) };
+    const bothVerbatim = annex(
+      [critique(CRIT_1, STEWARD_C), critique(CRIT_2, STEWARD_B)],
+      new Set([CRIT_1, CRIT_2]),
+    );
+    const quads = buildSharedFutureQuads(validInput({ dissent: bothVerbatim }), gate);
+    const vcs = [await steward(STEWARD_A, keyA, quads), await steward(STEWARD_B, keyB, quads)];
+    const v = await verifySharedFuture(quads, vcs, {
+      ...opts(),
+      standingCritiqueIds: new Set([CRIT_1, CRIT_2]),
+    });
+    expect(v.sharedFuture?.verbatimDissentRecordCount).toBe(2);
+    expect(v.dissentComplete).toBe(true);
+    expect(v.ratified).toBe(true);
+  });
+
+  // ── Finding 2 (LOW): the deliberation-grouped subtraction-leak defence ───────
+  it("k-anon: a CROSS-DOCUMENT metrics split sharing one deliberation is NOT ratified", async () => {
+    // The execution-proven exploit: the aggregate total lives in one metrics document
+    // and the tier strata in ANOTHER, but both carry the SAME fut:inDeliberation.
+    // Document-grouping missed the subtraction leak (12 − 5 − 6 = 1, a k=1 cohort);
+    // deliberation-grouping catches it. Every published cell is individually ≥ k.
+    const AGG = "https://d.example/futures/m-agg.ttl#it";
+    const T0 = "https://d.example/futures/m-strata.ttl#T0";
+    const T1 = "https://d.example/futures/m-strata.ttl#T1";
+    const nn = (v: string) => literal(v, namedNode(`${NS.xsd}nonNegativeInteger`));
+    const split = [
+      ...buildSharedFutureQuads(validInput(), GATE),
+      // aggregate total (participantCount 12) in ONE document
+      quad(namedNode(AGG), namedNode(RDF_TYPE), namedNode(`${NS.fut}ConvergenceMetrics`)),
+      quad(namedNode(AGG), namedNode(`${NS.fut}inDeliberation`), namedNode(DELIB)),
+      quad(namedNode(AGG), namedNode(`${NS.fut}participantCount`), nn("12")),
+      // strata (5 + 6) in a DIFFERENT document, same deliberation
+      quad(namedNode(T0), namedNode(RDF_TYPE), namedNode(`${NS.fut}ConvergenceMetrics`)),
+      quad(namedNode(T0), namedNode(`${NS.fut}inDeliberation`), namedNode(DELIB)),
+      quad(
+        namedNode(T0),
+        namedNode(`${NS.fut}verificationTier`),
+        literal("T0", namedNode(`${NS.xsd}string`)),
+      ),
+      quad(namedNode(T0), namedNode(`${NS.fut}participantCount`), nn("5")),
+      quad(namedNode(T1), namedNode(RDF_TYPE), namedNode(`${NS.fut}ConvergenceMetrics`)),
+      quad(namedNode(T1), namedNode(`${NS.fut}inDeliberation`), namedNode(DELIB)),
+      quad(
+        namedNode(T1),
+        namedNode(`${NS.fut}verificationTier`),
+        literal("T1", namedNode(`${NS.xsd}string`)),
+      ),
+      quad(namedNode(T1), namedNode(`${NS.fut}participantCount`), nn("6")),
+    ];
+    const vcs = [await steward(STEWARD_A, keyA, split), await steward(STEWARD_B, keyB, split)];
+    const v = await verifySharedFuture(split, vcs, opts());
+    expect(v.quorum.met).toBe(true); // genuinely signed …
+    expect(v.kAnonymous).toBe(false); // … but the cross-document subtraction leak is caught
     expect(v.ratified).toBe(false);
   });
 });

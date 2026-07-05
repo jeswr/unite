@@ -204,12 +204,69 @@ describe("parse + metricsAreKAnonymous — the re-checkable assertion", () => {
     expect(metricsAreKAnonymous(leaky.slice(1), 5)).toBe(true);
   });
 
-  it("does NOT cross-contaminate independent metrics resources for one deliberation", () => {
-    // Two SEPARATE metrics documents for the same deliberation, each internally
-    // consistent (aggregate = its own single tier). Grouping by deliberation would
-    // wrongly merge them (agg=min(10,8)=8 vs strataSum 18 → false negative); grouping
-    // by DOCUMENT keeps each aggregate with its own strata → both k-anon.
+  it("does NOT cross-contaminate metrics for DIFFERENT deliberations", () => {
+    // Two internally-consistent metrics resources for DIFFERENT deliberations. Each
+    // aggregate is checked only against ITS OWN deliberation's strata (remainder 0),
+    // so distinct deliberations never pool and cannot subtract across each other.
+    const DELIB_2 = "https://d.example/futures-2";
     const two: ParsedConvergenceMetrics[] = [
+      { id: "https://d.example/m-a.ttl#it", deliberation: DELIB, participantCount: 10 },
+      {
+        id: "https://d.example/m-a.ttl#metrics-T0",
+        deliberation: DELIB,
+        participantCount: 10,
+        tier: "T0",
+      },
+      { id: "https://d.example/m-b.ttl#it", deliberation: DELIB_2, participantCount: 8 },
+      {
+        id: "https://d.example/m-b.ttl#metrics-T1",
+        deliberation: DELIB_2,
+        participantCount: 8,
+        tier: "T1",
+      },
+    ];
+    expect(metricsAreKAnonymous(two, 5)).toBe(true);
+  });
+
+  it("CATCHES a CROSS-DOCUMENT subtraction leak sharing one deliberation (Finding 2)", () => {
+    // The exploit the Opus verify found: the aggregate total lives in ONE document
+    // and the tier strata in ANOTHER, but both carry the SAME fut:inDeliberation.
+    // Grouping by DOCUMENT missed it (the aggregate had no strata in its own document
+    // → remainder = total ≥ k); grouping by DELIBERATION catches it: 12 − 5 − 6 = 1
+    // re-identifies a k=1 cohort, even though every published cell is individually ≥ k.
+    const split: ParsedConvergenceMetrics[] = [
+      { id: "https://d.example/m-agg.ttl#it", deliberation: DELIB, participantCount: 12 },
+      {
+        id: "https://d.example/m-strata.ttl#T0",
+        deliberation: DELIB,
+        participantCount: 5,
+        tier: "T0",
+      },
+      {
+        id: "https://d.example/m-strata.ttl#T1",
+        deliberation: DELIB,
+        participantCount: 6,
+        tier: "T1",
+      },
+    ];
+    expect(metricsAreKAnonymous(split, 5)).toBe(false);
+    // Removing the split-out aggregate total (the publisher's own defence never emits
+    // it) leaves only the strata — no total to subtract from → k-anonymous.
+    expect(metricsAreKAnonymous(split.slice(1), 5)).toBe(true);
+  });
+
+  it("INTENTIONALLY rejects MULTIPLE aggregate totals for one deliberation (fail-closed, hard rule)", () => {
+    // A deliberation has ONE coherent participant count and the honest flow embeds
+    // exactly ONE metrics resource per deliberation per signed graph. So a deliberation
+    // carrying >1 aggregate total is rejected OUTRIGHT — malformed, or an
+    // aggregate-minus-aggregate leak (10 − 8 = 2 discloses a k=2 delta cohort). This is
+    // deliberate: grouping by document/publication instead would REOPEN the
+    // cross-document subtraction leak (Finding 2). A genuinely independent second
+    // measurement belongs in its OWN deliberation (see the different-deliberation test
+    // above) or its OWN signed artifact.
+
+    // (i) two aggregates WITH strata → rejected (the >1-aggregate hard rule).
+    const twoAggsWithStrata: ParsedConvergenceMetrics[] = [
       { id: "https://d.example/m-a.ttl#it", deliberation: DELIB, participantCount: 10 },
       {
         id: "https://d.example/m-a.ttl#metrics-T0",
@@ -225,6 +282,15 @@ describe("parse + metricsAreKAnonymous — the re-checkable assertion", () => {
         tier: "T1",
       },
     ];
-    expect(metricsAreKAnonymous(two, 5)).toBe(true);
+    expect(metricsAreKAnonymous(twoAggsWithStrata, 5)).toBe(false);
+
+    // (ii) two aggregate-ONLY totals, NO strata, each ≥ k, remainders ≥ k — the case
+    //      the strata-subtraction check alone would MISS, but the hard rule rejects
+    //      (10 − 8 = 2 is a sub-k delta cohort).
+    const twoAggsOnly: ParsedConvergenceMetrics[] = [
+      { id: "https://d.example/m-a.ttl#it", deliberation: DELIB, participantCount: 10 },
+      { id: "https://d.example/m-b.ttl#it", deliberation: DELIB, participantCount: 8 },
+    ];
+    expect(metricsAreKAnonymous(twoAggsOnly, 5)).toBe(false);
   });
 });
