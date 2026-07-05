@@ -35,6 +35,7 @@ import {
   verifyCredential,
 } from "@jeswr/solid-vc";
 import type { Quad } from "@rdfjs/types";
+import { Store } from "n3";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClusterBridgingEvidence } from "../lib/adoption-decision.js";
 import type { AggregateResult } from "../lib/aggregate.js";
@@ -47,6 +48,7 @@ import type { ResolveKey } from "../lib/quorum.js";
 import {
   buildSharedFutureQuads,
   issueSharedFutureAttestation,
+  parseSharedFutures,
   type SharedFutureVerification,
   verifySharedFuture,
 } from "../lib/shared-future.js";
@@ -133,6 +135,49 @@ export function sharedFutureIriFor(candidateId: string): string {
   const hash = candidateId.indexOf("#");
   const doc = hash === -1 ? candidateId : candidateId.slice(0, hash);
   return `${doc}#shared-future`;
+}
+
+/** Label + count equality of two bridging-evidence sets (order-sensitive —
+ *  cluster order is the cluster identity). `bridgingScore` is display-only
+ *  and deliberately excluded. */
+export function sameBridgingEvidence(
+  a: readonly ClusterBridgingEvidence[],
+  b: readonly ClusterBridgingEvidence[],
+): boolean {
+  return (
+    a.length === b.length &&
+    a.every((e, i) => {
+      const o = b[i];
+      return (
+        o !== undefined &&
+        e.clusterLabel === o.clusterLabel &&
+        e.resonatesCount === o.resonatesCount &&
+        e.conflictsCount === o.conflictsCount &&
+        e.unsureCount === o.unsureCount &&
+        e.seenCount === o.seenCount
+      );
+    })
+  );
+}
+
+/** Outcome + per-cluster-distribution equality of two computed receptions —
+ *  the "did the room move since the steward reviewed this?" test. */
+export function sameReception(a: CandidateReception, b: CandidateReception): boolean {
+  return (
+    a.outcome === b.outcome &&
+    a.perCluster.length === b.perCluster.length &&
+    a.perCluster.every((d, i) => {
+      const o = b.perCluster[i];
+      return (
+        o !== undefined &&
+        d.resonates === o.resonates &&
+        d.conflicts === o.conflicts &&
+        d.unsure === o.unsure &&
+        d.seen === o.seen &&
+        d.size === o.size
+      );
+    })
+  );
 }
 
 // ── The sign action ───────────────────────────────────────────────────────────
@@ -235,6 +280,34 @@ export async function signRoomCandidate(args: SignRoomCandidateArgs): Promise<Si
   const dissent = materializeDissent(args.reviewedCritiques);
   const id = sharedFutureIriFor(args.candidate.id);
   const kThreshold = args.kThreshold ?? K_THRESHOLD;
+
+  // CO-SIGN FRESHNESS GUARD (pre-signature, fail-closed): the prior artifact
+  // must still be THE artifact for this candidate AND its recomputable
+  // bridging evidence must still equal the room's CURRENT reception — a
+  // second steward must never countersign stale evidence (votes moved) or a
+  // different candidate's graph. Parsed with the LIB's own parser (which
+  // mirrors every build invariant); nothing is re-implemented.
+  if (args.prior !== undefined) {
+    const parsedPrior = parseSharedFutures(new Store([...args.prior.quads]));
+    const priorSf = parsedPrior.length === 1 ? parsedPrior[0] : undefined;
+    if (priorSf === undefined) {
+      throw new Error(
+        "the prior artifact graph does not parse as exactly one valid fut:SharedFuture — it cannot be co-signed",
+      );
+    }
+    if (priorSf.id !== id) {
+      throw new Error(
+        "the prior artifact does not address this candidate — assemble a fresh artifact",
+      );
+    }
+    if (!sameBridgingEvidence(priorSf.bridgingEvidence, bridgingEvidenceFor(reception))) {
+      throw new Error(
+        "the room's endorsement evidence moved since this artifact was assembled (votes changed) " +
+          "— the prior artifact no longer reflects the current reception; review the current " +
+          "outcome and assemble a fresh artifact",
+      );
+    }
+  }
 
   // Assemble the graph — EITHER fresh through the lib's THROWING gate (the
   // first signature), OR the EXACT graph already assembled + signed (a

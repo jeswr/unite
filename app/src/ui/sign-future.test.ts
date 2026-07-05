@@ -318,6 +318,31 @@ describe("signRoomCandidate — the un-signable states (the lib's throws, surfac
     ).rejects.toThrow(/still open/);
   });
 
+  it("CO-SIGN STALE EVIDENCE: a reception that moved since assembly refuses the co-signature", async () => {
+    const first = await signRoomCandidate(args());
+    const moved: CandidateReception = {
+      ...endorsed,
+      perCluster: [
+        { resonates: 4, conflicts: 0, unsure: 0, seen: 4, size: 4 }, // a vote landed
+        { resonates: 2, conflicts: 1, unsure: 0, seen: 3, size: 3 },
+      ],
+    };
+    await expect(
+      signRoomCandidate(args({ context: contextFor("B"), prior: first, reception: moved })),
+    ).rejects.toThrow(/endorsement evidence moved/);
+  });
+
+  it("CO-SIGN WRONG CANDIDATE: a prior artifact for another candidate refuses", async () => {
+    const first = await signRoomCandidate(args());
+    const other: SynthesisCandidate = {
+      ...candidate,
+      id: "https://h.example/syntheses/s2.ttl#it",
+    };
+    await expect(
+      signRoomCandidate(args({ context: contextFor("B"), prior: first, candidate: other })),
+    ).rejects.toThrow(/does not address this candidate/);
+  });
+
   it("CO-SIGN STALENESS (D2): a critique that lands AFTER assembly refuses the co-signature", async () => {
     const first = await signRoomCandidate(args());
     // CRIT_2 lands after the artifact was assembled + signed by A…

@@ -459,6 +459,9 @@ describe("the S5.4 steward signing surface (society room)", () => {
     r: AggregateResult,
     signing: StewardSigningContext | null,
     onSigned?: (signed: SignedSharedFuture) => void,
+    /** What the sign-time RE-AGGREGATION returns (defaults to the rendered
+     *  fixture — i.e. the room did not move between review and sign). */
+    freshResult?: AggregateResult,
   ) {
     return render(
       <AuthProvider controller={new DevLoginController()}>
@@ -469,6 +472,7 @@ describe("the S5.4 steward signing surface (society room)", () => {
           trust={trust}
           aggregate={asAggregate(r)}
           signing={signing}
+          aggregateForSign={() => Promise.resolve(freshResult ?? r)}
           {...(onSigned ? { onSigned } : {})}
         />
       </AuthProvider>,
@@ -516,6 +520,60 @@ describe("the S5.4 steward signing surface (society room)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
     expect(await screen.findByText(/Un-signable:/)).toBeTruthy();
     expect(screen.getByText(/below the k-threshold/)).toBeTruthy();
+    expect(onSigned).not.toHaveBeenCalled();
+  });
+
+  it("STALE DISSENT is un-signable: a critique that lands AFTER review makes the D2 gate throw — no artifact", async () => {
+    const onSigned = vi.fn();
+    const rendered = signableResult();
+    // A NEW critique lands between the steward's review and the sign click:
+    // the sign-time re-aggregation sees it, the rendered annex does not.
+    const fresh: AggregateResult = {
+      ...rendered,
+      critiques: [
+        ...rendered.critiques,
+        {
+          id: "https://p5.example/critiques/late.ttl",
+          content: "This landed after the steward reviewed the panel.",
+          onStatement: CAND,
+          created: "2026-06-23T00:00:00Z",
+          creator: "https://p5.example/#me",
+          inDeliberation: DELIB,
+        },
+      ],
+    };
+    renderSocietyRoom(
+      asTrust({ tier: 1, roles: ["steward"] }),
+      rendered,
+      signingCtx,
+      onSigned,
+      fresh,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
+    expect(await screen.findByText(/Un-signable:/)).toBeTruthy();
+    expect(screen.getByText(/DROPS a standing critique/)).toBeTruthy();
+    expect(onSigned).not.toHaveBeenCalled();
+  });
+
+  it("MOVED VOTES are un-signable: a reception that changed since review refuses — review again", async () => {
+    const onSigned = vi.fn();
+    const rendered = signableResult();
+    // An extra endorsement vote lands after review: the recomputed reception
+    // no longer equals what the steward reviewed.
+    const fresh: AggregateResult = {
+      ...rendered,
+      resonances: [...rendered.resonances, vote("https://p7.example/#me", CAND, STANCE_RESONATES)],
+      verified: [...rendered.verified, { webId: "https://p7.example/#me", base: "https://p7.example/u/", tier: "T1" as const }],
+    };
+    renderSocietyRoom(
+      asTrust({ tier: 1, roles: ["steward"] }),
+      rendered,
+      signingCtx,
+      onSigned,
+      fresh,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
+    expect(await screen.findByText(/moved since you reviewed/)).toBeTruthy();
     expect(onSigned).not.toHaveBeenCalled();
   });
 

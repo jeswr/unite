@@ -11,6 +11,7 @@
 // via prov:wasRevisionOf. Thin over src/lib (convergence.ts does the math).
 
 import { useEffect, useMemo, useState } from "react";
+import { type AggregateResult, aggregateDeliberation } from "../../lib/aggregate.js";
 import { candidateReception, orderCandidates, standingCritiques } from "../../lib/convergence.js";
 import { STANCE_CONFLICTS, STANCE_RESONATES, STANCE_UNSURE } from "../../lib/fut.js";
 import type { Critique, SynthesisCandidate } from "../../lib/model.js";
@@ -31,14 +32,22 @@ import {
 } from "../components.js";
 import { avatarColor, formatDate, initials } from "../format.js";
 import type { AggregateState, SessionTrust } from "../hooks.js";
-import { displayName, writeSessionFor } from "../hooks.js";
+import { displayName, readFetchFor, writeSessionFor } from "../hooks.js";
 import {
   contributorCountFor,
+  sameReception,
   type SignedSharedFuture,
   type StewardSigningContext,
   signRoomCandidate,
 } from "../sign-future.js";
-import { configReady, type DeliberationConfig, sessionIdentity } from "../state.js";
+import {
+  buildRegistry,
+  collectionKinds,
+  configReady,
+  type DeliberationConfig,
+  deliberationTrust,
+  sessionIdentity,
+} from "../state.js";
 import { DistributionBar } from "./Bridging.js";
 import { SharedFutureOutcome } from "./SharedFutureOutcome.js";
 import { StanceButtons } from "./StanceButtons.js";
@@ -87,6 +96,7 @@ export function Room({
   aggregate,
   signing = null,
   onSigned,
+  aggregateForSign,
 }: {
   scope: ScopeConfig;
   config: DeliberationConfig;
@@ -97,6 +107,9 @@ export function Room({
   signing?: StewardSigningContext | null;
   /** The S5.5 hand-off: a signed SharedFuture flows to Published futures. */
   onSigned?: (signed: SignedSharedFuture) => void;
+  /** TEST SEAM for the sign-time re-aggregation; defaults to a LIVE re-read
+   *  of the configured deliberation (the freshness gate below). */
+  aggregateForSign?: () => Promise<AggregateResult>;
 }): React.JSX.Element {
   const controller = useController();
   const { result, loading, error, refresh } = aggregate;
@@ -346,12 +359,34 @@ export function Room({
     setSignError(null);
   }, [active?.id]);
 
+  /** The sign-time re-aggregation: a LIVE re-read of the deliberation (the
+   *  same seams useAggregate runs over), or the injected test seam. */
+  async function currentAggregate(): Promise<AggregateResult> {
+    if (aggregateForSign !== undefined) return aggregateForSign();
+    const registry = buildRegistry(config);
+    const { gate } = await deliberationTrust(config);
+    const fetchFn = await readFetchFor(config, controller);
+    return aggregateDeliberation({
+      registry,
+      verifier: gate,
+      fetch: fetchFn,
+      kinds: collectionKinds(scope),
+    });
+  }
+
   /**
    * The S5.4 sign action: invoke the LANDED signing lib on the room's
    * computed outcome (ui/sign-future → lib/shared-future). Every un-signable
    * state (dropped dissent D2, missing evidence D3/D4, unconsented lineage
    * INV-1, sub-k cohort, no steward allowlist INV-5) THROWS in the lib and is
    * surfaced verbatim — never caught-and-retried, never routed around.
+   *
+   * FRESHNESS: the gate inputs are RE-AGGREGATED at sign time — the rendered
+   * snapshot is what the steward REVIEWED, never what gates the signature. A
+   * critique that landed after the panel loaded makes the lib's D2 gate throw
+   * (the fresh standing set exceeds the reviewed annex), and votes that moved
+   * the reception refuse with an explicit review-again message — a stale
+   * client can never sign around current dissent or unreviewed evidence.
    */
   async function signOutcome(): Promise<void> {
     setSignError(null);
@@ -363,14 +398,39 @@ export function Room({
     }
     setSignBusy(true);
     try {
+      // Re-aggregate NOW: the CURRENT room state gates the sign.
+      const fresh = await currentAggregate();
+      const freshCandidate = fresh.candidates.find((c) => c.id === active.id);
+      if (freshCandidate === undefined) {
+        throw new Error(
+          "this candidate is no longer in the current aggregate — refresh and re-review",
+        );
+      }
+      const freshCritiques = standingCritiques(fresh.critiques, active.id);
+      const freshReception = candidateReception(
+        fresh.verified.map((v) => v.webId),
+        fresh.needs.map((n) => n.id),
+        fresh.resonances,
+        active.id,
+      );
+      // The steward reviewed the RENDERED outcome; if the votes moved it,
+      // refuse and refresh — evidence that was not reviewed is never signed.
+      if (!sameReception(reception, freshReception)) {
+        throw new Error(
+          "the endorsement round moved since you reviewed this outcome (votes changed) — " +
+            "refresh, review the current outcome, and sign again",
+        );
+      }
       const prior = signedFutures.get(active.id);
       const signed = await signRoomCandidate({
-        candidate: active,
-        reception,
+        candidate: freshCandidate,
+        reception: freshReception,
+        // What the steward REVIEWED is the annex material; the D2 gate runs
+        // over the critiques standing NOW — a gap throws in the lib.
         reviewedCritiques: activeCritiques,
-        standingCritiqueIds: new Set(activeCritiques.map((c) => c.id)),
-        synthesizable: result.synthesizable,
-        contributorCount: contributorCountFor(result, active, activeCritiques),
+        standingCritiqueIds: new Set(freshCritiques.map((c) => c.id)),
+        synthesizable: fresh.synthesizable,
+        contributorCount: contributorCountFor(fresh, freshCandidate, freshCritiques),
         deliberation: config.deliberation,
         context: signing,
         ...(prior !== undefined ? { prior } : {}),
@@ -380,6 +440,10 @@ export function Room({
       onSigned?.(signed);
     } catch (e) {
       setSignError(e instanceof Error ? e.message : String(e));
+      // A refusal usually means the room moved — re-aggregate the panel so
+      // the steward reviews the CURRENT state (best-effort; errors surface
+      // through the room's own error state).
+      void refresh().catch(() => {});
     } finally {
       setSignBusy(false);
     }
