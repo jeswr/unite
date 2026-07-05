@@ -132,6 +132,8 @@ function signingProps(overrides: Partial<OutcomeSigning> = {}): OutcomeSigning {
 /** A signed-artifact stub carrying only what the view renders. */
 function signedStub(view: Partial<SignedSharedFuture["view"]>): SignedSharedFuture {
   return {
+    // The lib's FULL verdict — the view words "ratified" off THIS, never quorum alone.
+    verification: { ratified: view.quorumMet === true },
     view: {
       id: "https://h.example/syntheses/s1.ttl#shared-future",
       content: "One text.",

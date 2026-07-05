@@ -281,9 +281,13 @@ export function SharedFutureOutcome({
       {signed !== null && signing?.error == null && (
         <Notice tone="ok">
           Signed. {distinct} of ≥{floor} steward signature{distinct === 1 ? "" : "s"} collected
-          {quorumMet
+          {/* "ratified" is the lib's FULL verdict (quorum AND consented lineage
+              AND k-anonymity AND dissent-completeness) — never quorum alone. */}
+          {signed.verification.ratified
             ? " — the quorum is met and the artifact is ratified"
-            : " — the artifact publishes once the quorum is met"}
+            : quorumMet
+              ? " — the quorum is met, but the artifact does not fully verify (not ratified)"
+              : " — the artifact publishes once the quorum is met"}
           . See <a href="#/published-futures">Published futures</a>.
         </Notice>
       )}
