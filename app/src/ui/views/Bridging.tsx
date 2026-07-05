@@ -3,59 +3,108 @@
 // Common ground: unite's differentiator made visible. Three linked layers over
 // the SAME clustering (design/03 §0 §2 §3):
 //   • the opinion map — every participant positioned by how they voted
-//     (deterministic PCA, lib/projection), coloured by opinion group;
+//     (deterministic PCA, lib/projection), coloured by opinion group, with a
+//     translucent hull drawn per group so the groups read as regions, not a
+//     scatter of loose dots;
 //   • per-group cards — size + the statement each group received best;
 //   • the ranked list — needs ordered by CROSS-GROUP agreement (never
 //     engagement), each with its actual per-group reception distribution
 //     (the design's perception-gap correction — never a bare rank) and an
 //     honest common-ground / divisive label.
-// Thin over src/lib (rankNeeds / projectParticipants / insights).
+// Thin over src/lib (rankNeeds / projectParticipants / insights). The shared
+// DistributionBar / GROUP_NAMES / clusterColor live in ../components and are
+// re-exported here so the Convergence Room's `import … from "./Bridging.js"`
+// keeps working.
 
 import { useMemo, useState } from "react";
 import { characterizeReception, topForCluster } from "../../lib/insights.js";
 import type { Need } from "../../lib/model.js";
 import { projectParticipants } from "../../lib/projection.js";
-import { type ClusterDistribution, rankNeeds } from "../../lib/ranking.js";
+import { rankNeeds } from "../../lib/ranking.js";
 import type { ScopeConfig } from "../../scope/scopes.js";
+import {
+  clusterColor,
+  DistributionBar,
+  EmptyState,
+  GROUP_NAMES,
+  groupName,
+  LoadingRows,
+  Panel,
+  Segmented,
+  ViewHeader,
+} from "../components.js";
 import type { AggregateState } from "../hooks.js";
 import { displayName } from "../hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../state.js";
 
-export const GROUP_NAMES = ["Group A", "Group B", "Group C", "Group D"] as const;
+// Re-exported for the Convergence Room (`import { DistributionBar } from
+// "./Bridging.js"`) and any older importer — the canonical implementations now
+// live in ../components.
+export { clusterColor, DistributionBar, GROUP_NAMES };
 
-export function clusterColor(g: number): string {
-  return `var(--u-cluster-${g % 4})`;
+/** Format a bridging score to 2 significant figures — analytical, but inviting. */
+function formatScore(n: number): string {
+  if (n === 0) return "0";
+  if (n >= 1) return n.toFixed(1);
+  // 2 sig-figs on a (0,1) product: keep it compact (0.42, 0.058, 0.0071).
+  return n.toPrecision(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
-/** One opinion group's reception bar — shared by Common ground and the Room. */
-export function DistributionBar({
-  dist,
-  index,
-}: {
-  dist: ClusterDistribution;
-  index: number;
-}): React.JSX.Element {
-  const total = Math.max(dist.seen, 1);
-  const pct = (n: number) => `${(n / total) * 100}%`;
-  return (
-    <div className="dist">
-      <span className="dist-label">
-        <span className="swatch" style={{ background: clusterColor(index) }} aria-hidden="true" />
-        {GROUP_NAMES[index] ?? `Group ${index + 1}`}
-      </span>
-      <div
-        className="dist-bar"
-        title={`resonates ${dist.resonates} · conflicts ${dist.conflicts} · unsure ${dist.unsure} · seen ${dist.seen} of ${dist.size}`}
-      >
-        <span className="seg seg-res" style={{ width: pct(dist.resonates) }} />
-        <span className="seg seg-con" style={{ width: pct(dist.conflicts) }} />
-        <span className="seg seg-uns" style={{ width: pct(dist.unsure) }} />
-      </div>
-      <span className="dist-counts">
-        {dist.resonates}✓ {dist.conflicts}✕ {dist.unsure}? · {dist.seen}/{dist.size}
-      </span>
-    </div>
-  );
+interface XY {
+  readonly x: number;
+  readonly y: number;
+}
+
+const crossZ = (o: XY, a: XY, b: XY) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+
+/** One monotone chain (used for both the lower and upper hull). */
+function halfHull(seq: readonly XY[]): XY[] {
+  const h: XY[] = [];
+  for (const p of seq) {
+    while (h.length >= 2) {
+      const a = h[h.length - 2] as XY;
+      const b = h[h.length - 1] as XY;
+      if (crossZ(a, b, p) > 0) break;
+      h.pop();
+    }
+    h.push(p);
+  }
+  h.pop(); // drop the last point (it's the first of the other chain)
+  return h;
+}
+
+/** Andrew's monotone-chain convex hull (deterministic; screen coordinates). */
+function convexHull(pts: readonly XY[]): XY[] {
+  if (pts.length <= 2) return pts.slice();
+  const sorted = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const reversed = [...sorted].reverse();
+  return halfHull(sorted).concat(halfHull(reversed));
+}
+
+/** The hull polygon points, expanded outward from the centroid by `pad`. */
+function hullPolygon(pts: readonly XY[], pad: number): string | null {
+  if (pts.length < 3) return null;
+  const hull = convexHull(pts);
+  if (hull.length < 3) return null;
+  const cx = hull.reduce((s, p) => s + p.x, 0) / hull.length;
+  const cy = hull.reduce((s, p) => s + p.y, 0) / hull.length;
+  return hull
+    .map((p) => {
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const len = Math.hypot(dx, dy) || 1;
+      return `${(p.x + (dx / len) * pad).toFixed(1)},${(p.y + (dy / len) * pad).toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+/** For a 1–2 point group, the blob circle {cx, cy, r} covering the points + pad. */
+function hullBlob(pts: readonly XY[], pad: number): { cx: number; cy: number; r: number } | null {
+  if (pts.length === 0 || pts.length >= 3) return null;
+  const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+  const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  const r = Math.max(...pts.map((p) => Math.hypot(p.x - cx, p.y - cy))) + pad + 4;
+  return { cx, cy, r };
 }
 
 export function Bridging({
@@ -91,72 +140,85 @@ export function Bridging({
     return m;
   }, [result]);
 
+  // Screen-space points per cluster, for the hull regions.
+  const clusterCount = ranking?.clustering.centres.length ?? 0;
+  const byCluster = useMemo(() => {
+    const groups: XY[][] = Array.from({ length: clusterCount }, () => []);
+    for (const p of points) {
+      const g = groups[p.cluster];
+      if (g) g.push({ x: p.x * 100, y: -p.y * 100 });
+    }
+    return groups;
+  }, [points, clusterCount]);
+
   if (!result) {
     return (
       <section className="view">
-        <h2 className="view-title">Common ground</h2>
+        <ViewHeader title="Common ground" />
         {loading ? (
-          <ul className="cards" aria-hidden="true">
-            <li className="skel" />
-            <li className="skel" />
-          </ul>
+          <LoadingRows count={2} />
         ) : (
-          <div className="empty">
-            <span className="empty-title">Nothing to map yet</span>
+          <EmptyState title="Nothing to map yet">
             <p>
               Common ground ranks the aggregated needs — connect a deliberation on the{" "}
               <a href="#/overview">Overview</a> first.
             </p>
-          </div>
+          </EmptyState>
         )}
       </section>
     );
   }
 
-  const clusterCount = ranking?.clustering.centres.length ?? 0;
-
   return (
     <section className="view">
-      <div className="row-between">
-        <div>
-          <h2 className="view-title">Common ground</h2>
-          <p className="view-lede">
+      <ViewHeader
+        title="Common ground"
+        lede={
+          <>
             A need rises here only when it earns positive reception in <em>every</em> opinion group
             — cross-group agreement, not engagement. The actual distribution is always shown, and
             disagreement is labelled, never hidden.
+          </>
+        }
+        actions={
+          <div className="u-inline-field">
+            <span className="muted small">Opinion groups</span>
+            <Segmented
+              options={[2, 3, 4] as const}
+              value={k}
+              onChange={setK}
+              label="number of opinion groups"
+            />
+          </div>
+        }
+      >
+        {/* The cohortLenses seam (S0): only the computed-opinion partition is
+            built; a scope whose extra lens hasn't landed says so honestly. */}
+        {scope.cohortLenses.includes("role") && (
+          <p className="notice info">
+            This scope additionally requires the <strong>stakeholder-role lens</strong>{" "}
+            (implementers / operators / participants — the same bridging math over the declared role
+            partition). It arrives in <strong>S3</strong>; today the map shows computed opinion
+            groups only.
           </p>
-          {/* The cohortLenses seam (S0): only the computed-opinion partition is
-              built; a scope whose extra lens hasn't landed says so honestly. */}
-          {scope.cohortLenses.includes("role") && (
-            <p className="notice info">
-              This scope additionally requires the <strong>stakeholder-role lens</strong>{" "}
-              (implementers / operators / participants — the same bridging math over the declared
-              role partition). It arrives in <strong>S3</strong>; today the map shows computed
-              opinion groups only.
-            </p>
-          )}
-          {scope.cohortLenses.includes("tier") && (
-            <p className="notice info">
-              This scope additionally shows <strong>identity-tier stratified distributions</strong>{" "}
-              on every ranked statement (T0/T1/T2 — stratify-and-disclose). They arrive in{" "}
-              <strong>S4</strong>; today the map shows computed opinion groups only.
-            </p>
-          )}
-        </div>
-        <div className="field">
-          <span className="muted small">Opinion groups</span>
-          <fieldset className="segmented" aria-label="number of opinion groups">
-            {[2, 3, 4].map((n) => (
-              <button type="button" key={n} aria-pressed={k === n} onClick={() => setK(n)}>
-                {n}
-              </button>
-            ))}
-          </fieldset>
-        </div>
-      </div>
+        )}
+        {scope.cohortLenses.includes("tier") && (
+          <p className="notice info">
+            This scope additionally shows <strong>identity-tier stratified distributions</strong> on
+            every ranked statement (T0/T1/T2 — stratify-and-disclose). They arrive in{" "}
+            <strong>S4</strong>; today the map shows computed opinion groups only.
+          </p>
+        )}
+      </ViewHeader>
 
       <div className="bridge-grid">
-        <div>
+        <div className="u-ranked-col">
+          <h3 className="u-section-title u-col-title">
+            Ranked by cross-group agreement
+            <span className="muted small u-col-title-note">
+              highest bridging score first · not engagement
+            </span>
+          </h3>
           <ol className="ranked">
             {ranking?.ranked.map((r) => {
               const verdict = characterizeReception(r.perCluster);
@@ -172,9 +234,9 @@ export function Bridging({
                       </p>
                       <span
                         className="score"
-                        title="bridging score — the product over groups of the smoothed per-group agreement"
+                        title={`bridging score ${r.score} — the product over groups of the smoothed per-group agreement`}
                       >
-                        {r.score.toFixed(3)}
+                        {formatScore(r.score)}
                       </span>
                     </div>
                     <div className="chip-row">
@@ -196,80 +258,119 @@ export function Bridging({
             })}
           </ol>
           {ranking && ranking.ranked.length === 0 && (
-            <div className="empty">
-              <span className="empty-title">No ranked needs yet</span>
+            <EmptyState title="No ranked needs yet">
               <p>Share some needs and reactions first — the map draws itself from real votes.</p>
-            </div>
+            </EmptyState>
           )}
         </div>
 
-        <div className="view" style={{ gap: "0.75rem" }}>
-          <div className="panel">
-            <h3 className="view-title" style={{ fontSize: "1rem", margin: 0 }}>
-              The opinion map
-            </h3>
-            <p className="muted small" style={{ margin: "0.25rem 0 0.5rem" }}>
-              Each dot is a participant, positioned by how they voted (closer = more alike). Colour
-              is their opinion group{identity ? " — the gold ring is you" : ""}.
+        <div className="u-map-col">
+          <Panel className="u-map-panel">
+            <h3 className="u-section-title u-col-title">The opinion map</h3>
+            <p className="muted small u-map-caption">
+              Each dot is a participant, placed by how they voted — the closer two dots, the more
+              alike their votes; the shaded regions are the opinion groups
+              {identity ? ", and the gold ring is you" : ""}.
             </p>
-            <svg
-              className="opinion-map"
-              viewBox="-120 -120 240 240"
-              role="img"
-              aria-label={`opinion map of ${points.length} participants in ${clusterCount} groups`}
-            >
-              <line className="grid-line" x1="-115" y1="0" x2="115" y2="0" />
-              <line className="grid-line" x1="0" y1="-115" x2="0" y2="115" />
-              {points.map((p) => (
-                <circle
-                  key={p.participant}
-                  className={p.participant === identity ? "pt you" : "pt"}
-                  cx={p.x * 100}
-                  cy={-p.y * 100}
-                  r="7"
-                  fill={clusterColor(p.cluster)}
-                >
-                  <title>
-                    {displayName(p.participant)} ·{" "}
-                    {GROUP_NAMES[p.cluster] ?? `Group ${p.cluster + 1}`}
-                  </title>
-                </circle>
-              ))}
-            </svg>
-            <div className="map-legend">
-              {Array.from({ length: clusterCount }, (_, g) => (
-                <span key={GROUP_NAMES[g] ?? g}>
-                  <span className="swatch" style={{ background: clusterColor(g) }} />
-                  {GROUP_NAMES[g] ?? `Group ${g + 1}`} · {ranking?.clustering.sizes[g] ?? 0}
-                </span>
-              ))}
-            </div>
-          </div>
+            <div className="u-map-frame">
+              <svg
+                className="opinion-map"
+                viewBox="-130 -130 260 260"
+                role="img"
+                aria-label={`opinion map of ${points.length} participants in ${clusterCount} groups`}
+              >
+                <title>opinion map</title>
+                {/* Neutral reference crosshair (the PCA axes are abstract — no
+                    fake semantic labels; proximity is what carries meaning). */}
+                <line className="grid-line" x1="-122" y1="0" x2="122" y2="0" />
+                <line className="grid-line" x1="0" y1="-122" x2="0" y2="122" />
 
-          <div className="cluster-cards">
-            {Array.from({ length: clusterCount }, (_, g) => {
-              const top = ranking ? topForCluster(ranking.ranked, g) : null;
-              return (
-                <div
-                  key={GROUP_NAMES[g] ?? g}
-                  className="cluster-card"
-                  style={{ "--cluster-color": clusterColor(g) } as React.CSSProperties}
-                >
-                  <span className="cc-name">{GROUP_NAMES[g] ?? `Group ${g + 1}`}</span>
-                  <span className="cc-size">
-                    {ranking?.clustering.sizes[g] ?? 0} participant
-                    {(ranking?.clustering.sizes[g] ?? 0) === 1 ? "" : "s"}
-                  </span>
-                  {top && (
-                    <p className="cc-top">
-                      <span className="muted small">received best:</span>{" "}
-                      {needById.get(top.statement)?.content ?? top.statement}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                {/* Group regions, drawn under the dots. */}
+                {byCluster.map((pts, g) => {
+                  const poly = hullPolygon(pts, 13);
+                  const blob = hullBlob(pts, 13);
+                  const fill = clusterColor(g);
+                  if (poly) {
+                    return (
+                      <polygon
+                        // biome-ignore lint/suspicious/noArrayIndexKey: cluster order is stable — index is identity.
+                        key={g}
+                        className="hull"
+                        points={poly}
+                        style={{ fill, stroke: fill }}
+                      />
+                    );
+                  }
+                  if (blob) {
+                    return (
+                      <circle
+                        // biome-ignore lint/suspicious/noArrayIndexKey: cluster order is stable — index is identity.
+                        key={g}
+                        className="hull"
+                        cx={blob.cx}
+                        cy={blob.cy}
+                        r={blob.r}
+                        style={{ fill, stroke: fill }}
+                      />
+                    );
+                  }
+                  return null;
+                })}
+
+                {points.map((p) => (
+                  <circle
+                    key={p.participant}
+                    className={p.participant === identity ? "pt you" : "pt"}
+                    cx={p.x * 100}
+                    cy={-p.y * 100}
+                    r="7.5"
+                    fill={clusterColor(p.cluster)}
+                  >
+                    <title>
+                      {displayName(p.participant)} · {groupName(p.cluster)}
+                    </title>
+                  </circle>
+                ))}
+              </svg>
+            </div>
+            <ul className="map-legend" aria-label="opinion groups">
+              {Array.from({ length: clusterCount }, (_, g) => (
+                <li key={groupName(g)} className="u-legend-item">
+                  <span className="swatch" style={{ background: clusterColor(g) }} />
+                  {groupName(g)} · {ranking?.clustering.sizes[g] ?? 0}
+                </li>
+              ))}
+            </ul>
+          </Panel>
+
+          <Panel className="u-received-panel">
+            <h3 className="u-section-title u-received-title">Received best in each group</h3>
+            <div className="cluster-cards">
+              {Array.from({ length: clusterCount }, (_, g) => {
+                const top = ranking ? topForCluster(ranking.ranked, g) : null;
+                return (
+                  <div
+                    key={groupName(g)}
+                    className="cluster-card"
+                    style={{ "--cluster-color": clusterColor(g) } as React.CSSProperties}
+                  >
+                    <span className="cc-name">{groupName(g)}</span>
+                    <span className="cc-size">
+                      {ranking?.clustering.sizes[g] ?? 0} participant
+                      {(ranking?.clustering.sizes[g] ?? 0) === 1 ? "" : "s"}
+                    </span>
+                    {top ? (
+                      <p className="cc-top">
+                        {needById.get(top.statement)?.content ?? top.statement}
+                      </p>
+                    ) : (
+                      <p className="cc-top muted small">no clear favourite yet</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
         </div>
       </div>
     </section>
