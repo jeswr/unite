@@ -88,6 +88,45 @@ export const FUT_OBSERVED_AT = fut("observedAt");
  * an index entry is a cache, never authoritative (design/02 §2). */
 export const FUT_OBSERVATION_SOURCE = fut("observationSource");
 
+// ── fut:SharedFuture annex terms (published sector; S3 wires the AdoptionDecision
+//    subset — the inherited mandatory dissent + bridging evidence — and S5 the
+//    full SharedFuture). Every IRI matches solid-federation-vocab
+//    sectors/futures/futures.ttl exactly (verified against the published sector). ─
+
+/** `fut:SharedFuture` — the convergence-artifact superclass. `fut:AdoptionDecision`
+ * ⊑ `fut:SharedFuture`, so the decision is typed as BOTH (asserted explicitly, the
+ * infra.ts convention, so plain SharedFuture readers see it without OWL reasoning)
+ * and inherits the mandatory dissent annex + bridging evidence. */
+export const FUT_SHARED_FUTURE = fut("SharedFuture");
+
+/** `fut:bridgingEvidence` → `fut:BridgingEvidence` — per-cluster endorsement
+ * statistics (≥1 mandatory, SHACL): the proof a synthesis is common ground, not
+ * one cluster's position. Recomputable by any consumer from the raw counts. */
+export const FUT_BRIDGING_EVIDENCE = fut("bridgingEvidence");
+export const FUT_BRIDGING_EVIDENCE_CLASS = fut("BridgingEvidence");
+/** The opaque k-anonymous cluster label (never a member list). */
+export const FUT_CLUSTER_LABEL = fut("clusterLabel");
+export const FUT_RESONATES_COUNT = fut("resonatesCount");
+export const FUT_CONFLICTS_COUNT = fut("conflictsCount");
+export const FUT_UNSURE_COUNT = fut("unsureCount");
+export const FUT_SEEN_COUNT = fut("seenCount");
+/** `fut:bridgingScore` (xsd:decimal, no domain) — the group-informed-consensus
+ * factor, carried on a BridgingEvidence (per-cluster) or the synthesis (product). */
+export const FUT_BRIDGING_SCORE = fut("bridgingScore");
+
+/** `fut:dissent` → `fut:DissentRecord` — the MANDATORY dissent annex (INV-2): a
+ * first-class minority report. A SharedFuture is INVALID without either ≥1
+ * `fut:dissent` OR an explicit `fut:noDissentRecorded true` — convergence must
+ * never mean erasure. */
+export const FUT_DISSENT = fut("dissent");
+export const FUT_DISSENT_RECORD = fut("DissentRecord");
+/** `fut:noDissentRecorded` (xsd:boolean) — the EXPLICIT "no dissent" assertion;
+ * required `true` whenever a SharedFuture carries no `fut:dissent` (silence is
+ * never treated as consensus). */
+export const FUT_NO_DISSENT_RECORDED = fut("noDissentRecorded");
+/** `fut:endorsedBy` — a post-synthesis Resonance endorsing/contesting the artifact. */
+export const FUT_ENDORSED_BY = fut("endorsedBy");
+
 // ── Scope C (§4.2): self-describing legitimacy — S4/S5 wire these ───────────
 
 /** `fut:methodProvenance` — SharedFuture → the deliberation-method concept
