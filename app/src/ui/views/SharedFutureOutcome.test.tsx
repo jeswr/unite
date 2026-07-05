@@ -129,11 +129,15 @@ function signingProps(overrides: Partial<OutcomeSigning> = {}): OutcomeSigning {
   };
 }
 
-/** A signed-artifact stub carrying only what the view renders. */
-function signedStub(view: Partial<SignedSharedFuture["view"]>): SignedSharedFuture {
+/** A signed-artifact stub carrying only what the view renders. `ratified` is
+ *  the lib's FULL verdict and can DIVERGE from quorumMet (quorum met but the
+ *  artifact not fully verifying) — overridable so that case is coverable. */
+function signedStub(
+  view: Partial<SignedSharedFuture["view"]>,
+  ratified?: boolean,
+): SignedSharedFuture {
   return {
-    // The lib's FULL verdict — the view words "ratified" off THIS, never quorum alone.
-    verification: { ratified: view.quorumMet === true },
+    verification: { ratified: ratified ?? view.quorumMet === true },
     view: {
       id: "https://h.example/syntheses/s1.ttl#shared-future",
       content: "One text.",
@@ -284,6 +288,25 @@ describe("SharedFutureOutcome — the S5.4 steward signing surface", () => {
     );
     expect(screen.getByText(/2 of ≥2 — quorum met/)).toBeTruthy();
     expect(screen.getByText(/quorum is met and the artifact is ratified/)).toBeTruthy();
+  });
+
+  it("a met QUORUM that does NOT fully verify is never worded as ratified (the lib's verdict rules)", () => {
+    render(
+      <SharedFutureOutcome
+        scope={SCOPES.society}
+        reception={reception("endorsed")}
+        critiques={[]}
+        signing={signingProps({
+          // quorum met, but the FULL verify verdict (lineage/k-anon/D2) is false.
+          signed: signedStub(
+            { distinctStewards: 2, quorumMet: true, bootstrapping: false },
+            false,
+          ),
+        })}
+      />,
+    );
+    expect(screen.getByText(/quorum is met, but the artifact does not fully verify/)).toBeTruthy();
+    expect(screen.queryByText(/artifact is ratified/)).toBeNull();
   });
 
   it("a SINGLE-steward community shows the bootstrapping label — the floor stands, never lowered", () => {
