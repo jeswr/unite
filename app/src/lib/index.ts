@@ -19,6 +19,7 @@ export * from "./model.js";
 export * from "./model-society.js";
 export * from "./pod.js";
 export * from "./pod-society.js";
+export * from "./quorum.js";
 export * from "./ranking.js";
 export * from "./registry.js";
 export * from "./sensitive.js";

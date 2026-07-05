@@ -27,6 +27,7 @@
     "@jeswr/solid-odrl": "git+https://github.com/jeswr/solid-odrl.git#e12f284db4fa53d51bbf870e6ed57c1d72395eaa",
     "@jeswr/solid-session-restore": "git+https://github.com/jeswr/solid-session-restore.git#38e78dbececbf0dd12c9ceac288a6eef6c624377",
     "@jeswr/solid-task-model": "git+https://github.com/jeswr/solid-task-model.git#9d9c2ae1206ca8d1babb254a3dbab345124cb356",
+    "@jeswr/solid-vc": "git+https://github.com/jeswr/solid-vc.git#ada0eaf830f6d3d9fd2908d7eedc15af58c2852b",
     "@noble/hashes": "^2.2.0",
     "@solid/object": "0.6.0",
     "@solid/reactive-authentication": "^0.1.3",
