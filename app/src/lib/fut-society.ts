@@ -118,3 +118,15 @@ export const SCHWARTZ_BY_IRI: ReadonlyMap<string, ValueConcept> = new Map(
 export const METHOD_RESONANCE_MAPPING = fut("resonanceMapping");
 export const METHOD_MEDIATED_SYNTHESIS = fut("mediatedSynthesis");
 export const METHOD_MINI_PUBLIC = fut("miniPublic");
+
+/** The three coded deliberation-method concepts. A non-coded value on read drops
+ * the field; S5's `fut:methodProvenance` MUST be one of these (design/03 §5). */
+export const METHODS = [
+  METHOD_RESONANCE_MAPPING,
+  METHOD_MEDIATED_SYNTHESIS,
+  METHOD_MINI_PUBLIC,
+] as const;
+export type Method = (typeof METHODS)[number];
+const METHOD_SET: ReadonlySet<string> = new Set(METHODS);
+/** Type guard for a coded deliberation-method concept IRI. */
+export const isMethod = (v: string): v is Method => METHOD_SET.has(v);

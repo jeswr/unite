@@ -137,6 +137,39 @@ export const FUT_METHOD_PROVENANCE = fut("methodProvenance");
  * (with prov:hadPlan), mirroring the SynthesisMediator PROV pattern. */
 export const FUT_DECOMPOSED_BY = fut("decomposedBy");
 
+// ── S5: fut:SharedFutureCredential + fut:ConvergenceMetrics (published sector;
+//    design/01 §data-model, design/02 §5, design/03 §6; docs/design/next-phases
+//    §2.3 — verified against solid-federation-vocab sectors/futures/futures.ttl:
+//    fut:ConvergenceMetrics + clusterCount / crossClusterConsensusRate /
+//    participantCount / verificationTier / bridgingScore). Nothing minted. ──────
+
+/** `fut:SharedFutureCredential` — the VC wrapper over a signed SharedFuture
+ * (design/01 prose; data-model only). Each steward's independent solid-vc
+ * credential over the artifact's RDFC-1.0 digest IS an instance of this shape —
+ * S5 signs N of them and the quorum verifier aggregates (no new vocab class). */
+export const FUT_SHARED_FUTURE_CREDENTIAL = fut("SharedFutureCredential");
+
+/** `fut:ConvergenceMetrics` — the published, k-anonymous aggregate for a
+ * deliberation (design/01: cluster count, cross-cluster consensus rate,
+ * bridging-score distribution, participation counts by verification tier;
+ * design/02 §5: stratify + disclose, never exclude). Tied to its deliberation
+ * by `fut:inDeliberation`; the per-tier strata are SEPARATE ConvergenceMetrics
+ * nodes each carrying `fut:verificationTier` (see convergence-metrics.ts). */
+export const FUT_CONVERGENCE_METRICS = fut("ConvergenceMetrics");
+/** `fut:clusterCount` (xsd:nonNegativeInteger) — the deliberation's opinion-space cluster count. */
+export const FUT_CLUSTER_COUNT = fut("clusterCount");
+/** `fut:crossClusterConsensusRate` (xsd:decimal in [0,1]) — the share of content with
+ * group-informed consensus (design/03 §6 — NOT a unanimity target). */
+export const FUT_CROSS_CLUSTER_CONSENSUS_RATE = fut("crossClusterConsensusRate");
+/** `fut:participantCount` (xsd:nonNegativeInteger) — participation count, k-anonymous:
+ * an aggregate or per-tier count below the k-threshold is SUPPRESSED, never published. */
+export const FUT_PARTICIPANT_COUNT = fut("participantCount");
+/** `fut:verificationTier` — the identity tier a per-tier stratum reports (design/02 §5:
+ * T0 pseudonymous / T1 community-vouched / T2 personhood-verified). Carried as the
+ * coded tier string (trust.ts MembershipTier convention); a stratum node also carries
+ * `fut:participantCount`. Only strata whose count ≥ k are published. */
+export const FUT_VERIFICATION_TIER = fut("verificationTier");
+
 // ── Convergence Room (S1 — WIRED ahead of the sector bump) ──────────────────
 
 /** `fut:Critique` — one critique in a Convergence-Room critique round

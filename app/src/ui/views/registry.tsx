@@ -59,65 +59,10 @@ export function isViewEnabled(scope: ScopeConfig, view: View): boolean {
   );
 }
 
-/**
- * The scope views whose machinery has NOT landed yet — the only ones the
- * PreviewView may render. "proposals" and "room" left this set when S1 landed
- * the proposal layer + Convergence Room v1; "adoption-board" left it when S2
- * landed the real fedreg:acceptsSpec matrix; "deck" and "futures-gallery" left
- * it when S4 landed scope C's voice layer; the rest leave it with their
- * build-plan phases (S5).
- */
-export type PreviewViewId = Exclude<
-  ScopeViewId,
-  "proposals" | "room" | "adoption-board" | "deck" | "futures-gallery"
->;
-
-/** What a not-yet-built view WILL be, and which build-plan phase lands it. */
-interface PreviewCopy {
-  readonly phase: string;
-  readonly description: string;
-}
-
-// Honest phase previews, verbatim from the build plan
-// (docs/SCOPE-DIFFERENTIATION.md §6): an enabled-but-unbuilt view says exactly
-// what it will do and when it arrives — the anti-"relabelled poll" discipline.
-const PREVIEW_COPY: Readonly<Record<PreviewViewId, PreviewCopy>> = {
-  "published-futures": {
-    phase: "S5",
-    description:
-      "Signed shared futures and disagreement maps, rendered only with their " +
-      "dissent annex, bridging evidence, verified integrity proof and " +
-      "method-provenance label.",
-  },
-};
-
-/**
- * The honest placeholder for an enabled-but-not-yet-built scope view: names
- * what the view will do and the build-plan phase that lands it. Rendered
- * instead of pretending an apps surface is the scope's own machinery.
- */
-export function PreviewView({
-  view,
-  scope,
-}: {
-  view: PreviewViewId;
-  scope: ScopeConfig;
-}): React.JSX.Element {
-  const copy = PREVIEW_COPY[view];
-  return (
-    <section className="view">
-      <h2 className="view-title">{VIEW_LABELS[view]}</h2>
-      <div className="empty">
-        <span className="badge">arrives in {copy.phase}</span>
-        <span className="empty-title">Not built yet — and not faked</span>
-        <p>{copy.description}</p>
-        <p className="muted small">
-          This surface is part of the {scope.name.replace("Co-designing ", "")} scope build plan
-          (docs/SCOPE-DIFFERENTIATION.md, phase {copy.phase}). Until it lands, this scope stays
-          honestly labelled a preview rather than rendering the apps machinery under a different
-          name.
-        </p>
-      </div>
-    </section>
-  );
-}
+// As of S5, EVERY scope view is built — "published-futures" (the last preview)
+// graduated to a real view (ui/views/PublishedFutures) when the signing +
+// publication machinery landed. There are no enabled-but-unbuilt scope views, so
+// the honest phase-labelled placeholder (the old PreviewView) has no remaining
+// subjects and is retired. Should a future phase add a new unbuilt view, restore
+// the PreviewView pattern here (a phase-labelled "not built yet — and not faked"
+// stub, never a relabelled apps surface) rather than shipping an empty tab.
