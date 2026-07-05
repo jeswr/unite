@@ -336,6 +336,38 @@ export async function verifyBuildMerge(
   reviewerVCs: readonly VerifiableCredential[],
   options: VerifyBuildMergeOptions,
 ): Promise<BuildMergeResult> {
+  // SNAPSHOT the trust allowlists + tunables as the FIRST act — before reading the credential,
+  // graph, reviewer, or even `mergedArtifact.iri` inputs below. TWO hostile-mutation paths are
+  // closed by capturing here:
+  //   • the ASYNC one (the execution-proven vuln): a hostile `verifyVc` seam that mutates
+  //     `options.trustedStewards` DURING the commission `await`. verifyMergeQuorum's own
+  //     synchronous prelude reads `trustedStewards` BY REFERENCE — and runs AFTER that await — so
+  //     an injected untrusted steward would count (a 1-real-steward set becoming a met 2-steward
+  //     quorum → allowed flipped DENY→ALLOW). A frozen copy taken before the first await is immune.
+  //   • the SYNCHRONOUS one: a hostile GETTER on the attacker-influenced ARGUMENTS (the commission
+  //     VC / merged graph / reviewer VCs — objects the caller may have received from an attacker)
+  //     firing during a clone below could otherwise widen `options.trustedStewards` before it is
+  //     frozen. Freezing first denies that too.
+  // Freeze `trustedStewards` FIRST — the highest-value trust root (the exploit-proven direction: an
+  // untrusted STEWARD forges the merge quorum) — and BEFORE reading any OTHER `options` field, so
+  // not even a sibling getter on the `options` object itself can inject an untrusted steward. Read
+  // each field EXACTLY ONCE into a local (a getter must not answer the `Array.isArray` guard and the
+  // spread differently). A non-array allowlist → a frozen empty array → verifyCommission /
+  // verifyMergeQuorum still throw their REQUIRED-non-empty fail-closed error (unchanged).
+  // (`options` is the caller's own configuration, not a cross-domain hostile input; freezing the
+  // steward root first is belt-and-suspenders against a self-mutating `options` beyond the real
+  // async/argument boundaries above.)
+  const rawStewards = options.trustedStewards;
+  const trustedStewards: readonly string[] = Object.freeze(
+    Array.isArray(rawStewards) ? [...rawStewards] : [],
+  );
+  const rawCommissioners = options.trustedCommissioners;
+  const trustedCommissioners: readonly string[] = Object.freeze(
+    Array.isArray(rawCommissioners) ? [...rawCommissioners] : [],
+  );
+  const threshold = options.threshold;
+  const digest = options.digest;
+
   if (
     mergedArtifact === null ||
     typeof mergedArtifact !== "object" ||
@@ -349,13 +381,15 @@ export async function verifyBuildMerge(
   }
   const artifactIri = mergedArtifact.iri;
 
-  // SNAPSHOT every mutable input SYNCHRONOUSLY, before ANY `await` (no TOCTOU): all three
-  // verifications are async, so verifying the caller's LIVE objects would let a concurrent
+  // SNAPSHOT the remaining mutable inputs SYNCHRONOUSLY, before ANY `await` (no TOCTOU): all
+  // three verifications are async, so verifying the caller's LIVE objects would let a concurrent
   // mutation slip between a signature check and the subsequent claim/digest reads — making
   // scope/assignee, the artifact digest, or a reviewer's bound digest be read from data the
-  // verifier never accepted. We snapshot the commission VC, the artifact graph (fresh terms),
-  // and every reviewer VC into objects the caller has no reference to, then verify + read +
-  // store ONLY those. (The commission snapshot is also stored/reused for the merge binding.)
+  // verifier never accepted. We snapshot the commission VC, the artifact graph (fresh terms), and
+  // every reviewer VC into objects the caller has no reference to, then verify + read + store ONLY
+  // those. (The commission snapshot is also stored/reused for the merge binding.) The config
+  // allowlists + tunables were already snapshotted at the TOP of the function — BEFORE these
+  // caller-object reads — so a hostile getter fired during a clone here cannot widen them.
   const commissionSnapshot = cloneVc(commissionVC);
   // A whole-graph-fail-closed snapshot: `undefined` iff the presented graph had ANY malformed
   // / unsupported quad. Never a sanitized subset — a partial graph would authorize unreviewed
@@ -372,7 +406,7 @@ export async function verifyBuildMerge(
   //     Throws fail-closed on an absent/empty trustedCommissioners allowlist (config).
   const commission = await verifyCommission(commissionSnapshot, {
     verifyVc: options.verifyVc,
-    trustedCommissioners: options.trustedCommissioners,
+    trustedCommissioners,
     artifact: artifactIri,
   });
 
@@ -417,10 +451,10 @@ export async function verifyBuildMerge(
   const merge = await verifyMergeQuorum(artifactQuads, reviewerSnapshots, {
     verifyVc: options.verifyVc,
     resolveKey: options.resolveKey,
-    trustedStewards: options.trustedStewards,
+    trustedStewards,
     builder: assignee,
-    ...(options.threshold !== undefined ? { threshold: options.threshold } : {}),
-    ...(options.digest !== undefined ? { digest: options.digest } : {}),
+    ...(threshold !== undefined ? { threshold } : {}),
+    ...(digest !== undefined ? { digest } : {}),
   });
   if (!merge.allowed) reasons.push("quorum-failed");
 

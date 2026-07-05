@@ -435,6 +435,85 @@ describe("verifyBuildMerge — binds artifact + builder, then the ≥2-steward q
     expect(result.allowed).toBe(true); // the snapshot isolated the concurrent mutation
   });
 
+  it("SNAPSHOTS the trustedStewards allowlist — a hostile verifyVc mutating it mid-verify cannot inject a counted steward (TOCTOU)", async () => {
+    const vc = await commissionVc();
+    const merged = artifactFor(ARTIFACT);
+    // TWO reviewers each sign the RIGHT digest: CAROL (a real allowlisted steward) and MALLORY
+    // (a validly-signed VC whose key resolves, but who is NOT an allowlisted steward).
+    const reviewers = [
+      await reviewerAttestation(CAROL, keyCarol, merged.quads),
+      await reviewerAttestation(MALLORY, keyMallory, merged.quads),
+    ];
+
+    // HONEST BASELINE (no false-positive regression from freezing the allowlist): with BOTH
+    // stewards legitimately allowlisted and NO mutation, the ≥2 quorum ratifies as before.
+    const honest = await verifyBuildMerge(
+      vc,
+      merged,
+      reviewers,
+      buildOpts({ trustedStewards: [CAROL, MALLORY] }),
+    );
+    expect(honest.allowed).toBe(true);
+    expect(honest.merge?.attestation.distinctStewards).toBe(2);
+
+    // THE ATTACK: the allowlist starts with ONE real steward (CAROL) — below the ≥2 floor. A
+    // hostile verifyVc PUSHES the untrusted MALLORY into options.trustedStewards during the
+    // (earlier) commission verify. Pre-fix, verifyMergeQuorum read options.trustedStewards BY
+    // REFERENCE *after* that await, so the injected MALLORY counted → a met 2-steward quorum →
+    // allowed:true (the verdict FLIPPED from DENY to ALLOW). Post-fix, verifyBuildMerge froze a
+    // copy of the allowlist ([CAROL]) synchronously before any await, so the injection is
+    // unobservable: MALLORY never counts → 1 distinct steward → quorum-failed → DENY.
+    const live = [CAROL]; // one real steward only — the caller's mutable allowlist array
+    const injectingVerify = (v: VerifiableCredential) => {
+      if (!live.includes(MALLORY)) live.push(MALLORY); // widen the allowlist mid-verify
+      return realVerify(v);
+    };
+    const result = await verifyBuildMerge(
+      vc,
+      merged,
+      reviewers,
+      buildOpts({ trustedStewards: live, verifyVc: injectingVerify }),
+    );
+    expect(live).toContain(MALLORY); // the caller's array WAS mutated (the attack fired)…
+    expect(result.merge?.attestation.distinctStewards).toBe(1); // …but only CAROL counted
+    expect(result.reasons).toContain("quorum-failed");
+    expect(result.allowed).toBe(false); // the frozen snapshot held the verdict at DENY
+  });
+
+  it("SNAPSHOTS the allowlist BEFORE any other caller-object read — a hostile GETTER cannot widen it synchronously", async () => {
+    const vc = await commissionVc();
+    const merged = artifactFor(ARTIFACT);
+    const realQuads = merged.quads;
+    const reviewers = [
+      await reviewerAttestation(CAROL, keyCarol, realQuads),
+      await reviewerAttestation(MALLORY, keyMallory, realQuads),
+    ];
+    // A hostile mergedArtifact whose `quads` GETTER widens options.trustedStewards the moment the
+    // prelude reads it (during the cloneQuads read) — a purely SYNCHRONOUS injection, no await
+    // needed. verifyBuildMerge freezes the allowlist as its FIRST act, BEFORE reading any
+    // mergedArtifact/VC/reviewer field, so this getter fires too late to matter. Were the snapshot
+    // taken AFTER the clones, `live` would have widened to [CAROL, MALLORY] before the freeze → a
+    // met 2-steward quorum → ALLOW. So this test pins the snapshot ORDER, not just its existence.
+    const live = [CAROL]; // one real steward — below the ≥2 floor
+    const hostileMerged = {
+      iri: ARTIFACT,
+      get quads() {
+        if (!live.includes(MALLORY)) live.push(MALLORY);
+        return realQuads;
+      },
+    } as unknown as MergedArtifact;
+    const result = await verifyBuildMerge(
+      vc,
+      hostileMerged,
+      reviewers,
+      buildOpts({ trustedStewards: live }),
+    );
+    expect(live).toContain(MALLORY); // the getter fired (the synchronous attack ran)…
+    expect(result.merge?.attestation.distinctStewards).toBe(1); // …but only CAROL counted
+    expect(result.reasons).toContain("quorum-failed");
+    expect(result.allowed).toBe(false); // the allowlist was frozen before the getter could widen it
+  });
+
   it("a verified commission whose DELEGATE is not an http(s) WebID is refused (commission-invalid)", async () => {
     // A validly-signed, trusted-issuer, correctly-scoped delegation whose `fedtrust:delegate`
     // is a NON-http string. verifyCommission accepts it (the claim is present), but the merge
