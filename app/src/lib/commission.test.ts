@@ -11,6 +11,7 @@
 //   • the fold is deterministic + order-independent, and computed-not-asserted (a
 //     spoofed cached state triple is ignored — the fold recomputes from events).
 
+import { FEDTRUST_DELEGATION_CREDENTIAL, FEDTRUST_FEDERATION } from "@jeswr/federation-trust";
 import {
   digestQuads,
   generateKeyPairForSuite,
@@ -273,6 +274,29 @@ describe("issueCommission + verifyCommission — the per-artifact signed commiss
     const result = await verifyCommission(vc, opts({ assignee: "https://eve.example/agent#me" }));
     expect(result.verified).toBe(false);
     expect(result.reasons).toContain("assignee-mismatch");
+  });
+
+  it("a delegate-LESS delegation is refused even with NO expected assignee (no-assignee)", async () => {
+    // A validly-signed, trusted-issuer, correctly-scoped delegation that names NO
+    // `fedtrust:delegate`. A commission MUST bind an assignee, so this authorizes
+    // nobody — refused whether or not the caller pins an expected assignee (roborev
+    // Medium: the delegate claim is required unconditionally).
+    const noDelegate = await issue({
+      credential: {
+        issuer: COMMISSIONER,
+        type: [FEDTRUST_DELEGATION_CREDENTIAL],
+        credentialSubject: { id: ARTIFACT, [FEDTRUST_FEDERATION]: ARTIFACT }, // scope, NO delegate
+      },
+      key: keyCommissioner,
+    });
+    // (a) caller omits `assignee` — must still fail no-assignee (the earlier gap).
+    const withoutExpected = await verifyCommission(noDelegate, opts());
+    expect(withoutExpected.verified).toBe(false);
+    expect(withoutExpected.reasons).toContain("no-assignee");
+    // (b) caller pins `assignee` — also fails no-assignee (nothing to match).
+    const withExpected = await verifyCommission(noDelegate, opts({ assignee: ASSIGNEE }));
+    expect(withExpected.verified).toBe(false);
+    expect(withExpected.reasons).toContain("no-assignee");
   });
 
   it("a NON-delegation credential is refused (not-a-delegation)", async () => {

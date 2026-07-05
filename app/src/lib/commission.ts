@@ -655,8 +655,9 @@ export interface VerifyCommissionOptions {
  *      (else `untrusted-commissioner`);
  *   5. its `fedtrust:federation` scope is EXACTLY the commissioned artifact (else
  *      `scope-mismatch`/`no-scope` — no blanket or wrong-artifact delegation);
- *   6. its `fedtrust:delegate` is the expected assignee, when one was supplied (else
- *      `assignee-mismatch`/`no-assignee`).
+ *   6. it names a `fedtrust:delegate` assignee at all — always required (else
+ *      `no-assignee`; a delegate-less delegation authorizes nobody) — and, when the
+ *      caller pins an expected assignee, that it matches (else `assignee-mismatch`).
  * THROWS fail-closed (never returns) if `trustedCommissioners` is absent/empty or the
  * `artifact` is not http(s) — a configuration error, not a data error.
  */
@@ -716,11 +717,15 @@ export async function verifyCommission(
     reasons.push("scope-mismatch");
   }
 
-  // (6) the delegate must be the expected assignee (when supplied).
+  // (6) a commission MUST bind an assignee: the `fedtrust:delegate` claim is ALWAYS
+  //     required (a delegate-less delegation authorizes NOBODY — commissioner →
+  //     assignee → artifact is the whole shape); the EQUALITY check is applied only
+  //     when the caller pins a specific expected assignee.
   const assignee = readVcClaim(vc.credentialSubject, FEDTRUST_DELEGATE);
-  if (options.assignee !== undefined) {
-    if (assignee === undefined) reasons.push("no-assignee");
-    else if (assignee !== options.assignee) reasons.push("assignee-mismatch");
+  if (assignee === undefined) {
+    reasons.push("no-assignee");
+  } else if (options.assignee !== undefined && assignee !== options.assignee) {
+    reasons.push("assignee-mismatch");
   }
 
   return {
