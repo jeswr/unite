@@ -577,6 +577,29 @@ describe("the S5.4 steward signing surface (society room)", () => {
     expect(onSigned).not.toHaveBeenCalled();
   });
 
+  it("EDITED CANDIDATE MATERIAL is un-signable: content changed at the same id since review refuses", async () => {
+    const onSigned = vi.fn();
+    const rendered = signableResult();
+    // The candidate resource was overwritten (same id, new text) after the
+    // steward reviewed the panel: the sign-time re-aggregation sees it.
+    const fresh: AggregateResult = {
+      ...rendered,
+      candidates: rendered.candidates.map((c) =>
+        c.id === CAND ? { ...c, content: "Silently rewritten after review." } : c,
+      ),
+    };
+    renderSocietyRoom(
+      asTrust({ tier: 1, roles: ["steward"] }),
+      rendered,
+      signingCtx,
+      onSigned,
+      fresh,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sign this shared future as steward" }));
+    expect(await screen.findByText(/changed since you reviewed it/)).toBeTruthy();
+    expect(onSigned).not.toHaveBeenCalled();
+  });
+
   it("NO signing context (unresolved / pod mode without a registry) stays locked fail-closed", () => {
     renderSocietyRoom(asTrust({ tier: 1, roles: ["steward"] }), signableResult(), null);
     expect(screen.getByText("Signing is locked (fail-closed)")).toBeTruthy();

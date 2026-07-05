@@ -343,6 +343,31 @@ describe("signRoomCandidate — the un-signable states (the lib's throws, surfac
     ).rejects.toThrow(/does not address this candidate/);
   });
 
+  it("CO-SIGN SAME-DOCUMENT DIFFERENT-FRAGMENT candidate refuses — the doc-scoped artifact id alone is not the match", async () => {
+    const first = await signRoomCandidate(args());
+    // Same Turtle document, different fragment ⇒ SAME #shared-future id, but
+    // DIFFERENT candidate material — must refuse on the material mismatch.
+    const sibling: SynthesisCandidate = {
+      ...candidate,
+      id: "https://h.example/syntheses/s1.ttl#other",
+      content: "A different synthesis in the same document.",
+    };
+    await expect(
+      signRoomCandidate(args({ context: contextFor("B"), prior: first, candidate: sibling })),
+    ).rejects.toThrow(/does not match this candidate's reviewed content\/lineage/);
+  });
+
+  it("CO-SIGN EDITED CANDIDATE: content edited at the SAME id refuses — unreviewed material is never co-signed", async () => {
+    const first = await signRoomCandidate(args());
+    const edited: SynthesisCandidate = {
+      ...candidate,
+      content: "The text was silently rewritten after the first signature.",
+    };
+    await expect(
+      signRoomCandidate(args({ context: contextFor("B"), prior: first, candidate: edited })),
+    ).rejects.toThrow(/does not match this candidate's reviewed content\/lineage/);
+  });
+
   it("CO-SIGN STALENESS (D2): a critique that lands AFTER assembly refuses the co-signature", async () => {
     const first = await signRoomCandidate(args());
     // CRIT_2 lands after the artifact was assembled + signed by A…

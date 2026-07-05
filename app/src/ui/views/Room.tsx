@@ -35,6 +35,7 @@ import type { AggregateState, SessionTrust } from "../hooks.js";
 import { displayName, readFetchFor, writeSessionFor } from "../hooks.js";
 import {
   contributorCountFor,
+  sameCandidateMaterial,
   sameReception,
   type SignedSharedFuture,
   type StewardSigningContext,
@@ -404,6 +405,14 @@ export function Room({
       if (freshCandidate === undefined) {
         throw new Error(
           "this candidate is no longer in the current aggregate — refresh and re-review",
+        );
+      }
+      // The SAME id can carry EDITED material (a pod owner can overwrite the
+      // resource): what gets signed must be exactly what the steward REVIEWED.
+      if (!sameCandidateMaterial(freshCandidate, active)) {
+        throw new Error(
+          "this candidate's text, title or lineage changed since you reviewed it — " +
+            "refresh, review the current candidate, and sign again",
         );
       }
       const freshCritiques = standingCritiques(fresh.critiques, active.id);

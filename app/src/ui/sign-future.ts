@@ -160,6 +160,29 @@ export function sameBridgingEvidence(
   );
 }
 
+/** Set equality of two IRI lists (order-insensitive — RDF parse order is not
+ *  stable across reads; the lineage SET is the semantic identity). */
+function sameIriSet(a: readonly string[], b: readonly string[]): boolean {
+  const setA = new Set(a);
+  const setB = new Set(b);
+  return setA.size === setB.size && [...setA].every((x) => setB.has(x));
+}
+
+/** The SIGNED candidate material of two candidates is identical — content,
+ *  title, lineage set, and deliberation. The "is what gets signed exactly
+ *  what was reviewed?" test (an edit at the SAME id must refuse). */
+export function sameCandidateMaterial(
+  a: Pick<SynthesisCandidate, "content" | "title" | "derivedFrom" | "inDeliberation">,
+  b: Pick<SynthesisCandidate, "content" | "title" | "derivedFrom" | "inDeliberation">,
+): boolean {
+  return (
+    a.content === b.content &&
+    (a.title ?? "") === (b.title ?? "") &&
+    a.inDeliberation === b.inDeliberation &&
+    sameIriSet(a.derivedFrom, b.derivedFrom)
+  );
+}
+
 /** Outcome + per-cluster-distribution equality of two computed receptions —
  *  the "did the room move since the steward reviewed this?" test. */
 export function sameReception(a: CandidateReception, b: CandidateReception): boolean {
@@ -298,6 +321,24 @@ export async function signRoomCandidate(args: SignRoomCandidateArgs): Promise<Si
     if (priorSf.id !== id) {
       throw new Error(
         "the prior artifact does not address this candidate — assemble a fresh artifact",
+      );
+    }
+    // The artifact IRI is DOCUMENT-scoped (sharedFutureIriFor collapses the
+    // candidate fragment), so the id check alone cannot distinguish two
+    // candidates in one document, nor a candidate EDITED at the same id. The
+    // signed material itself must still match what is being co-signed.
+    if (
+      !sameCandidateMaterial(priorSf, {
+        content: args.candidate.content,
+        ...(args.candidate.title !== undefined ? { title: args.candidate.title } : {}),
+        derivedFrom: args.candidate.derivedFrom,
+        inDeliberation: args.deliberation,
+      })
+    ) {
+      throw new Error(
+        "the prior artifact does not match this candidate's reviewed content/lineage " +
+          "(the candidate changed, or the artifact belongs to another candidate in the same " +
+          "document) — assemble a fresh artifact",
       );
     }
     if (!sameBridgingEvidence(priorSf.bridgingEvidence, bridgingEvidenceFor(reception))) {
