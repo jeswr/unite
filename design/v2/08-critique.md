@@ -88,11 +88,21 @@ person alone among five cluster-A neighbours — Allport's equal-status
 condition violated by composition itself), vacuous constraints at small n,
 and the engine quietly deciding everyone's social graph.
 
-**Design response.** Flagged as unvalidated in 04 §6 with the min-cluster-
-floor guard; the token-minority case gets a hard rule at build time
-(never exactly one member of a cluster in a circle — pairs minimum, which
-the composition fixture asserts); composition is seam-carried and
-documented (the Freeman rule).
+**Design response.** Flagged as unvalidated in 04 §6, and the predictable
+failure modes are now designed out rather than promised away (04 §2): the
+token-minority case is a construction-level guarantee — every cluster
+represented in a circle seats ≥2 of its members (the pairs rule), and the
+circle floor is **4** precisely because pairs × two clusters = 4 (this
+critique originally coexisted with a "size 3–6" spec, which made "never
+exactly one of a cluster" arithmetically impossible at size 3 — caught and
+corrected); clusters too small to pair fold into their nearest centre
+instead of seating anyone as "the different one"; the vacuous-small-n case
+gets the starter-circle path (a seam that claims nothing); and re-balancing
+was dropped for **relational continuity** (composition at creation +
+seat-filling only), because chasing a diversity metric by swapping humans
+destroys the longitudinal contact — Pettigrew's condition — that the
+metric is a proxy for. All fixture-pinned (07 §5); composition remains
+seam-carried and documented (the Freeman rule).
 
 **Residual.** A validated composition procedure does not exist in the
 literature at this granularity; building one IS part of the research
@@ -109,7 +119,13 @@ free-text visitors get clunky mirrors and the core feeling fails.
 
 **Design response.** The honesty line is scoped precisely — *computation*
 is real, *personas* are staged, and the scribe's nature is disclosed on its
-own seam. The arc leans on the correction affordance ("close — let me fix
+own seam. The drafter is now a specified module (`lib/mirror-draft.ts`,
+03 §2) rather than an invoked-but-nonexistent capability, and the demo no
+longer choreographs the correction beat: an earlier script deliberately
+over-read the mirror so the fix affordance would perform on cue, which
+fails the reveal test on inspection — the drafter now runs un-tuned and
+the notetaker invites stress-testing when a mirror lands clean (06 §3
+beat 3). The arc leans on the correction affordance ("close — let me fix
 it") exactly because a mediocre draft plus a graceful fix still delivers
 feeling-heard (the repair IS the responsiveness — Ashktorab). The pitch
 names the live-LLM scribe as deferred work (07 §7).
@@ -172,3 +188,54 @@ verbatim (those are output properties, P-covenant-exempt by design).
 holds power, full stop. The compensation is discoverability, which is
 weaker than v1's in-your-face displays. This is a genuine trade the
 maintainer should weigh explicitly — flagged as an open question.
+
+## C-v2-9 — The composer chips machine-shape human speech
+
+**Attack.** The receptiveness chips (02 §3) put machine-drafted words into
+messages HUMANS sign. The AI-mediated-communication literature is direct
+about the stakes: even smart-reply-scale suggestions measurably shift what
+people express and how partners perceive each other (Hohenstein et al.
+2023; the AI-MC framework — Hancock, Naaman & Levy 2020), and discovered
+machine authorship erodes interpersonal trust (Jakesch et al. 2019). A
+reader who learns Rosa's gracious opener was machine-offered may re-read
+the whole circle as ventriloquism — a reveal-test failure *inside* the
+covenant's own frame.
+
+**Design response.** P6 was extended to govern machine-suggested human
+speech explicitly (01 §4): opener-only — the machine never rewrites the
+person's substance; visibly a suggestion until chosen; never pre-inserted
+or auto-sent; recipient-side rendering byte-identical either way
+(fixture-pinned, 07 §5); mechanism disclosed out of flow; and a seam on
+the chip itself (03 §6). The reveal-test case: what a behind-the-curtain
+reader learns is "everyone's composer offers the same optional openers
+across divides, and only openers — the substance was always the human's."
+
+**Residual.** Real and named: an opener IS part of the message (the
+attitude-shift evidence operates at exactly this scale), and no disclosure
+regime fully dissolves it. The alternatives are worse on the same
+evidence — covert suggestion fails Jakesch; per-message AI badges fail Yin
+et al. (P5). Flagged for the recruited experts' review alongside the
+03 §5 sequencing item.
+
+## C-v2-10 — "Diverse" is one axis, and the door filters
+
+**Attack.** The engine's "diversity" is cross-opinion-cluster only — it
+cannot see demographic or social diversity, and invitation-chain intake
+recruits through exactly the homophilous networks (McPherson et al. 2001)
+that make a demographically narrow, opinion-varied room the default
+outcome. The design's warm language ("span the community's different ways
+of seeing") invites readers to hear more than the machinery delivers.
+
+**Design response.** Stated plainly in 04 §2 rather than implied away:
+diverse means cross-opinion-cluster, full stop. Demographic diversity is
+a recruitment-side *human* responsibility — the curated pilot cohort via
+the partner org (04 §5, 06 §6.3c), the only actor who can see and act on
+it — and every published output carries the convenience-sample /
+method-provenance label, so nothing downstream claims representativeness
+the intake can't deliver.
+
+**Residual.** A structural limit under the privacy posture, not a fixable
+bug: platform-side demographic stratification would mean collecting
+protected attributes, which the design refuses. The honest ceiling — unite
+can *guarantee* viewpoint diversity in every circle and can only *ask*
+humans for the rest — is named in the pitch's non-claims (06 §6.4).

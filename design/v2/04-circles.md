@@ -12,9 +12,11 @@ a small group, deliberately composed, warmly framed, invisibly maintained.
 
 ## 1. What a circle is
 
-3–6 people (beyond ~4 active speakers conversation fragments; 6 tolerates
-async lurking), one standing topic-thread with the notetaker present,
-async-first. Every circle is framed as **co-creation, not discussion**: it
+**4–6 people** (4 is the diversity floor — §2's pairs rule times two
+clusters is 4, so a "diverse circle of 3" is arithmetically impossible and
+not a supported shape; beyond ~4 active speakers conversation fragments,
+so 5–6 works because async lurking is legitimate), one standing
+topic-thread with the notetaker present, async-first. Every circle is framed as **co-creation, not discussion**: it
 exists to produce something small and shared — a sketch of "the street we
 want", a question list for an engineer, one paragraph of "what we agree
 matters". Interdependent tasks bridge; mere contact doesn't (Sherif;
@@ -37,13 +39,41 @@ Mendelberg):
   anything. Diversity is enforced silently as a *safety property* (a
   homogeneous circle is a polarization hazard, not a preference).
 - Implementation: a new pure module `lib/circles.ts` (07 §4) —
-  deterministic, exhaustively tested, no ML: partition participants so
-  every circle of size 3–6 contains ≥2 clusters where the community has
-  ≥2 clusters, maximizing min-shared-need-concepts within circles, total
-  deterministic tie-breaks (the house engine style).
+  deterministic, exhaustively tested, no ML. Its guarantees, arithmetically
+  consistent by construction:
+  - circles are size **4–6**;
+  - where the community has ≥2 composition clusters, every circle spans
+    ≥2 of them, **and every cluster represented in a circle seats ≥2 of
+    its members** — the pairs rule (a lone token minority violates
+    Allport's equal-status condition *by composition*; 08 C-v2-4). Four
+    is the floor precisely because pairs × two clusters = 4; the earlier
+    "size 3–6 + never exactly one of a cluster" spec was arithmetically
+    impossible at size 3 and is corrected here;
+  - clusters too small to pair community-wide (size < 2, or under the
+    same `minClusterSize` floor `bridgingScore` already takes) are
+    **folded into their nearest cluster centre** for composition purposes
+    (deterministic) — nobody is ever seated as "the different one";
+  - objective: maximize min-shared-need-concepts within circles; total
+    deterministic tie-breaks (the house engine style).
 - Cold start (no votes yet): compose on need-profile overlap alone from
-  the first mirrors, re-balance as the matrix fills in. Newcomers join
-  existing circles with an open seat that maximizes the same objective.
+  the first mirrors. A community below 4 participants — or before any
+  clustering exists — gets a **starter circle** that claims nothing: its
+  seam says *"this circle is everyone so far — composition starts when
+  there are enough people to compose"*, never the diversity sentence (a
+  seam must not claim a property the composer couldn't enforce).
+- **Relational continuity beats re-balancing.** Composition runs at
+  circle CREATION and when filling an open seat (a newcomer, a
+  departure) — it never reshuffles standing circles to chase the drifting
+  opinion map. The contact literature's effects are longitudinal:
+  sustained relationships with friendship potential are part of the
+  mechanism (Pettigrew 1998's fourth condition; Pettigrew & Tropp 2006),
+  and a composer that swaps humans to re-optimize a diversity metric
+  destroys the very thing the metric is a proxy for. If a standing circle
+  homogenizes as views converge, that is common ground — a success, not a
+  defect to correct; cross-cluster exposure is maintained by routing
+  *stories* into the circle (the deck/gallery beats, 03 §3), which move
+  stimuli between rooms instead of moving people. People may leave or
+  move voluntarily; open seats refill by the composition objective.
 
 The framing never mentions the mechanism unprompted — *"a few people
 thinking about similar things from different places"* — but the seam is
@@ -55,6 +85,26 @@ unite listens. Composition is exactly the function the tyranny-of-
 structurelessness critique says must never be an invisible informal power
 (Freeman 1972) — which is why it is deterministic, documented, and
 seam-carried rather than vibes-based.
+
+**What "diverse" honestly means here.** The engine sees exactly one axis:
+the resonance matrix. A "diverse circle" is a **cross-OPINION-cluster**
+circle — nothing more. The engine cannot see (and must not be fed)
+demographic or social attributes, so a circle can be opinion-diverse and
+demographically narrow — and the intake channel makes that likely:
+invitation-chain growth recruits through existing social networks, and
+homophily runs along race, education, age, and class (McPherson et al.
+2001), so the door itself filters before composition ever runs.
+Mitigations, weighed honestly: pilot cohorts are curated by the human
+partner org (§5) — the only actor who *can* deliberately recruit across
+demographic lines, offline; the growth invitation asks for differing
+*views*, the one diversity the engine can verify; and every published
+output carries v1's method-provenance / convenience-sample label, so
+nothing downstream claims a representativeness the intake can't deliver.
+The limit stands and is structural: platform-side demographic
+stratification would mean collecting protected attributes, which the
+privacy posture refuses. Demographic diversity is a recruitment-side,
+*human* responsibility — the design says so plainly rather than implying
+the engine delivers it (08 C-v2-10).
 
 ## 3. Contact conditions as chat defaults (Allport, operationalized)
 
@@ -82,14 +132,21 @@ Tropp 2006) are *settings*, not aspirations:
   up"* (novelty as a gift) or routes a cross-cluster story via the gallery
   ("Dana sees this differently — want to hear why?", person-mediated,
   narrative — Broockman & Kalla, never raw opposing content per Bail 2018).
-- **Dissent kept cheap and dignified** — every "we seem to agree" moment
-  carries a private one-tap *"actually, I don't"* (feeds the matrix as an
-  honest Conflicts; guards against Abilene/spiral-of-silence conformity),
-  and the notetaker periodically invites the missing voice explicitly
-  ("what would someone who disagrees say?"). Warmth in tone, honesty in
-  content — the irony-of-harmony failure (commonality-focused positivity
-  demobilizing grievance) is a named antipattern with a named guard: the
-  differ-block is mandatory in every summary (P7).
+- **Dissent kept cheap, dignified — and unexposable.** Every "we seem to
+  agree" moment carries a private one-tap *"actually, I don't"* (an honest
+  `fut:Conflicts` into the COMMUNITY matrix; the Abilene/spiral-of-silence
+  guard). In a 4–6-person room a naive version would deanonymize the lone
+  dissenter — the summary flips and everyone knows who tapped — so the tap
+  is designed to be **invisible at circle scale** (03 §4's two-scale
+  rule): it changes no circle-visible state by itself (reception phrasing
+  derives from community-scale distributions), and the notetaker's
+  missing-voice invitation ("what would someone who disagrees say?") is
+  time-decoupled from any tap and fires on a seeded jitter even when no
+  one tapped — so neither the prompt nor a later phrasing shift points at
+  anyone. Warmth in tone, honesty in content — the irony-of-harmony
+  failure (commonality-focused positivity demobilizing grievance) is a
+  named antipattern with a named guard: the differ-block is mandatory in
+  every summary (P7).
 - **Calibration honesty** — nothing ever displays consensus stronger than
   measured (`candidateReception` computes; copy renders its verdict and
   nothing more). Miscalibrated perception of others' views is the disease
@@ -141,9 +198,12 @@ the contact conditions, the existing clustering) but not itself a
 literature-validated procedure, and unproven at any scale. It joins the
 expert-review checklist with a concrete failure mode to watch: at demo
 scale (n≈9 personas) the "partition" is nearly the whole community and
-diversity constraints can be vacuously satisfied; at real scale,
-min-cluster-size floors (already `bridgingScore` parameters) must gate
-which spans count. See 08-critique C-v2-4.
+diversity constraints can be vacuously satisfied — the starter-circle path
+(§2) exists so the seam never claims diversity there. The §2 guarantees
+(floor 4, the pairs rule, singleton-cluster folding, relational
+continuity) are the build-time answer, fixture-pinned (07 §5); what
+remains unvalidated is the *procedure's effect*, not its arithmetic. See
+08-critique C-v2-4.
 
 ## 7. Self-governance (Ostrom-shaped, deferred-but-designed)
 

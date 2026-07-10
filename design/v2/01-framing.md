@@ -112,13 +112,13 @@ traceable to the research synthesis:
 | P3 | **The anti-pseudo-voice invariant.** If the engine cannot use an input, the UI must not ask for it; every contribution gets a truthful fate-trail. | Folger 1977; de Vries et al. 2012; Arnstein |
 | P4 | **Elicit before exposing.** No one sees the group's distribution/clusters/themes on a statement before voicing their own take. | Muchnik, Aral & Taylor 2013; Salganik 2006; Noelle-Neumann 1974 |
 | P5 | **One honest handshake, then ambient.** Disclosure once at entry in two warm sentences; a seam on every machine-made object; the full write-up out of flow; no consent walls, no per-message badges. | Eslami 2015; Kizilcec; Yin et al. 2024; Nouwens 2020 |
-| P6 | **The notetaker mirrors, asks, and summarizes; it never advocates, never opines, never rephrases anyone toward agreement.** Role-framed at introduction ("listens, summarizes, never decides"). | Jakesch et al. (latent persuasion); reactance literature; Luger & Sellen 2016 (role clarity survives NLU failure) |
+| P6 | **The notetaker mirrors, asks, and summarizes; it never advocates, never opines, never rephrases anyone toward agreement.** Role-framed at introduction ("listens, summarizes, never decides"). **The same clause governs machine-suggested HUMAN speech:** when the composer offers receptiveness openers (02 §3), the suggestion is opener-only (never a rewrite of the person's own words), visibly a suggestion until chosen, never pre-inserted, never auto-sent, and the recipient-side rendering is identical whether or not a chip was used — the machine may scaffold how a person opens, it never speaks as them, and the mechanism is disclosed out of flow (everyone has the same composer). | Jakesch et al. (latent persuasion); reactance literature; Luger & Sellen 2016 (role clarity survives NLU failure); AI-mediated communication: Hancock, Naaman & Levy 2020; Hohenstein et al. 2023 (smart-reply-scale suggestions shift expressed attitudes); Jakesch et al. 2019 (perceived AI authorship erodes trust) |
 | P7 | **Dissent is the interesting part.** Every synthesis ships "where we genuinely differ" with equal visual warmth; no metric, copy, or celebration rewards unanimity. | v1 design/03 §6 + Mouffe carried forward; Ovadya & Thorburn centrism-drift warning |
 | P8 | **No numbers where a shape will do.** The collective state is slow, ambient, non-numeric (the garden/constellation); tallies never render live. | spiral of silence; early-vote herding |
 | P9 | **Warmth attaches to people and the shared picture, never to the bot.** No simulated intimacy, no reciprocal self-disclosure by the notetaker, no typing-pause theater. | CASA over-disclosure; Ishowo-Oloko et al. 2019; Laestadius et al. 2022 |
 | P10 | **Reading is participation.** The digest is a legitimate surface; one-tap resonance on a digest line is a real contribution; no guilt prompts, no activity metrics, no re-engagement pressure. | lurker legitimacy; Gerber/Green/Larimer backlash |
-| P11 | **k-threshold on every group characterization**, everywhere one is surfaced (digest, garden, why-sentences): below minimum cluster size, themes stay unattributed and fuzzed. | Sweeney 2002; the small-group deanonymization antipattern |
-| P12 | **Consent moves with context, as conversation.** Nothing asked at signup; the first time a contribution would flow beyond the circle, the ask happens in-context, specifically, and the answer is an ODRL policy in the author's pod. | Nissenbaum contextual integrity; Kaye et al. dynamic consent; v1's ODRL layer unchanged |
+| P11 | **k-threshold on every ANONYMIZED group characterization** — anything presented as "the group" rather than as named-by-consent people (digest, garden, distributions, why-sentences): below k, themes stay unattributed and fuzzed and counts never render. **At circle scale (4–6 people) k-anonymity is arithmetically unavailable, so the rule inverts rather than fuzzes:** circle-interior surfaces render NO tallies, NO splits, NO anonymous characterizations at all — only consented, attributed words plus reception phrasing computed from community-scale data (03 §4). A small room is legible to itself; pretending otherwise would be the lie. | Sweeney 2002; the small-group deanonymization antipattern |
+| P12 | **Consent moves with context, as conversation.** Nothing asked at signup beyond the one explicit entry consent a real deployment legally requires (§7 — the demo has none to ask); the first time a contribution would flow beyond the circle, the ask happens in-context, specifically, and the answer is an ODRL policy in the author's pod. P12 governs the *UX* of consent; the regulatory floor is §7. | Nissenbaum contextual integrity; Kaye et al. dynamic consent; v1's ODRL layer unchanged |
 
 The covenant is testable: each clause becomes checklist items in the demo
 walkthrough (06 §6) and fixtures where machine-checkable (07 §5).
@@ -159,3 +159,48 @@ its participants are the general public). Scopes A/B keep the v1 surface
 (their users are builders/implementers; the instrument idiom serves them).
 The circle/commons machinery is scope-blind, so extending v2 to A/B later
 is a configuration decision, not a redesign — see 07 §2.
+
+## 7. Regulatory posture (GDPR — honest, not hand-waved)
+
+unite's substance is people's **political opinions**, which are GDPR
+Article 9(1) special-category data. That has consequences no architecture
+choice dissolves:
+
+- **Consent-by-continuing is not a lawful basis here.** The warm handshake
+  (02 §2) plus "joining the conversation is the grant" satisfies the
+  *presentation covenant*; it does not satisfy Article 9(2)(a) **explicit
+  consent** for special-category processing (specific, informed,
+  unambiguous, given by a clear affirmative act — Art. 4(11)/Art. 7; EDPB
+  Guidelines 05/2020). Any deployment with real people therefore requires
+  one explicit, granular, **recorded** consent act at entry, *before* the
+  notetaker's listening touches anything — designed as a single warm
+  affirmative moment (one screen, plain words, a real "yes"), not a
+  cookie wall, but it is an ask, and P12's "nothing asked at signup" is
+  amended accordingly.
+- **A DPIA is a prerequisite, not a nice-to-have.** Opinion-data
+  processing at community scale plus systematic inference (clustering,
+  routing, composition) sits squarely in Article 35 territory: a Data
+  Protection Impact Assessment is a named deliverable **before any pilot**
+  with real participants, and privacy counsel for it is an explicit
+  recruiting ask (06 §6.3).
+- **Pods and ODRL help; they do not exempt.** The pod-native architecture
+  is genuinely strong Article 25 material — data minimization,
+  user-held storage, purpose-limited ODRL policies, recompute-on-read
+  deletion propagation (03 §7) implement access/erasure rights
+  structurally. But a community deployment is not a purely personal or
+  household activity: whoever operates a community (the stewards/operator
+  running aggregation) is plausibly a controller for that processing even
+  though storage is user-held, and the joint-controllership analysis is
+  part of the DPIA. "It's in your pod" changes *where* data lives, not
+  *whether* GDPR applies to processing it.
+- **k-anonymity is not GDPR anonymization.** The k-thresholded outputs
+  (P11) are pseudonymous derived data, not anonymous data in the Art. 29
+  WP Opinion 05/2014 sense; they remain personal data and are treated as
+  such.
+
+The demo is out of scope of these obligations by construction (fictional
+personas; visitor input evaporates in-browser, 06 §7) — but the pitch must
+never imply the handshake alone is a lawful basis for the real thing. The
+prototype is honest about being **not GDPR-cleared for deployment**: the
+explicit-consent entry flow and the DPIA are prerequisites the roadmap
+names, with the rest of the productionization work (07 §3 post-V5).

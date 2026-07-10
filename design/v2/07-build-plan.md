@@ -25,8 +25,12 @@ it adds.
 4. **All the house disciplines apply**: injectable `fetch` only,
    authenticated-fetch-for-own-pod / public-fetch-for-foreign (the
    credential-leak boundary), `assertWithinBase` on every write, no
-   hand-built triples, `lib/sensitive.ts` on every free-text write path,
-   AUTHORED-BY markers, roborev per commit.
+   hand-built triples, `lib/sensitive.ts` at every expression-layer /
+   aggregation-bound write (atom adoption; the `pod-society` chokepoints
+   unchanged and fail-closed) — **NOT on chat utterances** (the 03 §2a
+   gate split: a person's own words in their own room are not screened;
+   what enters the machine layer is), AUTHORED-BY markers, roborev per
+   commit.
 
 ## 2. The decision: a v2 surface directory in the SAME app (not a sibling app)
 
@@ -90,11 +94,35 @@ Justification (against the alternatives the brief names):
 | Phase | Contents | Acceptance | Depends on |
 |---|---|---|---|
 | **V0 — surface seam** | `scope/surface.ts` (resolveSurface, tested like resolveScope); route additions (parse-only); an empty v2 shell ("under construction" honestly labeled); v1 snapshot guard | v1 byte-identical on default; all gates green | nothing |
-| **V1 — the circle** | chat thread view over the demo pods (messages = pod resources, the v1 demo-fetch facade); the notetaker's handshake + prompts (static script engine: prompt sequencing, no LLM); **the mirror pipeline** — `DecompositionAssistant` reference impl wired to chat, mirror UI (adopt / fix / discard), adoption writing through `model-society` (invariant untouched); reaction rows → `writeResonance`; `lib/sensitive.ts` on the chat write path | a visitor can complete 02 §2 beats 0–3 in demo mode; fixtures: mirror→adopt→aggregate round-trip; discard writes nothing | V0 |
+| **V1 — the circle** | chat thread view over the demo pods (messages = pod resources, the v1 demo-fetch facade); the notetaker's handshake + prompts (static script engine: prompt sequencing, no LLM); **the mirror pipeline** — **`lib/mirror-draft.ts`** (the deterministic drafter, 03 §2 — NOT `MANUAL_DECOMPOSITION`, which proposes nothing) behind the `DecompositionAssistant` seam, mirror UI (adopt / fix / discard), adoption writing through `model-society` (invariant untouched); reaction rows → `writeResonance`; **the C4 gate split** (03 §2a): utterances ungated, drafter pre-screen + adoption chokepoint fail-closed, the boundary beat (02 §4.1) | a visitor can complete 02 §2 beats 0–3 in demo mode; fixtures: drafter characterization set (persona + crafted utterances → exact atoms + mirror sentence); mirror→adopt→aggregate round-trip; discard writes nothing; a sensitive-tripping utterance SENDS, its adoption redirects warmly, and no sensitive-tripping text reaches a `pod-society` write | V0 |
 | **V2 — sensemaking surfaces** | the living summary (`rankNeeds` + `characterizeReception` composition); **`lib/digest.ts`** (the letter assembler — pure, fixture-tested: given aggregate outputs + consented quotes, emits the four-part structure with mandatory differ-section and k-threshold); the notebook (own-pod read + edit/delete propagation); why-seams on beats/summary lines/differ-blocks (03 §6 templates rendered from engine fields); elicit-before-expose gating (distribution renders post-reaction only); the garden (projection → non-numeric ambient view + text equivalent); How-unite-listens v1 (static + links to instrument views) | 02 §5/§6/§8 demonstrable; fixtures: digest k-threshold floor (no sub-k characterization renders), differ-block mandatory when reception is `divisive`, deletion recompute | V1 |
-| **V3 — circles + composition** | **`lib/circles.ts`** (deterministic diverse-but-bridgeable partition over `cluster` + `needProfile`; exhaustively unit-tested incl. the vacuous-diversity guard from 04 §6); multi-circle demo; circle invitations with the composition seam; airtime-equity + hidden-profile prompts in the notetaker script (per 04 §4 — hidden metrics, conversational repair); the private "actually, I don't" tap | composition fixture (crafted matrix → exact expected circles); no surface anywhere renders talk-share stats | V2 |
-| **V4 — experts + fate-trails** | **`lib/questions.ts`** (deterministic question-shaped detection, recurrence floor); the expert role surface (reply-only affordance over the existing `trust.ts` role machinery; the verified chip + introduction copy); consent moments (02 §7) writing ODRL terms via `lib/consent.ts`; fate-trail threads (`#/story/<id>`) over `wf:Tracker`/task-model with the plain-word state ladder incl. `resting` + reason; commitment banners; return-loop scheduling (demo: simulated clock) | 05 §2/§4 demonstrable end-to-end on the seeded Maple-crossing story; fixtures: expert affordance absent pre-stable-question; state ladder never renders a dead end without a reason | V2 (parallel with V3) |
-| **V5 — the demo arc + pitch** | persona seats + the scripted five-minute arc (06 §3); the deterministic demo-scribe overlay (06 §4) with its honesty seam; **behind-the-curtain** (06 §5: session replay next to engine state, pod inspector with live-recompute-on-delete); the pitch page (06 §6); accessibility pass (02 §9 — screen-reader walkthrough recorded as a checklist in the repo); the letter's monthly-rhythm simulation | the full covenant walkthrough passes; a cold visitor can run the arc unaided | V3 + V4 |
+| **V3 — circles + composition** | **`lib/circles.ts`** (deterministic diverse-but-bridgeable partition over `cluster` + `needProfile`: size **4–6**, the pairs rule — never a lone cluster member — singleton-cluster folding, starter-circle honesty, relational continuity (composition at creation + seat-filling only); exhaustively unit-tested incl. the vacuous-diversity guard from 04 §2/§6); multi-circle demo; circle invitations with the composition seam; airtime-equity + hidden-profile prompts in the notetaker script (per 04 §4 — hidden metrics, conversational repair); the private "actually, I don't" tap (community-scale only + seeded-jitter cue, 03 §4) | composition fixture (crafted matrix → exact expected circles, incl. the floor-4/pairs/fold arithmetic); no surface anywhere renders talk-share stats; no circle-interior tally is computed or rendered; the dissent tap changes no circle-visible state | V2 |
+| **V4 — experts + fate-trails** | **`lib/questions.ts`** (deterministic question-shaped detection, recurrence floor); **`lib/readiness.ts`** (deterministic offer/ownership recurrence scan) + the private action-team nudge with its "why me?" seam (05 §3; the 03 §6 row); the expert role surface (reply-only affordance over the existing `trust.ts` role machinery; the two-tier chip — issuer-named, never stronger than its issuer — + introduction copy, 05 §2); consent moments (02 §7) writing ODRL terms via `lib/consent.ts`; fate-trail threads (`#/story/<id>`) via **`lib/story.ts`** — a thin tracker/task read over dedicated `stories/` containers (the build layer stays off in scope C, 05 §4) — with the plain-word state ladder incl. `resting` + reason; commitment banners; return-loop scheduling (demo: simulated clock) | 05 §2/§4 demonstrable end-to-end on the seeded Maple-crossing story; fixtures: expert affordance absent pre-stable-question; state ladder never renders a dead end without a reason; the nudge renders its seam, fires at most once per theme per person, and renders nothing to non-recipients | V2 (parallel with V3) |
+| **V5 — the demo arc + pitch** | persona seats + the scripted five-minute arc (06 §3, incl. the un-tuned-drafter honesty rule — no choreographed correction beat); the persona-side demo-scribe overlay (06 §4) with its honesty seam; **behind-the-curtain** (06 §5: session replay next to engine state, the drafter's lexicon + the visitor's draft trace, pod inspector with live-recompute-on-delete); the pitch page (06 §6, asks (a)–(h)); accessibility pass (02 §9 — screen-reader walkthrough recorded as a checklist in the repo); the letter's monthly-rhythm simulation | the full covenant walkthrough passes; a cold visitor can run the arc unaided | V3 + V4 |
+
+**V-D — the warmth register (cross-cutting design track, V1→V5).** The
+entire v1→v2 differentiation is *felt* tone, and until this track existed
+the plan resourced only copy to carry it — a real hole. V-D makes the
+visual register a deliverable, not a hope:
+
+- **at V1:** a v2 design-language token set (type scale, palette, spacing,
+  radii, motion restraint — warm and calm, nothing instrument-like)
+  committed as theme tokens distinct from the v1 chrome, plus the
+  illustrated-avatar style and the notetaker's visual identity (quiet,
+  role-marked, never person-shaped — P9's visual half);
+- **at V2:** the garden/constellation art direction (the §6 metaphor
+  call) with its text-equivalent design;
+- **at V5:** a full register pass over every surface, and the covenant
+  walkthrough gains a **warmth-register checklist**: no exclamation
+  marks, no dashboard idioms, differ-blocks rendered with the same visual
+  warmth as agreement (P7's visual half), consent moments visually calm
+  (no warning-red on a choice that is not a warning).
+
+Resource honesty: this track wants a visual/interaction designer the team
+does not currently include — a named pitch ask (06 §6.3f). Until one
+joins, V-D proceeds at the team's competent-but-not-designer ceiling and
+is reviewed at the walkthrough; the tokens make the later professional
+pass a re-theme, not a rebuild.
 
 Post-V5 (explicitly deferred, tracked, not designed here): a live LLM
 `DecompositionAssistant` behind the seam (per-community, PROV-recorded);
@@ -108,9 +136,12 @@ cohort onboarding flows.
 | Module | Composes | Est. size |
 |---|---|---|
 | `scope/surface.ts` | (parallel to scopes.ts) | small |
-| `lib/circles.ts` | `cluster`, `needProfile` | small–medium |
+| `lib/mirror-draft.ts` | sentence segmentation + cue lexicon + Max-Neef keyword map + mirror template; implements `DecompositionAssistant.decompose()` (03 §2); C4 pre-screen via `screenSensitiveDomain` | medium (~200 lines + the fixture-pinned lexicon) |
+| `lib/circles.ts` | `cluster`, `needProfile`; floor-4/pairs/fold guarantees (04 §2) | small–medium |
 | `lib/digest.ts` | `rankNeeds`, `characterizeReception`, `candidateReception`, consent gates | medium |
 | `lib/questions.ts` | aggregate text scan (lexical, like `sensitive.ts`) | small |
+| `lib/readiness.ts` | lexical offer/ownership recurrence scan (the `questions.ts` mold; feeds the 05 §3 nudge + its seam) | small |
+| `lib/story.ts` | tracker/task read over `stories/` containers (`channel.ts`'s fold pattern; build layer untouched — 05 §4) | small–medium |
 | `v2/script.ts` | notetaker prompt/beat sequencing (a state machine over deck/gallery/room outputs) | medium |
 | `v2/seams.ts` | the 03 §6 sentence templates from engine fields | small |
 | `v2/views/*` | Circle, Commons, Notebook, How, Story, Curtain | the bulk of the UI work |
@@ -131,10 +162,33 @@ The machine-checkable covenant clauses become standing fixtures:
   sub-k cluster.
 - **Adoption invariant**: already covered in v1's suite; V1 adds the
   chat-path round-trip.
-- **Determinism**: circles/digest/questions get characterization fixtures
-  in the v1 style (crafted inputs → exact expected outputs), extending the
-  set B2's "independent implementation = passes the fixtures" definition
-  reads from.
+- **Mirror round-trip**: the drafter characterization set (persona +
+  crafted utterances — cue-less, multi-sentence, sensitive-tripping,
+  hostile-string — → exact expected `DraftAtom`s + rendered mirror
+  sentence); utterance → draft → adopt → aggregate lands the atom in the
+  matrix; discard/ignore writes nothing.
+- **C4 gate split** (03 §2a): a sensitive-tripping utterance SENDS with no
+  refusal; its drafted adoption redirects (the 02 §4.1 boundary beat) and
+  no sensitive-tripping text reaches a `pod-society` write; the chokepoint
+  itself still throws when driven directly — fail-closed regardless of UI.
+- **Circles arithmetic** (04 §2): every composed circle is size 4–6,
+  spans ≥2 clusters when the community has ≥2, and never seats a lone
+  cluster member (pairs rule); singleton clusters fold deterministically;
+  the starter-circle path claims no diversity in its seam.
+- **Two-scale k** (03 §4): no circle-interior tally is computed or
+  rendered anywhere in the surface modules (component test over the
+  summary/differ surfaces); the "actually, I don't" tap changes no
+  circle-visible state.
+- **Nudge honesty** (05 §3): the action-team nudge renders its "why me?"
+  seam, fires at most once per theme per person, and renders nothing to
+  non-recipients.
+- **P6 composer chips** (02 §3): opener-only (never a body rewrite),
+  never pre-inserted, and the recipient render is byte-identical with and
+  without a chip (component test).
+- **Determinism**: mirror-draft/circles/digest/questions/readiness get
+  characterization fixtures in the v1 style (crafted inputs → exact
+  expected outputs), extending the set B2's "independent implementation =
+  passes the fixtures" definition reads from.
 
 ## 6. Deploy + naming (needs:user items collected)
 
@@ -146,6 +200,10 @@ The machine-checkable covenant clauses become standing fixtures:
   the k-threshold would then have to fuzz).
 - The demo scribe's canned-mirror copy set — written at V5 with the same
   register rules as 02.
+- A visual/interaction designer for the V-D warmth-register track is a
+  pitch ask (06 §6.3f); the track proceeds at the team's ceiling until
+  one joins (the token-first approach keeps that a re-theme, not a
+  rebuild).
 
 ## 7. What this plan does NOT build (honesty)
 

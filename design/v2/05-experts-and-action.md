@@ -2,8 +2,13 @@
 
 # 05 — Experts on tap, and the bridge from talk to action
 
-The brief's goal (c): bring in EXPERTS to help implement what the community
-wants. The failure modes on both sides are documented: experts-on-top
+The brief's goal (c): bring in EXPERTS — and the honest verb, everywhere
+in this design, is **inform**, never execute. In scope C the system never
+executes anything (§6; design/06 C8), so the brief's "help implement" is
+served the only way it honestly can be: experts *inform* the room's
+understanding and its options, humans self-select into action teams (§3),
+and fate-trails carry the consequences back (§4). The failure modes on
+both sides are documented: experts-on-top
 re-stratifies the room around credentialed speech and converts the
 community from author to audience (Sanders 1997; Young 2000; Fiske &
 Dupree 2014 — competent-but-cold reads as untrustworthy); expert-free
@@ -51,10 +56,35 @@ the OECD 2020 follow-through findings).
 
 - The chip is `@jeswr/federation-trust` verification rendered small
   (v1 `lib/trust.ts`, fail-closed; the credential is checkable via the
-  seam: *"the credential is checkable, the invitation was a steward's"*).
-  The trust artifact the user experiences is social — *the group invited
-  someone who builds this stuff* — with cryptography as its quiet floor,
-  not its face.
+  seam). The trust artifact the user experiences is social — *the group
+  invited someone who builds this stuff* — with cryptography as its quiet
+  floor, not its face.
+- **Who issued that chip (the supply-side honesty).** "verified —
+  municipal traffic engineering ✓" is only as strong as its issuer, and
+  **no general expertise-credential authority exists** for the chip to
+  lean on — a steward cannot competently attest engineering expertise,
+  and the design refuses to fake authority with an unbacked checkmark. So
+  the chip renders exactly the strength of what was actually verified,
+  in two honest tiers: **steward-invited** — rendered as *"invited by
+  your stewards · 8 years building these for two councils — her account,
+  her name behind it"* (a social vouch plus the expert's own name-backed
+  self-description; most pilot and all demo experts are this tier); and
+  **institution-attested** — a `federation-trust` credential from a named
+  employer or professional body where one participates in the trust web,
+  with the ✓'s seam naming its issuer (*"attested by Anytown Council —
+  checkable"*). A ✓ never renders stronger than its issuer. Building a
+  credible, decentralized expertise-issuance ecosystem (professional
+  bodies, employers, prior deliberation hosts as issuers) is an
+  **explicitly open problem this design does not solve** — it is one of
+  the pitch's named recruiting asks (06 §6.3).
+- **Why an expert shows up at all** (named, not assumed): the format
+  minimizes their cost — one bounded question, the consented synthesis
+  attached, no forum to monitor; reply-in-thread and done — and the ask
+  arrives as a personal, steward-signed invitation. The
+  deliberative-polling and science-shop traditions run on exactly this
+  economy and do get practitioners in the room. Whether that supply
+  sustains beyond invited pilots is **unproven**; the demo stages Maria
+  as a persona and says so (06 §2).
 - **Contribution grammar: options-with-trade-offs** (the honest broker):
   "there are three ways councils usually do this; the cheap one floods in
   winter" — never "you should". Each statement is attributable and
@@ -89,6 +119,20 @@ neither. So v2 sequences:
    counts (Han's organizing-not-mobilizing; Kristofferson et al. 2014 on
    token-support licensing; Ganz's self/us/now supplies the ask's tone).
    The willing aren't diluted; the ambivalent aren't dragged.
+   **This nudge is the most persuasion-shaped move the engine makes** —
+   machine-initiated, private, aimed at real-world action — so it carries
+   the strongest seam in the system, not the weakest (P5; the 03 §6 row):
+   a **"why me?"** tap opens the literal evidence — the recurring turns
+   and the offers of time/skill that matched, each one linked — plus
+   three standing promises stated in the nudge itself: *only the named
+   recipients see it; it is sent at most once per theme per person; and
+   declining (or ignoring it) is sticky and consequence-free* — no
+   re-asks, no "are you sure", nothing rendered to anyone else.
+   Readiness detection is deterministic and inspectable
+   (`lib/readiness.ts`, 07 §4): a lexical scan in the `sensitive.ts` /
+   `questions.ts` mold — recurrence of first-person offer/ownership turns
+   ("someone should…", "I could…", named skills, offered time) over a
+   converging theme; no ML anywhere in it.
 3. **Momentum is harvested within days** (the mutual-aid conversion
    window): the moment a team forms, the notetaker scaffolds exactly three
    things as hospitality — one shared next step, "who's bringing what"
@@ -150,6 +194,16 @@ narrative over the suite's existing `wf:Tracker`/task-model machinery
   artifact; every quote passes its ODRL gate). The upward flow always
   returns something visible to the people who talked (anti-extraction:
   Arnstein).
+- **The read path (and the `buildLayer: false` line):** story threads are
+  `wf:Tracker`/`wf:Task` **reads** via a thin new `lib/story.ts` (07 §4)
+  — the channel-aggregator's fold pattern pointed at dedicated
+  `stories/` pod containers, NOT the build layer's `build/threads` /
+  `build/messages` dirs. Scope C's `buildLayer: false`
+  (`scope/scopes.ts`) stands exactly as is: it gates the *agentic
+  build/commission surface* (the build view, commissioning, delegation),
+  none of which v2 adds to scope C. Reading a tracker into a narrative is
+  scope-blind and executes nothing — `#/story/<id>` neither bypasses the
+  gate nor needs it.
 
 ## 5. The personal payoff (quiet, true, unquantified)
 

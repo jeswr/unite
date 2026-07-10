@@ -13,7 +13,7 @@ and the copy is concrete draft copy, not placeholder. Copy register: ~grade
 | Surface | What it is | Route | Engine source (03 §) |
 |---|---|---|---|
 | **The commons** (home) | a calm ambient view of the community — the garden/constellation, the current digest letter, your circles, one gentle prompt | `#/commons` | projection + rank + digest (03 §4, §6) |
-| **A circle** | a small (3–6 person) chat thread with the notetaker present; the entire deliberation surface | `#/circle/<id>` | matrix/cluster/deck/room (03 §3–5) |
+| **A circle** | a small (4–6 person; 4 is the diversity floor — 04 §2) chat thread with the notetaker present; the entire deliberation surface | `#/circle/<id>` | matrix/cluster/deck/room (03 §3–5) |
 | **Your notebook** | everything unite has heard *from you*, in plain language, each item editable/deletable | `#/notebook` | the user's own pod, read directly (03 §7) |
 | **How unite listens** | the full out-of-flow explanation: what the helper does, the algorithms, the data, links to source + audits | `#/how` | static + live examples |
 | **What came of it** | fate-trails: each graduated idea's life-story thread | `#/story/<id>` | task-model trackers (05 §4) |
@@ -54,7 +54,12 @@ matters … where you agree more than you'd guess"), the pod promise made
 humanly, the deep explanation one tap away and *not* forced. There is no
 consent modal; joining the conversation after this message is the
 conversational-sensing grant (P12 — anything beyond the circle re-asks in
-context, §7).
+context, §7). **Real-deployment amendment (01 §7):** for a pilot with real
+people, this handshake is followed by ONE explicit, recorded consent act
+before the notetaker's listening begins — the GDPR Art. 9 floor for
+political-opinion data. Designed as a single warm affirmative moment, not
+a consent wall; the demo, whose input evaporates in-browser, has nothing
+to ask.
 
 **Beat 1 — the opening prompt** (aspirational and future-shaped, never
 positional — the Bowling Green lesson):
@@ -133,7 +138,18 @@ is specified move-by-move in 03. The grammar rules:
   drawn from the conversational-receptiveness recipe ("I get why you'd…",
   "It's possible that…", "We both seem to want…") — editable, never
   auto-sent, never corrective in tone, and absent entirely within
-  agreement (no red-pen vibe).
+  agreement (no red-pen vibe). Because these chips machine-shape
+  human→human speech, they are governed by P6's machine-suggested-speech
+  clause (01 §4), not left as a style note: opener-only (the machine
+  never rewrites the person's substance), visibly a suggestion until
+  chosen, never pre-inserted, recipient-side rendering identical whether
+  or not a chip was used, mechanism disclosed on How-unite-listens, and a
+  chip long-press opens its seam (03 §6). The AI-mediated-communication
+  evidence is why this is covenant-grade: even smart-reply-scale
+  suggestions measurably shift what people express (Hohenstein et al.
+  2023; Hancock, Naaman & Levy 2020), and discovered machine authorship
+  erodes trust (Jakesch et al. 2019) — see 08 C-v2-9 for the standing
+  residual.
 - **Adaptive register.** The notetaker opens with exactly one light social
   beat; users who reciprocate get the relational register, task-oriented
   users get the fast lane (Bickmore). Progress is never gated on
@@ -149,9 +165,12 @@ a quieter visual style, attached under the person's own message:
 > crossing fixed more than you want anything fancy. Close?
 > `That's it` · `Close — let me fix it` · `No, that's not it`
 
-Mechanically (03 §2): the utterance stayed in the author's pod as
-narrative; the mirror line is the drafted decomposition (a candidate
-`fut:Claim` + `fut:Need` tagged to a need concept). The three responses:
+Mechanically (03 §2): the utterance stayed in the author's pod as a
+circle message; the mirror line is the drafted decomposition (a candidate
+`fut:Claim` + `fut:Need` tagged to a need concept), proposed by
+`lib/mirror-draft.ts` — the deterministic drafter behind the
+`DecompositionAssistant` seam (new module; strategy and fixtures in
+03 §2). The three responses:
 
 - **"That's it"** = `fut:adoptedBy` — the atom becomes the person's,
   enters the deliberation. v1's consent invariant, worn as warmth.
@@ -170,12 +189,45 @@ taxonomy ("this sounds like it's about feeling safe and having a say —
 right?" not "classified as: Protection, Participation"); a mirror the
 person ignores expires silently and enters nothing.
 
+### 4.1 When the mirror can't carry something (the C4 boundary, worn warmly)
+
+The chat itself is **ungated**: what someone says is their own speech, in
+their own pod, visible to their circle — `assertNotSensitive` does NOT run
+on utterances (the gate split, 03 §2a). The C4 screen runs where the
+machine layer begins: on the drafted atoms, and fail-closed at the
+adoption chokepoint (`lib/pod-society.ts`, unchanged). So *"my disability
+makes this crossing terrifying"* — a sentence one of the demo's own
+personas would say — sends, stands, and is heard. What it cannot do is
+enter the shared/aggregated picture carrying the health disclosure, and
+the mirror says that boundary out loud at the exact moment it matters:
+
+> **unite** · notetaker
+> What you said stays here — in this circle and in your notebook. One part
+> I can't carry into the shared picture: health details are off-limits
+> there until the privacy machinery deserves them — a hard rule, not a
+> judgment ([why](#/how)). Here's what I *can* take forward: "getting
+> across Maple safely, without sprinting." Want that in?
+> `Take that forward` · `Keep it all just here` · `Let me reword it`
+
+Nothing is deleted and nothing is moderated away — the §3 promise holds
+(the utterance stands, in the person's words, where they said it); the
+boundary is a **data-protection line on what enters aggregation**, not
+moderation, and the copy names the rule instead of hiding behind an error.
+"Keep it all just here" is a real, respected choice (never re-asked as if
+it were wrong). When no civic reformulation exists, the notetaker offers
+only the keep/reword paths — a refusal that states its reason, never a
+silent drop (P3: the fate-trail is truthful — "this stays here").
+
 ## 5. Elicit-before-expose (the anti-herding gate)
 
 No surface shows the group's shape on a topic before the viewer has voiced
 their own take on it (P4): a peer statement's reaction distribution renders
 *after* you react ("you and 5 others — and 2 see it differently"), never
-before; the circle's living summary marks themes you haven't spoken to
+before — and only once the statement's community-wide reception clears the
+k-threshold (P11); below it, the honest fallback renders instead ("a few
+people have weighed in — numbers appear once enough have"). No
+distribution is ever a circle-interior tally (03 §4's two-scale rule).
+The circle's living summary marks themes you haven't spoken to
 ("we haven't heard you on this one — no pressure") rather than showing
 their support levels; the garden view is community-wide and non-numeric so
 it pre-biases no specific statement. This *modifies* v1's
@@ -196,13 +248,23 @@ together" panel at the top of each circle —
 > is the better first move. Two sincere ways of seeing it — both in the
 > group's words, [here](#).
 
-Themes appear only above the k-threshold (P11); the differ-section is
-mandatory whenever the room computes a disagreement (P7) and is rendered
-with the same visual warmth as agreement — never as a warning color.
-Every line carries the quiet seam: `why this? ›` (03 §6).
+A circle summary is **not an anonymous aggregate** — a 4–6-person room is
+legible to itself, so the summary never pretends otherwise (P11's
+two-scale rule, 03 §4): its lines are consented, attributed words ("in the
+group's words"), it renders no tallies and no splits, and its reception
+phrasing — "circling agreement" / "where we genuinely differ" / "still
+forming" (the copy for the engine's `null` verdict — thin or lukewarm
+data, said as such in the seam) — derives from **community-scale**
+distributions, never a circle-interior count. The k-threshold (P11)
+gates every characterization on the community-facing surfaces (letter,
+garden). The differ-section is mandatory whenever the room computes a
+disagreement (P7) and is rendered with the same visual warmth as
+agreement — never as a warning color. Every line carries the quiet seam:
+`why this? ›` (03 §6).
 
-**The letter** (community-wide, weekly — the rhythmic "here's what I'm
-hearing"): a short digest written in the notetaker's voice, structured as
+**The letter** (community-wide, monthly — the rhythmic "here's what I'm
+hearing"; the living summary is the fast loop, the letter is deliberately
+slow): a short digest written in the notetaker's voice, structured as
 (a) what emerged, (b) **where people genuinely differ, in their own
 words** (dissent preserved, Habermas-Machine style with the critique-round
 distortion audit — design/03 §4), (c) what changed because people spoke
@@ -268,10 +330,12 @@ One tap from anywhere: **"What unite has heard from you."** Sections:
    differently' to…"), each revisable (a new Resonance supersedes; latest-
    wins is already the aggregate's dedupe rule).
 4. **Where you sit** — "right now you're in a part of the map that tends
-   to weigh independence and quiet streets together; 4 of your 9 circle-
-   mates read the street differently." Recomputed live, shown only to you,
-   with the standing correction affordance ("that's not me → revise any
-   reaction that put you there").
+   to weigh independence and quiet streets together — about a third of
+   the community reads the street differently." Community-scale and
+   k-gated; no such statistic is ever computed over your circle (03 §4's
+   two-scale rule — a 4–6-person room gets no anonymous stats at all).
+   Recomputed live, shown only to you, with the standing correction
+   affordance ("that's not me → revise any reaction that put you there").
 5. **Leave** — export everything (it's your pod — the export is real),
    leave a circle, or leave unite; what persists (signed artifacts your
    consent already entered) is stated plainly, not discovered later.

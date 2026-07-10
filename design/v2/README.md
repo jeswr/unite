@@ -30,9 +30,10 @@ the scale.
 ## What v2 is NOT
 
 - **Not a new engine.** The v2 engine is `app/src/lib` as it exists today.
-  No new math beyond small deterministic compositions of it (circle
-  composition, digest assembly, question detection — each a pure function
-  over existing outputs). See [03-hidden-engine.md](03-hidden-engine.md).
+  No new math beyond small deterministic pure modules composed over it
+  (mirror drafting, circle composition, digest assembly, question/readiness
+  detection, story reads — no ML in any of them). See
+  [03-hidden-engine.md](03-hidden-engine.md).
 - **Not a replacement for v1's surface.** The v1 views stay intact and
   routable; v2 mounts beside them from the same build so the two can be
   compared side-by-side on one deploy (that comparison *is* part of the
@@ -84,7 +85,12 @@ to code name the module (`lib/ranking.ts`, `lib/projection.ts`,
 `lib/deck.ts`, `lib/gallery.ts`, `lib/convergence.ts` — all landed, tested,
 deterministic). Speculative and flagged as such: conversational elicitation
 producing resonance-matrix data of comparable quality to v1's explicit deck
-(08-critique C-v2-3); the scripted demo scribe standing in for a live LLM
-(06 §4); circle composition at demo scale (04 §6). No throughput, latency,
-or engagement numbers appear anywhere in these docs because none have been
-measured.
+(08-critique C-v2-3); the deterministic demo scribe standing in for a live
+LLM (06 §4); circle composition at demo scale (04 §6). Also honestly
+named, not finessed: the regulatory posture (01 §7 — GDPR Art. 9 explicit
+consent + a DPIA are unmet prerequisites for any real deployment, and the
+pod architecture does not remove them); "diverse" means cross-opinion-
+cluster only, with demographic diversity a recruitment-side human
+responsibility (04 §2; 08 C-v2-10); and the expertise-credential issuer
+problem is open (05 §2). No throughput, latency, or engagement numbers
+appear anywhere in these docs because none have been measured.
