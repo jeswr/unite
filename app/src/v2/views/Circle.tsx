@@ -15,6 +15,7 @@
 // is an ARIA live region (polite); there are no timeouts anywhere (02 §9).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { demoWebId } from "../../demo/fixtures.js";
 import { demoForDeliberation } from "../../demo/pods.js";
 import { routeDeck } from "../../lib/deck.js";
 import type { Stance } from "../../lib/fut.js";
@@ -38,9 +39,12 @@ import {
   notetakerBeats,
   openingPrompt,
 } from "../script.js";
+import { deckBeatSeam } from "../seams.js";
+import { livingSummary } from "../summary.js";
 import { Distribution } from "./Distribution.js";
 import { Notetaker, NotetakerLine } from "./Notetaker.js";
 import { ReactionRow } from "./ReactionRow.js";
+import { SummaryPanel } from "./SummaryPanel.js";
 
 /** One rendered person message. */
 function PersonMessage({
@@ -131,6 +135,23 @@ export function Circle({
     if (!top || !claim) return null;
     return { entry: top, claim };
   }, [aggregate.result, identity, claimById]);
+
+  // The living summary (02 §6): the circle's themes = statements authored by
+  // circle MEMBERS; every verdict computed COMMUNITY-scale (v2/summary.ts).
+  const summary = useMemo(() => {
+    const result = aggregate.result;
+    if (!result || !circle || !identity) return null;
+    const memberIds = new Set(circle.members.map((key) => demoWebId(key)));
+    return livingSummary({
+      circleStatements: result.claims
+        .filter((c) => memberIds.has(c.creator))
+        .map((c) => ({ id: c.id, content: c.content, creator: c.creator })),
+      participants: result.verified.map((v) => v.webId),
+      needStatements: result.needs.map((n) => n.id),
+      resonances: result.resonances,
+      viewer: identity,
+    });
+  }, [aggregate.result, circle, identity]);
 
   // Community-scale tally for the reacted statement (the Distribution's data).
   const reactedDistribution = useMemo(() => {
@@ -265,6 +286,8 @@ export function Circle({
       </p>
       {loadError && <p className="notice error">{loadError}</p>}
 
+      {summary !== null && <SummaryPanel summary={summary} />}
+
       <div className="v2-thread" role="log" aria-live="polite" aria-label="circle conversation">
         <Notetaker text={HANDSHAKE} />
         <Notetaker text={openingPrompt(circle.prompt)} />
@@ -356,11 +379,8 @@ export function Circle({
                   />
                 </SessionReaction>
                 <p className="v2-seam-text">
-                  Why this one? People in your part of the map haven't weighed in on it
-                  {peerCard.entry.neighbourResonance > 0.5
-                    ? ", and people who usually read the street differently found it rang true"
-                    : ""}
-                  . <a href="#/how">the long version →</a>
+                  Why this one? {deckBeatSeam(peerCard.entry)}{" "}
+                  <a href="#/how">the long version →</a>
                 </p>
               </div>
             )}

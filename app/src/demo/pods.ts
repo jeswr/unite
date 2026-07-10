@@ -211,6 +211,14 @@ class MemoryPods {
       return new Response(null, { status: 201 });
     }
 
+    // LDP-shaped resource deletion (the v2 notebook's remove path — 03 §7:
+    // deletion propagates because every aggregate recomputes on read; the v1
+    // surface never issues DELETE, so its behaviour is unchanged).
+    if (method === "DELETE") {
+      if (this.#docs.delete(url)) return new Response(null, { status: 204 });
+      return new Response("not found", { status: 404 });
+    }
+
     return new Response("method not allowed", { status: 405 });
   };
 }
