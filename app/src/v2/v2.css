@@ -206,3 +206,21 @@
   height: auto;
   margin: 0.6rem 0;
 }
+
+/* Chip groups as real fieldsets (a11y) without fieldset chrome. */
+.v2-fieldset {
+  border: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
