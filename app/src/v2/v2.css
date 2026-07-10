@@ -1,0 +1,208 @@
+/* AUTHORED-BY Claude Fable 5 (PSS agent)
+
+   The v2 warmth register (design/v2 07 §3 V-D): a deliberate design-language
+   layer over the shared unite tokens (src/styles.css) — warm and calm, nothing
+   instrument-like. These are THEME TOKENS distinct from the v1 chrome so a
+   later professional pass is a re-theme, not a rebuild. Register rules the
+   walkthrough checks: no exclamation-mark idioms, no dashboard idioms,
+   differ-blocks carry the same visual warmth as agreement, consent moments are
+   visually calm (never warning-red on a choice that is not a warning). */
+
+.v2-app {
+  /* Warmth tokens: derived from the shared palette, softened. */
+  --v2-warm: color-mix(in oklab, var(--u-paper) 92%, var(--u-gold) 8%);
+  --v2-bubble: var(--u-card);
+  --v2-bubble-you: var(--u-petrol-soft);
+  --v2-notetaker: color-mix(in oklab, var(--u-card) 88%, var(--u-petrol) 12%);
+  --v2-radius: 14px;
+}
+
+/* The v2 nav: quiet text links, not tabs — no instrument idiom. */
+.v2-nav {
+  display: flex;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 1.4rem;
+  border-bottom: 1px solid var(--u-line-soft);
+}
+.v2-nav-link {
+  color: var(--u-slate);
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 0.15rem 0;
+  border-bottom: 2px solid transparent;
+}
+.v2-nav-link:hover {
+  color: var(--u-ink);
+}
+.v2-nav-link.active {
+  color: var(--u-ink);
+  border-bottom-color: var(--u-petrol);
+}
+
+.v2-content {
+  max-width: 46rem;
+}
+
+/* ── The circle thread ──────────────────────────────────────────────────── */
+.v2-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+.v2-msg {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+.v2-msg .avatar {
+  flex: none;
+  margin-top: 2px;
+}
+.v2-msg-body {
+  background: var(--v2-bubble);
+  border: 1px solid var(--u-line-soft);
+  border-radius: var(--v2-radius);
+  padding: 0.55rem 0.85rem;
+  max-width: 85%;
+}
+.v2-msg.you .v2-msg-body {
+  background: var(--v2-bubble-you);
+}
+.v2-msg-who {
+  font-size: 0.78rem;
+  color: var(--u-slate);
+  margin: 0 0 0.15rem;
+}
+.v2-msg-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The notetaker: quiet, role-marked, never person-shaped (P9). */
+.v2-msg.notetaker .v2-msg-body {
+  background: var(--v2-notetaker);
+  border-style: dashed;
+}
+.v2-notetaker-mark {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px; /* deliberately not a person-circle */
+  border: 1.5px dashed var(--u-petrol);
+  color: var(--u-petrol);
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+/* The mirror: a quieter visual style, attached under the person's message. */
+.v2-mirror {
+  margin-left: 2.2rem;
+  border-left: 3px solid var(--u-petrol-soft);
+  padding: 0.45rem 0.85rem;
+  color: var(--u-slate);
+  font-size: 0.95rem;
+}
+.v2-mirror-actions,
+.v2-chips {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+}
+
+/* Warm chip/button: calm outline, never warning-red for a non-warning. */
+.v2-chip {
+  border: 1px solid var(--u-line);
+  background: var(--u-card);
+  color: var(--u-ink);
+  border-radius: 999px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.v2-chip:hover:not(:disabled) {
+  border-color: var(--u-petrol);
+}
+.v2-chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.v2-chip[aria-pressed="true"] {
+  border-color: var(--u-petrol);
+  background: var(--u-petrol-soft);
+}
+
+.v2-composer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  align-items: flex-end;
+}
+.v2-composer textarea {
+  flex: 1;
+  min-height: 3.2rem;
+  resize: vertical;
+  border-radius: var(--v2-radius);
+  border: 1px solid var(--u-line);
+  background: var(--u-card);
+  color: var(--u-ink);
+  padding: 0.55rem 0.8rem;
+  font: inherit;
+}
+
+/* The why-seam: exactly one quiet affordance per machine-made object. */
+.v2-seam {
+  border: none;
+  background: none;
+  color: var(--u-slate);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline dotted;
+}
+.v2-seam-text {
+  font-size: 0.85rem;
+  color: var(--u-slate);
+  border-left: 2px solid var(--u-line);
+  padding-left: 0.6rem;
+  margin: 0.35rem 0 0;
+}
+
+/* The living summary + the letter: same visual warmth for agreement and
+   difference (P7) — the differ block gets the SAME card treatment, only a
+   different heading, never a warning colour. */
+.v2-summary,
+.v2-letter-section {
+  background: var(--v2-warm);
+  border: 1px solid var(--u-line-soft);
+  border-radius: var(--v2-radius);
+  padding: 0.8rem 1rem;
+  margin: 0.8rem 0;
+}
+.v2-summary h3,
+.v2-letter-section h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+.v2-summary ul,
+.v2-letter-section ul {
+  margin: 0.3rem 0;
+  padding-left: 1.1rem;
+}
+.v2-summary li,
+.v2-letter-section li {
+  margin: 0.25rem 0;
+}
+
+/* The garden: ambient, non-numeric; rewards a glance, demands nothing. */
+.v2-garden {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0.6rem 0;
+}
