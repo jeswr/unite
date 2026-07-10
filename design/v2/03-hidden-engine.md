@@ -290,16 +290,20 @@ than by weakening either rule:
     therefore never changes its own circle's visible state; above k it
     reaches only the letter/garden/other-circle surfaces, where the
     ≥k set is k-anonymous.
-  - The tap's *within-circle* effect is limited to feeding the
-    notetaker's missing-voice invitation ("what would someone who
-    disagrees say?"), which is **time-decoupled from any tap and also
-    fires on a seeded, reproducible jitter when no tap occurred** — so
-    neither the prompt's arrival nor any later phrasing shift is evidence
-    anyone dissented.
+  - The tap's only *within-circle* influence is a **latent, non-rendered
+    scheduling signal**: it may nudge the notetaker's missing-voice
+    invitation ("what would someone who disagrees say?"), but that
+    invitation also fires on a **seeded, reproducible jitter with the same
+    distribution when no tap occurred**, so its rendered output is
+    statistically **indistinguishable** from the no-tap case — neither the
+    prompt's arrival nor any later phrasing shift is evidence anyone
+    dissented. The scheduling signal itself is never displayed.
 - Fixture-pinned (07 §5): no circle-interior tally is computed anywhere in
-  the surface modules; a private tap (a) renders nothing below k, (b)
-  never enters its originating circle's summary at any count, and (c)
-  reaches community surfaces only above k where the set is k-anonymous.
+  the surface modules; a private tap (a) renders **no visible tally, summary,
+  or count** below k — its only sub-k effect is the latent, jitter-masked
+  scheduling signal above, whose rendered output is indistinguishable from
+  no-tap — (b) never enters its originating circle's summary at any count,
+  and (c) reaches community surfaces only above k where the set is k-anonymous.
 
 ## 5. The synthesis loop as a conversational rhythm (and the one v1 conflict)
 
