@@ -20,19 +20,37 @@
 
 import { type ConversationTurn, contentKeywords, segmentSentences } from "./questions.js";
 
-/** The kind of matched cue. Only a SELF-offer (offer/time/skill) qualifies a
- * recipient — "someone should…" names a theme, it doesn't volunteer. */
+/** The kind of matched cue (the seam's label). Whether a cue makes its author
+ * a SELF-offer (and so a nudge recipient) is a separate axis — {@link SelfOfferPolicy}
+ * — because a bare TIMING mention ("the clean-up is this weekend") is not
+ * willingness. "someone should…" (ownership) never volunteers anyone either. */
 export type OfferKind = "ownership" | "offer" | "time" | "skill";
 
-// The cue lexicon (fixture-pinned data, not code — the 05 §3 list).
-// Matching is word-boundary-aware ("i could" never matches "i couldn't").
-const CUES: ReadonlyArray<readonly [OfferKind, readonly string[]]> = [
+/**
+ * Whether a cue counts its author as a self-offer (the private-nudge harm
+ * guard, 05 §3):
+ *  • `always`   — an unambiguous first-person volunteering cue (offer / skill /
+ *                 first-person availability): always a self-offer;
+ *  • `never`    — names a theme without volunteering ("someone should…");
+ *  • `co-occur` — a BARE timing mention: a self-offer ONLY when the same turn
+ *                 also carries an `always` cue. Bare timing alone never
+ *                 qualifies anyone for a nudge.
+ */
+type SelfOfferPolicy = "always" | "never" | "co-occur";
+
+// The cue lexicon (fixture-pinned data, not code — the 05 §3 list). Each entry
+// is [kind, self-offer policy, terms]. Matching is word-boundary-aware
+// ("i could" never matches "i couldn't"). The two `time` entries split
+// first-person AVAILABILITY (always a self-offer) from BARE timing (co-occur).
+const CUES: ReadonlyArray<readonly [OfferKind, SelfOfferPolicy, readonly string[]]> = [
   [
     "ownership",
+    "never",
     ["someone should", "somebody should", "someone ought to", "we should", "we ought to"],
   ],
   [
     "offer",
+    "always",
     [
       "i could",
       "i can help",
@@ -56,23 +74,22 @@ const CUES: ReadonlyArray<readonly [OfferKind, readonly string[]]> = [
       "i volunteer",
     ],
   ],
+  // First-person availability — an explicit offer of one's own time.
   [
     "time",
-    [
-      "i'm free",
-      "i have time",
-      "i've got time",
-      "i can make time",
-      "this weekend",
-      "on saturday",
-      "on sunday",
-      "after work",
-      "in the evenings",
-      "an hour a week",
-    ],
+    "always",
+    ["i'm free", "i have time", "i've got time", "i can make time", "i can do the weekend"],
+  ],
+  // Bare timing — names WHEN something is, not a willingness. Only a self-offer
+  // when the same turn also carries an `always` cue (co-occurrence).
+  [
+    "time",
+    "co-occur",
+    ["this weekend", "on saturday", "on sunday", "after work", "in the evenings", "an hour a week"],
   ],
   [
     "skill",
+    "always",
     [
       "i work as",
       "i used to work",
@@ -114,6 +131,13 @@ export interface OfferHit {
   readonly kind: OfferKind;
   /** The cue term that matched (for the seam's literal restatement). */
   readonly term: string;
+  /**
+   * True when this cue makes its author a self-offer (a nudge candidate):
+   * an `always` cue, or a bare-timing cue co-occurring with one in the same
+   * turn. A bare timing mention alone is `false` — the private-nudge harm
+   * guard (05 §3). ONLY self-offers qualify someone as a recipient.
+   */
+  readonly selfOffer: boolean;
   /** The sentence's content keywords (the theme signature). */
   readonly keywords: readonly string[];
 }
@@ -126,31 +150,64 @@ function compareHits(a: OfferHit, b: OfferHit): number {
   return a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0;
 }
 
+/** An unresolved cue match within one turn (self-offer resolved per turn). */
+interface CueCandidate {
+  readonly sentence: string;
+  readonly kind: OfferKind;
+  readonly term: string;
+  readonly policy: SelfOfferPolicy;
+  readonly keywords: readonly string[];
+}
+
 /**
  * Scan a conversation for offer/ownership cues. Pure + deterministic;
  * exported for the seam and for characterization tests. At most one hit per
- * (sentence, kind): the FIRST matching term in lexicon order.
+ * (sentence, kind): the FIRST matching term in lexicon order (so first-person
+ * availability wins over bare timing within a sentence). Each hit's
+ * `selfOffer` is resolved PER TURN — a bare-timing (`co-occur`) cue is a
+ * self-offer only when the same turn also carries an `always` cue (05 §3's
+ * private-nudge harm guard); bare timing alone never volunteers anyone.
  */
 export function scanOffers(turns: readonly ConversationTurn[]): OfferHit[] {
   const hits: OfferHit[] = [];
   for (const turn of turns) {
+    // 1) Collect the turn's candidate matches (one per (sentence, kind)).
+    const candidates: CueCandidate[] = [];
     for (const sentence of segmentSentences(turn.text)) {
       const lower = sentence.text.toLowerCase();
-      for (const [kind, terms] of CUES) {
+      const kindsSeen = new Set<OfferKind>();
+      for (const [kind, policy, terms] of CUES) {
+        if (kindsSeen.has(kind)) continue; // one hit per (sentence, kind)
         for (const term of terms) {
           if (!matchesTerm(lower, term)) continue;
-          hits.push({
-            turnId: turn.id,
-            author: turn.author,
-            created: turn.created,
+          candidates.push({
             sentence: sentence.text,
             kind,
             term,
+            policy,
             keywords: contentKeywords(sentence.text),
           });
-          break; // one hit per (sentence, kind)
+          kindsSeen.add(kind);
+          break;
         }
       }
+    }
+    // 2) Resolve co-occurrence: a bare-timing cue counts as a self-offer only
+    //    when an unambiguous `always` cue appears somewhere in the same turn.
+    const turnHasAlwaysSelfOffer = candidates.some((c) => c.policy === "always");
+    for (const c of candidates) {
+      const selfOffer =
+        c.policy === "always" ? true : c.policy === "never" ? false : turnHasAlwaysSelfOffer;
+      hits.push({
+        turnId: turn.id,
+        author: turn.author,
+        created: turn.created,
+        sentence: c.sentence,
+        kind: c.kind,
+        term: c.term,
+        selfOffer,
+        keywords: c.keywords,
+      });
     }
   }
   hits.sort(compareHits);
@@ -190,9 +247,11 @@ export interface DetectReadinessOptions {
 /**
  * Detect action-team readiness (05 §3). Pure + deterministic — invariant to
  * input ordering. A theme is READY when ≥ `minRecipients` people each have
- * (a) a first-person SELF-offer (offer/time/skill — ownership alone never
- * qualifies anyone) on the theme and (b) ≥ `minThemeTurnsPerPerson` turns
- * matching the theme (recurrence). Recipients are capped at `maxRecipients`,
+ * (a) a genuine SELF-offer on the theme — an offer/skill/first-person-
+ * availability cue, or a bare-timing cue co-occurring with one (`OfferHit.selfOffer`);
+ * ownership ("someone should…") and bare timing alone NEVER qualify anyone —
+ * and (b) ≥ `minThemeTurnsPerPerson` turns matching the theme (recurrence).
+ * Recipients are capped at `maxRecipients`,
  * picked deterministically (most self-offers, then most theme turns, then
  * earliest offer, then WebID).
  */
@@ -292,10 +351,11 @@ export function detectReadiness(
       else list.push(ref);
     }
 
-    // Qualify recipients: a SELF-offer on the theme + recurrence.
+    // Qualify recipients: a genuine SELF-offer on the theme + recurrence.
+    // Bare timing / ownership are excluded by `selfOffer` (05 §3 harm guard).
     const selfOffersByAuthor = new Map<string, OfferHit[]>();
     for (const m of member) {
-      if (m.kind === "ownership") continue;
+      if (!m.selfOffer) continue;
       const list = selfOffersByAuthor.get(m.author);
       if (list === undefined) selfOffersByAuthor.set(m.author, [m]);
       else list.push(m);

@@ -63,6 +63,23 @@ describe("scanOffers — the cue lexicon", () => {
     expect(scanOffers([turn("p9", "I couldn't face the garden meeting.")])).toEqual([]);
     expect(scanOffers([turn("p9", "I'm interested but unsure.")])).toEqual([]);
   });
+
+  it("bare timing is NOT a self-offer alone, but co-occurring with an offer it is", () => {
+    // Bare timing alone → a `time` hit, but selfOffer:false (names WHEN, not willingness).
+    const bare = scanOffers([turn("p9", "The garden clean-up is this weekend.")]);
+    expect(bare.map((h) => [h.kind, h.selfOffer])).toEqual([["time", false]]);
+
+    // First-person availability alone → selfOffer:true.
+    const avail = scanOffers([turn("p9", "I'm free on Saturday.")]);
+    expect(avail.map((h) => [h.kind, h.selfOffer])).toEqual([["time", true]]);
+
+    // Bare timing co-occurring with an offer in the same turn → selfOffer:true.
+    const both = scanOffers([turn("p9", "I could help this weekend.")]);
+    expect(both.map((h) => [h.kind, h.selfOffer])).toEqual([
+      ["offer", true],
+      ["time", true],
+    ]);
+  });
 });
 
 describe("detectReadiness — the positive signal (05 §3)", () => {
@@ -76,9 +93,10 @@ describe("detectReadiness — the positive signal (05 §3)", () => {
     expect(s?.themeKey).toBe(s?.theme.join("+")); // stable dedupe key
     expect(s?.recipients).toEqual([wid("p1"), wid("p2"), wid("p3")]);
 
-    // Every recipient is backed by a SELF-offer (ownership alone never qualifies).
+    // Every recipient is backed by a genuine SELF-offer (ownership and bare
+    // timing alone never qualify — the 05 §3 harm guard).
     for (const r of s?.recipients ?? []) {
-      const selfOffers = (s?.offers ?? []).filter((o) => o.author === r && o.kind !== "ownership");
+      const selfOffers = (s?.offers ?? []).filter((o) => o.author === r && o.selfOffer);
       expect(selfOffers.length).toBeGreaterThanOrEqual(1);
     }
 
@@ -130,6 +148,19 @@ describe("detectReadiness — negatives (never nudge on thin signal)", () => {
       turn("p2", "That corner garden is a state."),
       turn("p3", "We should do something about the corner garden."),
       turn("p3", "Thinking about the corner garden."),
+    ];
+    expect(detectReadiness(turns)).toEqual([]);
+  });
+
+  it("bare-timing chatter ('the clean-up is this weekend') never nudges from timing alone", () => {
+    // Recurring, converging, two people — but nobody VOLUNTEERED: every cue is
+    // a bare timing mention with no co-occurring offer. The private-nudge harm
+    // guard (Finding 1): timing is not willingness.
+    const turns = [
+      turn("p1", "The corner garden clean-up is this weekend."),
+      turn("p1", "The corner garden thing, again, on Saturday."),
+      turn("p2", "The corner garden event is this weekend."),
+      turn("p2", "That corner garden meet-up is on Sunday."),
     ];
     expect(detectReadiness(turns)).toEqual([]);
   });

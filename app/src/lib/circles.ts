@@ -292,7 +292,7 @@ function bestFoursome(
             const shared = intersect(sb, profiles.get(b2) ?? EMPTY_SET);
             if (shared.size === 0) continue; // not bridgeable — invalid diverse circle
             const members = [a1, a2, b1, b2].sort();
-            const key = members.join(" ");
+            const key = members.join(" ");
             if (
               best === null ||
               shared.size > best.shared.size ||
