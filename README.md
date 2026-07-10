@@ -56,6 +56,13 @@ Read it in order — each part builds on the previous:
 | [design/05-stage1-mvp.md](design/05-stage1-mvp.md) | The Stage-1 MVP: the app-co-design instance, screens, flows, and the packages it composes |
 | [design/06-critique.md](design/06-critique.md) | The adversarial self-critique this design was revised against — kept, not deleted |
 
+**v2 (chat-first surface):** [design/v2/](design/v2/README.md) specifies the
+second-generation surface — the same engine and invariants underneath, with
+the ceremony replaced by warm, low-friction conversation (small circles, a
+role-framed notetaker, ambient-and-honest disclosure of the machinery). It
+is a design for a vision-selling prototype; v1's docs above remain normative
+for everything beneath the surface.
+
 ## The Stage-1 seed client
 
 [`app/`](app/) is the first implementation: a vite + React + TypeScript SPA
