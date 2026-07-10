@@ -55,6 +55,36 @@ Mendelberg):
     (deterministic) — nobody is ever seated as "the different one";
   - objective: maximize min-shared-need-concepts within circles; total
     deterministic tie-breaks (the house engine style).
+  - **best-effort-diverse, with an honest seam when it can't be
+    (the fallback — FINDING-1 fix).** A full diverse partition is not
+    always arithmetically possible: an imbalanced community (say 6 in
+    cluster A, 2 in B) can seat at most one diverse circle before the
+    minority cluster is exhausted, leaving A-only members with no B
+    partner. The composer therefore runs **greedily and deterministically**:
+    (1) sort clusters by size; (2) form diverse circles first, each
+    drawing ≥2 from the minority cluster being paired and filling to size
+    4–6 while the pairing holds; (3) when a cluster can no longer be
+    paired (its diverse partners are exhausted), the leftover members form
+    **homogeneous overflow circles** — size 4–6, deterministic, **each
+    seeded with open seats** (target size 4, capacity 6) reserved for
+    later-arriving diverse members; (4) any tail below 4 joins the nearest
+    existing circle with an open seat, or waits on a **community waitlist**
+    until enough people exist to compose (never a circle of 1–3). An
+    overflow circle is **labeled as such in its own seam** — it never
+    borrows the diversity sentence it can't honor:
+    > *"why this circle?"* → **overflow variant:** *"Right now this circle
+    > is people who see the street pretty similarly — we didn't have
+    > enough differing voices to pair everyone yet. There are open seats
+    > held for people who read it differently; the notetaker will route
+    > their stories here in the meantime, and re-pair when the seats
+    > fill."*
+    Open seats are filled by the same objective as a newcomer join
+    (seat-filling is the one recomposition the continuity rule permits,
+    below); until then, cross-cluster exposure into an overflow circle is
+    carried by **routed stories** (the deck/gallery beats, 03 §3), not by
+    reshuffling people. This keeps the pairs rule intact (no lone token is
+    ever seated) *and* keeps the composer total — it always returns a
+    valid partition, honestly labeled, for any community shape.
 - Cold start (no votes yet): compose on need-profile overlap alone from
   the first mirrors. A community below 4 participants — or before any
   clustering exists — gets a **starter circle** that claims nothing: its
@@ -133,20 +163,32 @@ Tropp 2006) are *settings*, not aspirations:
   ("Dana sees this differently — want to hear why?", person-mediated,
   narrative — Broockman & Kalla, never raw opposing content per Bail 2018).
 - **Dissent kept cheap, dignified — and unexposable.** Every "we seem to
-  agree" moment carries a private one-tap *"actually, I don't"* (an honest
-  `fut:Conflicts` into the COMMUNITY matrix; the Abilene/spiral-of-silence
-  guard). In a 4–6-person room a naive version would deanonymize the lone
-  dissenter — the summary flips and everyone knows who tapped — so the tap
-  is designed to be **invisible at circle scale** (03 §4's two-scale
-  rule): it changes no circle-visible state by itself (reception phrasing
-  derives from community-scale distributions), and the notetaker's
-  missing-voice invitation ("what would someone who disagrees say?") is
-  time-decoupled from any tap and fires on a seeded jitter even when no
-  one tapped — so neither the prompt nor a later phrasing shift points at
-  anyone. Warmth in tone, honesty in content — the irony-of-harmony
-  failure (commonality-focused positivity demobilizing grievance) is a
-  named antipattern with a named guard: the differ-block is mandatory in
-  every summary (P7).
+  agree" moment carries a private one-tap *"actually, I don't"* (recorded
+  to a **separate private-tap signal store** — its own container/predicate,
+  outside the ordinary `fut:Resonance` universe the circle aggregate
+  reads, so the unchanged engine never sees it on the circle read path;
+  the Abilene/spiral-of-silence guard). In a 4–6-person room a naive
+  version
+  would deanonymize the lone dissenter — the summary flips and everyone
+  knows who tapped — so the tap is routed to be **structurally invisible
+  at circle scale** (03 §4's two-scale rule, the FINDING-3 routing):
+  private-tap signals render nothing below a ≥k batch threshold, feed only
+  community-scale surfaces (where k-anonymity protects the set), are
+  **permanently excluded from the originating circle's own summary**, and
+  within that circle drive only the notetaker's missing-voice invitation —
+  which is time-decoupled from any tap and fires on a seeded jitter even
+  when no one tapped, so neither the prompt nor a later phrasing shift
+  points at anyone. The tap is a *community signal plus a nudge*, never a
+  within-circle veto. Warmth in tone, honesty in content — the
+  irony-of-harmony failure (commonality-focused positivity demobilizing
+  grievance) is a named antipattern with a named guard: the differ-block
+  is mandatory in every summary whenever the room's **public** reactions
+  compute a disagreement (P7).
+  **Residual:** a genuinely dissenting lone voice who taps *privately*
+  does not shift their own small circle's summary — that within-circle
+  silence is the deliberate cost of not outing them; if they want their
+  dissent to move the room, the public "I see it differently" reaction is
+  always one tap away and always visible. Named, accepted.
 - **Calibration honesty** — nothing ever displays consensus stronger than
   measured (`candidateReception` computes; copy renders its verdict and
   nothing more). Miscalibrated perception of others' views is the disease

@@ -92,10 +92,20 @@ its quality ceiling (08 C-v2-5):
 4. **Values are conservative.** A `fut:ValueStatement` is drafted only on
    explicit value-cues ("what matters is", "treat each other", "fair") —
    absent otherwise.
-5. **C4 pre-screen.** Any candidate whose text trips
-   `screenSensitiveDomain` is re-selected from non-tripping sentences;
-   when none survives, no atom is drafted and the boundary beat runs
-   (§2a; copy in 02 §4.1).
+5. **C4 pre-screen — no machine sanitization, ever.** A candidate whose
+   text trips `screenSensitiveDomain` is dropped, and the claim is
+   re-selected **from a different, genuinely non-tripping sentence the
+   person actually wrote** (a multi-sentence utterance may carry a clean
+   civic line alongside a sensitive one — that clean line, verbatim-
+   derived, is a fair atom). The drafter **never rewrites, redacts, or
+   paraphrases a sensitive sentence into a shareable one** — a sanitized
+   reformulation of health/finance disclosure is exactly the thing the C4
+   gate exists to keep out of aggregation, and a machine paraphrase is not
+   the person's adopted speech. So when *every* candidate sentence trips
+   the screen (the single-sentence disclosure case), **no atom is
+   drafted** and the boundary beat runs with only the keep-here / reword
+   options — never a machine "here's a cleaner version" (§2a; copy in
+   02 §4.1).
 6. **Render the mirror.** One template — *"Hearing you: {claim,
    compressed} — {need phrase}. Close?"* — where compression strips
    leading connectives, lowercases, and caps clause length.
@@ -251,17 +261,45 @@ than by weakening either rule:
   derives from community-scale distributions (above), so it is never a
   disguised circle headcount and a single circle-mate's reaction cannot
   be recovered from it.
-- **The private "actually, I don't" tap (04 §4) cannot expose its
-  presser.** The tap is community-scale input only: it writes an honest
-  `fut:Conflicts` to the matrix and changes **no circle-visible state by
-  itself**. The notetaker's missing-voice invitation ("what would someone
-  who disagrees say?") is time-decoupled from any tap and also fires on a
-  seeded, reproducible jitter when *no* tap occurred — so neither the
-  prompt's arrival nor a later phrasing shift is evidence that anyone
-  dissented, and a lone dissenter in a 4-person circle stays exactly as
-  anonymous as their reaction on the community map (where k protects it).
-- Fixture-pinned (07 §5): no circle-interior tally is computed anywhere
-  in the surface modules; the dissent tap flips no circle-visible state.
+- **The private "actually, I don't" tap (04 §4) cannot move its own
+  circle's wording (FINDING-3 fix).** A naive implementation leaks: a
+  private tap writes `fut:Conflicts` into the community matrix, and the
+  circle summary's reception phrasing is computed over community-scale
+  distributions *that include this circle's members* — so a single tap
+  could flip "circling agreement" to "we differ" and out the tapper in a
+  4-person room. The routing that makes "changes no circle-visible state"
+  actually true:
+  - A private tap is written to a **separate signal store** (its own pod
+    container / predicate), NOT into the ordinary `fut:Resonance`
+    statement-universe the circle aggregate reads — so it is invisible to
+    the unchanged engine's `buildMatrix` on the circle read path by
+    construction (this keeps build rule 1: no engine edit, the routing is
+    surface composition in `lib/digest.ts`). A public "I see it
+    differently" reaction is the ordinary `fut:Conflicts` and still shifts
+    the summary and the differ-block — that reaction is *chosen* and
+    visible, with no anonymity concern because the person elected to
+    show it.
+  - `lib/digest.ts` folds the private-tap store into **community-scale**
+    distributions only, and only **above a batch threshold of ≥k (=5,
+    `DEFAULT_K_THRESHOLD`) distinct taps on the same statement**. Below k
+    the taps drive **nothing that renders** anywhere.
+  - The originating circle's summary is composed from the ordinary
+    resonance universe **plus none of its own members' private taps at any
+    count** — permanently excluded, because a 4–6-person room reaching k
+    taps would still be near-deanonymizing inside that room. A private tap
+    therefore never changes its own circle's visible state; above k it
+    reaches only the letter/garden/other-circle surfaces, where the
+    ≥k set is k-anonymous.
+  - The tap's *within-circle* effect is limited to feeding the
+    notetaker's missing-voice invitation ("what would someone who
+    disagrees say?"), which is **time-decoupled from any tap and also
+    fires on a seeded, reproducible jitter when no tap occurred** — so
+    neither the prompt's arrival nor any later phrasing shift is evidence
+    anyone dissented.
+- Fixture-pinned (07 §5): no circle-interior tally is computed anywhere in
+  the surface modules; a private tap (a) renders nothing below k, (b)
+  never enters its originating circle's summary at any count, and (c)
+  reaches community surfaces only above k where the set is k-anonymous.
 
 ## 5. The synthesis loop as a conversational rhythm (and the one v1 conflict)
 
@@ -306,7 +344,8 @@ determinism makes them exact, not narrative:
 |---|---|---|
 | a peer-statement beat | "Because people in your part of the map haven't weighed in on this, and people who usually read the street differently found it rang true." | `DeckEntry.ownClusterSeen`, `.neighbourResonance` |
 | a story introduction (gallery) | "Because Dana cares about some of the same things you do — {shared need concepts, humanized} — and sees the street from a different place on the map." | `GalleryEntry.sharedNeedConcepts`, `.acrossTheDivide` |
-| a circle invitation | "This circle was put together to span the community's different ways of seeing this — you and {n} others were invited because together you cover it." (04 §2) | composition record |
+| a circle invitation (diverse) | "This circle was put together to span the community's different ways of seeing this — you and {n} others were invited because together you cover it." (04 §2) | composition record |
+| a circle invitation (overflow) | "Right now this circle is people who see the street similarly — we didn't have enough differing voices to pair everyone yet; there are open seats held for them, and stories from other views get routed here meanwhile." (04 §2 fallback) | composition record (`overflow: true`) |
 | a summary line | "Said in different ways by {≥k} people across both parts of the map — tap to read the words it came from." (T3C drill-down, consent-gated) | `rankNeeds` distribution + provenance |
 | a differ-block | "This circle holds two sincere readings of this — both shown in their own words; nobody's view was averaged away." (no headcounts at circle scale — §4's two-scale rule) | `candidateReception` verdict, community-scale |
 | a draft statement | "Drafted by the notetaker from {n} adopted statements (every one linked); it has no standing until the circle's reactions clear the bar in every part of the map." | `prov:wasDerivedFrom`, room threshold |

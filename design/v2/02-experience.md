@@ -198,25 +198,55 @@ machine layer begins: on the drafted atoms, and fail-closed at the
 adoption chokepoint (`lib/pod-society.ts`, unchanged). So *"my disability
 makes this crossing terrifying"* — a sentence one of the demo's own
 personas would say — sends, stands, and is heard. What it cannot do is
-enter the shared/aggregated picture carrying the health disclosure, and
-the mirror says that boundary out loud at the exact moment it matters:
+enter the shared/aggregated picture carrying the health disclosure.
+
+There are two shapes to this, and they behave differently. **When the
+utterance also carries a clean civic line** — say *"my disability makes
+this crossing terrifying. Honestly, everyone's just sprinting across Maple
+before the lights change."* — the drafter takes forward **that second
+sentence, verbatim-derived** (never a paraphrase of the first), and the
+mirror names the boundary:
 
 > **unite** · notetaker
-> What you said stays here — in this circle and in your notebook. One part
-> I can't carry into the shared picture: health details are off-limits
-> there until the privacy machinery deserves them — a hard rule, not a
-> judgment ([why](#/how)). Here's what I *can* take forward: "getting
-> across Maple safely, without sprinting." Want that in?
-> `Take that forward` · `Keep it all just here` · `Let me reword it`
+> What you said stays here — in this circle and your notebook, in your
+> words. The health part I can't carry into the shared picture (a hard
+> data rule, not a judgment — [why](#/how)). But this line you wrote is
+> already about the street itself: "everyone's just sprinting across
+> Maple before the lights change." Take that one forward?
+> `Take that line forward` · `Keep it all just here` · `Let me write it my way`
+
+The take-forward is a *different sentence the person actually wrote*, not
+a cleaned-up version of the sensitive one. **When the disclosure is the
+whole message** — a single sensitive sentence with no clean line beside
+it — the machine has nothing it may honestly carry, and the beat drops to
+keep-or-write-your-own (below).
+
+The single-sentence beat, in full:
+
+> **unite** · notetaker
+> That stays right here — in this circle and your notebook, in your
+> words. I can't carry health details into the shared picture (a hard
+> data rule, [why](#/how)), and I won't second-guess your words into a
+> "cleaner" version — that'd be me putting words in your mouth. If you
+> *want* a version for the shared picture, that's yours to write.
+> `Keep it just here` · `Let me write a version to share`
 
 Nothing is deleted and nothing is moderated away — the §3 promise holds
 (the utterance stands, in the person's words, where they said it); the
 boundary is a **data-protection line on what enters aggregation**, not
 moderation, and the copy names the rule instead of hiding behind an error.
-"Keep it all just here" is a real, respected choice (never re-asked as if
-it were wrong). When no civic reformulation exists, the notetaker offers
-only the keep/reword paths — a refusal that states its reason, never a
-silent drop (P3: the fate-trail is truthful — "this stays here").
+**No machine-sanitized reformulation is ever offered** — auto-rewriting a
+health/finance disclosure into a "safe" atom is precisely the laundering
+the C4 gate exists to prevent (03 §2 step 5), and it would not be the
+person's adopted speech anyway. "Keep it just here" is a real, respected
+choice (never re-asked as if it were wrong); "write a version to share"
+hands the pen back to the person.
+
+**Residual:** a person who wants a single-sentence sensitive point in the
+shared picture must reword it themselves — a small friction deliberately
+kept, because the alternative (a machine deciding which of someone's
+health words are "safe" to broadcast) is the worse failure. Named,
+accepted.
 
 ## 5. Elicit-before-expose (the anti-herding gate)
 
