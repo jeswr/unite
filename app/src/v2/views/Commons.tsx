@@ -22,10 +22,13 @@ import { buildMatrix, cluster } from "../../lib/ranking.js";
 import type { AggregateState } from "../../ui/hooks.js";
 import { displayName } from "../../ui/hooks.js";
 import type { DeliberationConfig } from "../../ui/state.js";
-import { DEMO_CIRCLE } from "../demo-circle.js";
+import { DEMO_CIRCLE, demoCircleParticipants } from "../demo-circle.js";
+import { DEMO_NEXT_MONTH, DEMO_NOW, DEMO_STORIES } from "../demo-stories.js";
 import { isQuotable } from "../notebook-data.js";
+import { foldCommunityTaps, readPrivateTaps, TAPPED_ANNOTATION } from "../private-tap.js";
 import type { V2Route } from "../route.js";
 import { gardenSeam, summaryLineSeam } from "../seams.js";
+import { type ChangedLine, letterChangedLines } from "../story-data.js";
 
 /** One garden bed: an opinion cluster's soft glow (centroid + spread). */
 interface Bed {
@@ -138,7 +141,17 @@ function Garden({ beds, bridges }: { beds: Bed[]; bridges: Digest["emerged"] }):
 }
 
 /** The letter (the digest, rendered in the notetaker's voice — 02 §6). */
-function Letter({ digest }: { digest: Digest }): React.JSX.Element {
+function Letter({
+  digest,
+  changedLines,
+  tapped,
+}: {
+  digest: Digest;
+  /** Part (c): the fate-trail deltas (v2/story-data — every line linked). */
+  changedLines: readonly ChangedLine[];
+  /** Statements ≥k people privately tapped (03 §4 — community scale only). */
+  tapped: ReadonlySet<string>;
+}): React.JSX.Element {
   return (
     <div>
       <div className="v2-letter-section">
@@ -164,6 +177,9 @@ function Letter({ digest }: { digest: Digest }): React.JSX.Element {
                   say otherwise (their call, in their pod).
                 </span>
               )}
+              {/* The ≥k private-tap annotation (03 §4): count-free, community
+                  scale only — below k a statement is simply not in the set. */}
+              {tapped.has(t.statement) && <p className="muted small">{TAPPED_ANNOTATION}</p>}
               <p className="v2-seam-text">
                 {summaryLineSeam(t.seen, digest.k)} <a href="#/how">the long version →</a>
               </p>
@@ -201,7 +217,7 @@ function Letter({ digest }: { digest: Digest }): React.JSX.Element {
 
       <div className="v2-letter-section">
         <h3>What changed because people spoke</h3>
-        {digest.changed.length === 0 ? (
+        {digest.changed.length === 0 && changedLines.length === 0 ? (
           <p className="muted small">
             Nothing has moved outside the conversation yet — when it does, you'll read it here
             first, not in a notification.
@@ -210,6 +226,14 @@ function Letter({ digest }: { digest: Digest }): React.JSX.Element {
           <ul>
             {digest.changed.map((line) => (
               <li key={line}>{line}</li>
+            ))}
+            {changedLines.map((line) => (
+              <li key={line.text}>
+                {line.text}{" "}
+                <a href={line.href} className="small">
+                  the whole story →
+                </a>
+              </li>
             ))}
           </ul>
         )}
@@ -237,6 +261,12 @@ export function Commons({
 }): React.JSX.Element {
   const result = aggregate.result;
   const [quotable, setQuotable] = useState<ReadonlySet<string>>(new Set());
+  // Statements privately tapped by ≥k distinct people (03 §4) — community
+  // scale only; below k the fold returns nothing, so nothing can render.
+  const [tapped, setTapped] = useState<ReadonlySet<string>>(new Set());
+  // The letter's simulated month (07 §3 V5's monthly-rhythm simulation).
+  const [peekNextMonth, setPeekNextMonth] = useState(false);
+  const letterNow = peekNextMonth ? DEMO_NEXT_MONTH : DEMO_NOW;
 
   // The letter's consent gate: which statements may be quoted verbatim
   // (fail-closed — unknown is unquotable). Demo-scale read, keyed to results.
@@ -250,7 +280,11 @@ export function Commons({
       for (const c of result.claims) {
         if (await isQuotable(demo.fetch, c.id)) ids.add(c.id);
       }
-      if (!cancelled) setQuotable(ids);
+      const taps = await readPrivateTaps(demo.fetch, demoCircleParticipants(demo));
+      if (!cancelled) {
+        setQuotable(ids);
+        setTapped(foldCommunityTaps(taps));
+      }
     })();
     return () => {
       cancelled = true;
@@ -283,6 +317,8 @@ export function Commons({
     );
   }, [result]);
 
+  const changedLines = useMemo(() => letterChangedLines(DEMO_STORIES, letterNow), [letterNow]);
+
   return (
     <section className="view">
       <h2>The commons</h2>
@@ -290,6 +326,15 @@ export function Commons({
         A slow picture of what this community is figuring out together. It changes as people talk —
         never as a scoreboard.
       </p>
+
+      <div className="v2-summary">
+        <h3>New here?</h3>
+        <p className="muted small">
+          Take <a href="#/arc">the five-minute walk</a> — a staged neighbourhood, real machinery,
+          and the whole loop from saying something to seeing what came of it. Afterwards,{" "}
+          <a href="#/curtain">see what was running the whole time</a>.
+        </p>
+      </div>
 
       {aggregate.error && <p className="notice error">{aggregate.error}</p>}
 
@@ -307,6 +352,9 @@ export function Commons({
         >
           Join the conversation
         </button>
+        <p className="v2-seam-text">
+          Curious who meets whom, and why? <a href="#/circles">How circles get put together →</a>
+        </p>
       </div>
 
       <h3 style={{ marginTop: "1.4rem" }}>This month's letter</h3>
@@ -314,7 +362,25 @@ export function Commons({
         Written by the notetaker from what people actually said — every line traceable, differences
         carried whole. Reading it counts; there is nothing to keep up with.
       </p>
-      {digest !== null ? <Letter digest={digest} /> : <p className="muted">Gathering…</p>}
+      <p className="muted small">
+        The letter runs on a monthly rhythm — the demo simulates the clock:{" "}
+        <button
+          type="button"
+          className="v2-chip"
+          aria-pressed={peekNextMonth}
+          onClick={() => setPeekNextMonth((v) => !v)}
+        >
+          {peekNextMonth ? "back to this month" : "peek at next month"}
+        </button>
+        {peekNextMonth && (
+          <span> — a month on, the scheduled check-in on the crossing falls due.</span>
+        )}
+      </p>
+      {digest !== null ? (
+        <Letter digest={digest} changedLines={changedLines} tapped={tapped} />
+      ) : (
+        <p className="muted">Gathering…</p>
+      )}
     </section>
   );
 }

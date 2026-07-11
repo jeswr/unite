@@ -119,6 +119,69 @@ export function exitFate(summaryPhrase: string): string {
   );
 }
 
+/**
+ * Beat 3's honesty rule (06 §3): when a mirror happens to land clean (adopted
+ * unedited), the notetaker invites the visitor to STRESS the drafter rather
+ * than letting a lucky template pass for subtlety. Appended to the receipt.
+ */
+export const STRESS_INVITE =
+  "That one landed. Try me on something harder — I'd rather show you the fix button than " +
+  "pretend I don't need one.";
+
+/** The "borrow this memory" prop (06 §3 beat 2) — visibly a prop, never a rail. */
+export const BORROW_MEMORY =
+  "I remember when the fruit van parked on the corner and half the street came out to talk.";
+
+/** The borrow chip's label — names itself a prop. */
+export const BORROW_MEMORY_LABEL = "borrow this memory";
+
+/**
+ * AIRTIME EQUITY, repaired conversationally (04 §4): the notetaker's gentle
+ * open-door for the quietest voice. The talk-share metric behind it is
+ * HIDDEN — this line is the only rendered artifact, and it carries no
+ * numbers, no ranking, no leaderboard. Optimize silently; display never.
+ */
+export function airtimeOpenDoor(quietestName: string): string {
+  return (
+    `We haven't heard from everyone — no pressure, ${quietestName}, but the floor's yours ` +
+    "if you want it."
+  );
+}
+
+/**
+ * HIDDEN-PROFILE correction (04 §4): a cross-cluster story routed in as a
+ * person, never raw opposing content — the gallery's contact prior worn as
+ * an introduction.
+ */
+export function hiddenProfileIntro(authorName: string): string {
+  return `${authorName} sees this differently — want to hear why, in their own words?`;
+}
+
+/**
+ * The airtime rule behind {@link airtimeOpenDoor} — pure and HIDDEN (04 §4):
+ * given per-member message counts (viewer excluded by the caller), return the
+ * member to open the door for, or null. Fires only when the conversation has
+ * body (≥6 messages all told) and the quietest voice has at most HALF the
+ * busiest's turns — a wide spread, not everyday variance. Deterministic
+ * tie-break: lexicographically least id. The counts themselves NEVER render.
+ */
+export function quietestVoice(
+  counts: ReadonlyArray<readonly [string, number]>,
+  totalMessages: number,
+): string | null {
+  if (totalMessages < 6 || counts.length === 0) return null;
+  let quiet: readonly [string, number] | null = null;
+  let busiest = 0;
+  for (const entry of counts) {
+    if (quiet === null || entry[1] < quiet[1] || (entry[1] === quiet[1] && entry[0] < quiet[0])) {
+      quiet = entry;
+    }
+    if (entry[1] > busiest) busiest = entry[1];
+  }
+  if (quiet === null) return null;
+  return quiet[1] * 2 <= busiest ? quiet[0] : null;
+}
+
 // ── Beat sequencing (pure, deterministic, testable) ──────────────────────────
 
 /** What the notetaker should say NEXT, given the visitor's session state. */

@@ -2,14 +2,14 @@
 //
 // The v2 surface shell (design/v2 02 §1): the conversation-first presentation
 // over the SAME engine, demo pods and auth seam as the v1 surface — selected
-// at runtime by the surface dimension (scope/surface.ts), never a fork. V0:
-// an HONEST under-construction shell — the routes parse, the chrome stands,
-// and every not-yet-built surface says so plainly (the registry PreviewView
-// rule: never a silently-missing view, never a fake).
+// at runtime by the surface dimension (scope/surface.ts), never a fork. All
+// phases through V5 are live: the circle (V1), the commons/summary/letter
+// (V2), composed circles (V3, #/circles), experts + fate-trails (V4), and
+// the vision-selling layer (V5: #/arc, #/curtain, #/join-us).
 //
-// The v2 surface binds to scope C (design/v2 07 §2) and — for phases V0–V2 —
-// runs on the seeded demo deliberation only (the same honest-sandbox posture
-// as v1's demo; pod-mode wiring on the v2 surface is post-V5 work, 07 §7).
+// The v2 surface binds to scope C (design/v2 07 §2) and runs on the seeded
+// demo deliberation (the same honest-sandbox posture as v1's demo; pod-mode
+// wiring on the v2 surface is post-V5 work, 07 §7).
 
 import { FeedbackButton, ThemeToggle } from "@jeswr/app-shell";
 import { SCOPES } from "../scope/scopes.js";
@@ -19,10 +19,14 @@ import { useAggregate } from "../ui/hooks.js";
 import { collectionKinds, demoConfig } from "../ui/state.js";
 import { DEMO_CIRCLE } from "./demo-circle.js";
 import { useV2Route, type V2Route, v2Hash } from "./route.js";
+import { Arc } from "./views/Arc.js";
 import { Circle } from "./views/Circle.js";
+import { Circles } from "./views/Circles.js";
 import { Commons } from "./views/Commons.js";
+import { Curtain } from "./views/Curtain.js";
 import { How } from "./views/How.js";
 import { Notebook } from "./views/Notebook.js";
+import { Pitch } from "./views/Pitch.js";
 import { Story } from "./views/Story.js";
 import "./v2.css";
 
@@ -34,6 +38,7 @@ const CONFIG = demoConfig("society");
 
 /** The v2 nav: warm names, no instrument idiom (the instruments live behind How). */
 const NAV: { route: V2Route; label: string }[] = [
+  { route: { view: "arc" }, label: "The five-minute walk" },
   { route: { view: "commons" }, label: "The commons" },
   { route: { view: "circle", id: DEMO_CIRCLE.slug }, label: "Your circle" },
   { route: { view: "notebook" }, label: "Your notebook" },
@@ -91,10 +96,16 @@ export function V2App(): React.JSX.Element {
         {route.view === "notebook" && <Notebook aggregate={aggregate} config={CONFIG} />}
         {route.view === "how" && <How />}
         {route.view === "story" && <Story id={route.id} />}
+        {route.view === "circles" && <Circles aggregate={aggregate} />}
+        {route.view === "arc" && <Arc />}
+        {route.view === "curtain" && <Curtain aggregate={aggregate} config={CONFIG} />}
+        {route.view === "join-us" && <Pitch />}
       </main>
 
       <p className="footer-note">
         unite · everything you say lives in your own pod ·{" "}
+        <a href="#/curtain">see what was running the whole time</a> ·{" "}
+        <a href="#/join-us">help build unite</a> ·{" "}
         <a href={surfaceHref("v1", loc?.search, "#/overview", SURFACES.v2.forcesScope)}>
           see the v1 instrument surface
         </a>{" "}

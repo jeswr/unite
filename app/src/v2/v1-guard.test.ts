@@ -63,6 +63,10 @@ describe("the v1 snapshot guard", () => {
       "#/notebook",
       "#/how",
       "#/story/crossing",
+      "#/circles",
+      "#/arc",
+      "#/curtain",
+      "#/join-us",
     ]) {
       expect(parseViewHash(hash)).toBe(DEFAULT_VIEW);
     }
