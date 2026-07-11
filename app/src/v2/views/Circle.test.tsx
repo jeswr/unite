@@ -236,4 +236,32 @@ describe("beat 4 — the peer statement + the P4 post-reaction reveal", () => {
     // The reacted peer statement is still on screen (pinned, not unmounted).
     expect(screen.getAllByText(`“${PEER_TEXT}”`).length).toBeGreaterThanOrEqual(1);
   });
+
+  it("a pending prompt takes precedence: an ask AFTER an adopt hides the live peer card", async () => {
+    mount(richAggregate());
+    await waitForSeed();
+
+    // Adopt once → the live (unpinned) peer card is dealt (beat 4).
+    const composer = await screen.findByLabelText("say it your way");
+    fireEvent.change(composer, { target: { value: "I want the crossing fixed before winter." } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(await screen.findByRole("button", { name: "That's it" }, { timeout: 5000 }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "resonates" })).toBeTruthy(), {
+      timeout: 5000,
+    });
+
+    // Now send a cue-less, over-long message → the drafter ASKS instead of
+    // guessing. A pending ask beat must take precedence: the peer reaction card
+    // (unreacted) must NOT render alongside the prompt (the regression guard).
+    const long = `${"When the light comes over the rooftops in June the whole road glows and everyone walks differently, ".repeat(3)}that is the town I know`;
+    fireEvent.change(composer, { target: { value: long } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(screen.getByText(/one line you'd put on the wall/)).toBeTruthy(), {
+      timeout: 5000,
+    });
+    // The ask beat is showing — the live peer card (and its reaction affordance)
+    // is gone; only the pending prompt is in flight.
+    expect(screen.queryByRole("button", { name: "resonates" })).toBeNull();
+  });
 });

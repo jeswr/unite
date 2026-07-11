@@ -161,10 +161,17 @@ export function Circle({
     });
   }, [aggregate.result, circle, identity]);
 
-  // The card currently in front of the viewer: the pinned reacted card (so it
-  // stays mounted through the P4 reveal) else the next deck card once they've
-  // adopted something (beat 4).
-  const activePeer = reactedPeer ?? (adoptedCount > 0 ? peerCard : null);
+  // The card in front of the viewer. TWO independent paths:
+  //   • the PINNED reacted card — stays mounted through the P4 distribution
+  //     reveal regardless of anything else in flight;
+  //   • the LIVE (unpinned) peer card — follows the notetaker's own sequencing
+  //     (script.ts / notetakerBeats): it appears ONLY in the steady state —
+  //     after the viewer has adopted at least once, with NO pending mirror /
+  //     ask / boundary beat, and before they've reacted. A pending prompt takes
+  //     precedence (the ask/boundary card must never show alongside the live
+  //     peer reaction card).
+  const livePeer = pending === null && reactedStance === null && adoptedCount > 0 ? peerCard : null;
+  const activePeer = reactedPeer ?? livePeer;
 
   // Community-scale tally for the reacted statement (the Distribution's data).
   const reactedDistribution = useMemo(() => {
