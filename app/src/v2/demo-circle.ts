@@ -5,9 +5,9 @@
 // deliberation — its members are seeded demo people spanning BOTH opinion
 // clusters (P: chidi/hana · U: farah/gus · plus "you"), so the deck's
 // cross-cluster routing and the summary's community-scale verdicts all have
-// honest material. Circle COMPOSITION (lib/circles.ts) lands in V3; until
-// then this one hand-seeded circle is the demo's only room, and its seam says
-// so honestly (a starter circle claims no computed diversity).
+// honest material. Circle COMPOSITION (lib/circles.ts) renders live on
+// #/circles (V3); this hand-seeded circle stays the demo's one STANDING room
+// — relational continuity (04 §2): composition never reshuffles a live room.
 //
 // The seeded conversation is written through the PRODUCTION write path
 // (writeCircleMessage → the sandboxed in-memory pod fetch) — nothing is
@@ -99,6 +99,51 @@ const SEED_MESSAGES: readonly SeedMessage[] = [
     published: "2026-06-21T10:02:00Z",
     content:
       "Kids on bikes, not brakes — alright, that one I can stand behind. Get the crossing right and you get more people on the street at all hours, which is my whole thing anyway.",
+  },
+  // The recurring QUESTION-shaped need (05 §1): the same cost/crossing
+  // question across two distinct turns — the question-inbox's stable-question
+  // floor, which is what summons the expert affordance (v2/expert.ts).
+  {
+    author: "farah",
+    name: "cm-farah-cost",
+    published: "2026-06-22T08:20:00Z",
+    content:
+      "What would a raised crossing actually cost? And has any council near here actually built one?",
+  },
+  {
+    author: "chidi",
+    name: "cm-chidi-cost",
+    published: "2026-06-22T18:05:00Z",
+    content:
+      "I keep coming back to the money side of it. What does a proper crossing cost, and who pays for it?",
+  },
+  // The corner-garden READINESS theme (05 §3): two people with genuine
+  // self-offers plus recurrence — the action-team nudge's detection input
+  // (lib/readiness.ts). The personas qualify; the visitor joins the named
+  // recipients only if their own turns do.
+  {
+    author: "farah",
+    name: "cm-farah-garden",
+    published: "2026-06-23T09:10:00Z",
+    content: "About the corner garden by the shop — I could bring tools and I'm free this weekend.",
+  },
+  {
+    author: "gus",
+    name: "cm-gus-garden",
+    published: "2026-06-23T12:30:00Z",
+    content: "I've built planters before, so count me in for the corner garden.",
+  },
+  {
+    author: "farah",
+    name: "cm-farah-garden2",
+    published: "2026-06-24T08:15:00Z",
+    content: "That corner garden would make the school run feel different too.",
+  },
+  {
+    author: "gus",
+    name: "cm-gus-garden2",
+    published: "2026-06-24T17:45:00Z",
+    content: "The corner garden would be good for the shop as well, honestly.",
   },
 ];
 

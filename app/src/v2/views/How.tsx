@@ -1,131 +1,151 @@
 // AUTHORED-BY Claude Fable 5 (PSS agent)
 //
-// #/how — "HOW UNITE LISTENS" (design/v2 03 §6 second layer, 07 §3 V2): the
-// full out-of-flow explanation — plain-language mechanism write-up, the
-// drafter's honest limits, the boundary rule, the k rules, deletion, and the
-// instruments themselves (linking the v1 views IN PLACE — same session, same
-// demo pods, same engine; hiding them would fail the reveal test). Every
-// in-flow seam's "the long version →" lands on this page.
+// #/how — "HOW UNITE LISTENS" (design/v2 03 §6 second layer, 07 §3 V5): the
+// full out-of-flow explanation, rendered from content-v2/how-listens.ts —
+// the ONE reviewable content module (the core's earlier inline copy is
+// reconciled away; the words now have exactly one home). Every in-flow
+// seam's "the long version →" lands here. The v1 instrument views are linked
+// IN PLACE (same session, same demo pods, same engine — hiding them would
+// fail the reveal test this page runs on itself).
 
+import { HOW_LISTENS } from "../../content-v2/how-listens.js";
 import { MIRROR_DRAFT_PLAN } from "../../lib/mirror-draft.js";
 import { SURFACES, surfaceHref } from "../../scope/surface.js";
-
-function Section({
-  id,
-  title,
-  children,
-}: {
-  id: string;
-  title: string;
-  children: React.ReactNode;
-}): React.JSX.Element {
-  return (
-    <div className="v2-letter-section" id={id}>
-      <h3>{title}</h3>
-      {children}
-    </div>
-  );
-}
 
 export function How(): React.JSX.Element {
   const loc = typeof window === "undefined" ? null : window.location;
   // v2→v1 must carry the v2 surface's forced scope (society) so the instrument
   // views land in the SAME deliberation, not the default apps scope.
   const v1 = (hash: string) => surfaceHref("v1", loc?.search, hash, SURFACES.v2.forcesScope);
+  const c = HOW_LISTENS;
+
   return (
     <section className="view">
-      <h2>How unite listens</h2>
-      <p className="muted small">
-        The whole mechanism, in plain words. Nothing on this page is a secret held back elsewhere —
-        if reading it makes anything feel like a trick, that is a bug in unite, not in you.
-      </p>
+      <h2>{c.intro.title}</h2>
+      <blockquote className="muted small" style={{ margin: "0.4rem 0", fontStyle: "italic" }}>
+        “{c.intro.handshakeRecap}”
+      </blockquote>
+      {c.intro.paragraphs.map((p) => (
+        <p key={p.slice(0, 32)} className="muted small">
+          {p}
+        </p>
+      ))}
 
-      <Section id="notetaker" title="The notetaker is a program, and a small one">
-        <p className="muted small">
-          The notetaker is not a person and not a large language model. In this demo every line it
-          says comes from a fixed script, and every mirror it drafts comes from a deterministic
-          word-list ({MIRROR_DRAFT_PLAN}): it looks for phrases like “I want”, “unsafe”, “I
-          remember”, picks the sentence that carries the most of them, and matches everyday words
-          (“crossing”, “afford”, “a say”) to a fixed set of nine human needs. Same words in, same
-          mirror out, every time. When your message carries none of its cues, it asks instead of
-          guessing — a word-list must never pretend it understood you.
-        </p>
-      </Section>
+      <div className="v2-letter-section" id="when">
+        <h3>{c.whenWeSurface.heading}</h3>
+        <p className="muted small">{c.whenWeSurface.intro}</p>
+        <ul>
+          {c.whenWeSurface.moments.map((m) => (
+            <li key={m.id}>
+              <strong>{m.moment}.</strong> {m.what}
+              <p className="muted small">{m.how}</p>
+            </li>
+          ))}
+        </ul>
+        <h4>{c.whenWeSurface.neverHeading}</h4>
+        <ul>
+          {c.whenWeSurface.never.map((n) => (
+            <li key={n.slice(0, 32)} className="muted small">
+              {n}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <Section id="adoption" title="Nothing is yours until you adopt it">
-        <p className="muted small">
-          A mirror is an offer. Only “that's it” (or your own edit) writes anything into the shared
-          picture — and what it writes lands in <em>your</em> pod, marked as adopted by you, with a
-          note recording that the notetaker's drafter proposed it. Scrapped or ignored mirrors write
-          nothing at all. This is enforced in the data model itself: a statement adopted by anyone
-          other than its author cannot be written, read, or counted.
+      <div className="v2-letter-section" id="reveal-test">
+        <h3>{c.revealTest.heading}</h3>
+        <blockquote className="small" style={{ margin: "0.4rem 0" }}>
+          {c.revealTest.rule}
+        </blockquote>
+        {c.revealTest.paragraphs.map((p) => (
+          <p key={p.slice(0, 32)} className="muted small">
+            {p}
+          </p>
+        ))}
+        <p className="small">
+          <strong>{c.revealTest.invitation}</strong>
         </p>
-      </Section>
+      </div>
 
-      <Section id="boundary" title="The boundary: what the shared picture won't carry">
-        <p className="muted small">
-          Your own words in your own circle are never screened — you can say anything about your
-          life here. What the machine layer will not carry into summaries and letters is personal
-          health- or money-grade detail; until privacy machinery exists that deserves such data,
-          that is a hard line, checked twice (once when drafting, once at the write itself, so even
-          a bug in this page's buttons cannot leak past it). When the line bites, the notetaker says
-          so and offers two honest paths: keep it here, or reword it yourself. It will never rewrite
-          your words for you.
-        </p>
-      </Section>
+      <div className="v2-letter-section" id="your-data">
+        <h3>{c.yourData.heading}</h3>
+        {c.yourData.intro.map((p) => (
+          <p key={p.slice(0, 32)} className="muted small">
+            {p}
+          </p>
+        ))}
+        <ul>
+          {c.yourData.points.map((p) => (
+            <li key={p.id}>
+              <strong>{p.label}.</strong> <span className="muted small">{p.body}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <Section id="reactions" title="Reactions, the map, and bridges">
-        <p className="muted small">
-          Every “resonates / not sure / I see it differently” is a small record in your pod. Read
-          together, the reactions place people on a map with (today) two broad regions — computed
-          fresh every time, stored nowhere, never labelled with politics. A statement becomes common
-          ground only when <em>every</em> region leans toward it — being loud in one corner counts
-          for nothing. That same rule picks what the notetaker shows you next: statements your part
-          of the map hasn't weighed, that other parts found true.
-        </p>
-      </Section>
+      <h3 style={{ marginTop: "1.2rem" }}>{c.mechanismsHeading}</h3>
+      <p className="muted small">{c.mechanismsIntro}</p>
+      {c.groups.map((group) => (
+        <div className="v2-letter-section" id={group.id} key={group.id}>
+          <h3>{group.label}</h3>
+          <p className="muted small">{group.intro}</p>
+          <ul>
+            {c.mechanisms
+              .filter((m) => m.group === group.id)
+              .map((m) => (
+                <li key={m.id} id={m.id}>
+                  <strong>{m.name}.</strong> <span className="small">{m.plain}</span>
+                  {m.when !== undefined && (
+                    <p className="muted small">When you meet it: {m.when}</p>
+                  )}
+                  {m.never !== undefined && <p className="muted small">Never: {m.never}</p>}
+                  <p className="v2-seam-text">Where it lives: {m.source}</p>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
 
-      <Section id="elicit" title="You speak first">
-        <p className="muted small">
-          You never see how the group voted on something before you've voiced your own take —
-          numbers shown first pull people toward them, so unite sequences: your signal, then the
-          real distribution, always. And no group number renders at all until at least five people
-          are behind it; below that, counting would be false precision about identifiable people.
-          Inside a small circle no anonymous statistics are shown ever — five people can spot
-          themselves in any tally, so pretending otherwise would be the lie.
-        </p>
-      </Section>
+      <div className="v2-letter-section" id="residuals">
+        <h3>{c.residuals.heading}</h3>
+        <p className="muted small">{c.residuals.intro}</p>
+        <ul>
+          {c.residuals.items.map((r) => (
+            <li key={r.id}>
+              <strong>{r.name}.</strong> <span className="muted small">{r.body}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <Section id="deletion" title="Deleting actually deletes">
-        <p className="muted small">
-          Summaries, letters, and the garden are recomputed from people's pods every time they are
-          read — there is no other copy. Remove something in your notebook and the next read simply
-          no longer contains it. The one honest exception: anything already carried into a signed,
-          published record under your explicit consent stays in that record — and unite says that
-          before it happens, not after.
-        </p>
-      </Section>
+      <div className="v2-letter-section" id="contest">
+        <h3>{c.contest.heading}</h3>
+        {c.contest.paragraphs.map((p) => (
+          <p key={p.slice(0, 32)} className="muted small">
+            {p}
+          </p>
+        ))}
+      </div>
 
-      <Section id="instruments" title="See the instruments">
+      <div className="v2-letter-section" id="instruments">
+        <h3>{c.instruments.heading}</h3>
+        <p className="muted small">{c.instruments.body}</p>
+        <ul>
+          {c.instruments.links.map((l) => (
+            <li key={l.route}>
+              <a href={v1(l.route)}>{l.label}</a> <span className="muted small">— {l.note}</span>
+            </li>
+          ))}
+        </ul>
         <p className="muted small">
-          Everything above runs on the same engine the v1 surface wears openly. Same session, same
-          demo data — inspect it whenever you like:
-        </p>
-        <p className="muted small">
-          <a href={v1("#/bridge")}>the opinion map + common ground</a> ·{" "}
-          <a href={v1("#/board")}>the needs board</a> ·{" "}
-          <a href={v1("#/deck")}>the resonance deck</a> ·{" "}
-          <a href={v1("#/room")}>the convergence room</a> ·{" "}
-          <a href={v1("#/published-futures")}>published futures</a>
-        </p>
-        <p className="muted small">
-          The engine is open source — the code, its tests, and this design are in the{" "}
+          The demo's drafter lexicon version: {MIRROR_DRAFT_PLAN}. The engine is open source — the
+          code, its tests, and this design are in the{" "}
           <a href="https://github.com/jeswr/unite" rel="noreferrer">
             unite repository
           </a>
           .
         </p>
-      </Section>
+      </div>
     </section>
   );
 }

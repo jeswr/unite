@@ -19,8 +19,10 @@ import { demoWebId } from "../../demo/fixtures.js";
 import { demoForDeliberation } from "../../demo/pods.js";
 import { type DeckEntry, routeDeck } from "../../lib/deck.js";
 import type { Stance } from "../../lib/fut.js";
+import { routeGallery } from "../../lib/gallery.js";
 import { compressClaim, draftMirror, type MirrorDraftResult } from "../../lib/mirror-draft.js";
 import type { Claim } from "../../lib/model-society.js";
+import type { ConversationTurn } from "../../lib/questions.js";
 import { useController } from "../../ui/auth.js";
 import { avatarColor, initials } from "../../ui/format.js";
 import type { AggregateState } from "../../ui/hooks.js";
@@ -29,21 +31,31 @@ import { type DeliberationConfig, sessionIdentity } from "../../ui/state.js";
 import { adoptMirrorAtoms } from "../adopt.js";
 import { type CircleMessage, readCircleMessages, writeCircleMessage } from "../circle-data.js";
 import { demoCircleFor, demoCircleParticipants, ensureDemoCircleSeeded } from "../demo-circle.js";
+import { DEMO_VOICE_LABEL, personaMirrorFor, SCRIBE_SEAM } from "../demo-scribe.js";
+import { MISSING_VOICE_INVITE, missingVoiceInvite, writePrivateTap } from "../private-tap.js";
 import {
   adoptionReceipt,
+  airtimeOpenDoor,
+  BORROW_MEMORY,
+  BORROW_MEMORY_LABEL,
   BOUNDARY_ACTIONS,
   COMPOSER_CHIPS,
   DISCARD_ACK,
   HANDSHAKE,
+  hiddenProfileIntro,
   MIRROR_ACTIONS,
   notetakerBeats,
   openingPrompt,
   peerBeat,
+  quietestVoice,
+  STRESS_INVITE,
 } from "../script.js";
-import { deckBeatSeam } from "../seams.js";
+import { deckBeatSeam, gallerySeam } from "../seams.js";
 import { livingSummary } from "../summary.js";
 import { Distribution } from "./Distribution.js";
+import { ExpertMoment } from "./ExpertMoment.js";
 import { Notetaker, NotetakerLine } from "./Notetaker.js";
+import { NudgeCard } from "./NudgeCard.js";
 import { ReactionRow } from "./ReactionRow.js";
 import { SummaryPanel } from "./SummaryPanel.js";
 
@@ -99,6 +111,10 @@ export function Circle({
   // unmount the instant `reacted` flips (the deck advances / the fate beat
   // takes over) and the reveal would never show.
   const [reactedPeer, setReactedPeer] = useState<{ claim: Claim; entry: DeckEntry } | null>(null);
+  // The private "actually, I don't" taps this session (03 §4): rendered ONLY
+  // to the tapper; the write goes to the SEPARATE signal store and changes
+  // nothing this view computes (no aggregate refresh — that is the point).
+  const [privatelyTapped, setPrivatelyTapped] = useState<ReadonlySet<string>>(new Set());
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const lastUtteranceRef = useRef<string | null>(null);
 
@@ -160,6 +176,64 @@ export function Circle({
       viewer: identity,
     });
   }, [aggregate.result, circle, identity]);
+
+  // The conversation as TURNS (the lib/questions.ts shape) — the expert
+  // question-inbox and the readiness scan both read exactly this.
+  const turns = useMemo<ConversationTurn[]>(
+    () =>
+      messages.map((m) => ({
+        id: m.id,
+        author: m.author,
+        text: m.content,
+        created: m.published ?? "",
+      })),
+    [messages],
+  );
+
+  // The visitor's latest own contribution, derived from the READ thread (not
+  // a session ref, which a route remount would reset) — the resource the
+  // expert-consent moment is about.
+  const ownContribution = useMemo(() => {
+    const own = messages.filter((m) => m.author === identity);
+    return own[own.length - 1]?.resource ?? null;
+  }, [messages, identity]);
+
+  // AIRTIME EQUITY (04 §4) — the hidden health metric, repaired
+  // conversationally: the open-door line is the ONLY rendered artifact; the
+  // counts themselves never render anywhere.
+  const openDoorFor = useMemo(() => {
+    if (!circle || !identity) return null;
+    const counts = new Map<string, number>();
+    for (const key of circle.members) {
+      const webId = demoWebId(key);
+      if (webId === identity) continue; // the viewer gets the opening prompt
+      counts.set(webId, 0);
+    }
+    for (const m of messages) {
+      if (counts.has(m.author)) counts.set(m.author, (counts.get(m.author) ?? 0) + 1);
+    }
+    return quietestVoice([...counts.entries()], messages.length);
+  }, [circle, identity, messages]);
+
+  // The missing-voice invitation (03 §4): a SEEDED JITTER — a pure function
+  // of circle id + message count, taking NO tap input, so its rendering is
+  // literally indistinguishable between tap and no-tap.
+  const missingVoice = circle !== null && missingVoiceInvite(circle.id, messages.length);
+
+  // HIDDEN-PROFILE correction (04 §4): a cross-cluster story routed in as a
+  // person (the gallery's contact prior) — after the visitor's loop closes.
+  const galleryBeat = useMemo(() => {
+    const result = aggregate.result;
+    if (!result || !identity || result.visions.length === 0) return null;
+    const entries = routeGallery({
+      viewer: identity,
+      participants: result.verified.map((v) => v.webId),
+      needs: result.needs,
+      visions: result.visions,
+      resonances: result.resonances,
+    });
+    return entries[0] ?? null;
+  }, [aggregate.result, identity]);
 
   // The card in front of the viewer. TWO independent paths:
   //   • the PINNED reacted card — stays mounted through the P4 distribution
@@ -263,7 +337,9 @@ export function Circle({
       if (first !== undefined) setAdoptedPhrase(compressClaim(first.content));
       setPending(null);
       setPendingClaimEdit(null);
-      setNotice(adoptionReceipt());
+      // Beat 3's honesty rule (06 §3): a CLEAN landing (adopted unedited)
+      // earns an invitation to stress the drafter, not a bow.
+      setNotice(claimText === null ? `${adoptionReceipt()} ${STRESS_INVITE}` : adoptionReceipt());
       await aggregate.refresh();
     } catch (e) {
       // The fail-closed chokepoint spoke (e.g. an edit re-introduced sensitive
@@ -278,6 +354,24 @@ export function Circle({
     setPending(null);
     setPendingClaimEdit(null);
     setNotice(DISCARD_ACK);
+  }
+
+  // The private tap (03 §4): written to the SEPARATE signal store in the
+  // tapper's own pod. Deliberately NO aggregate refresh and NO summary
+  // recompute — a private tap changes no circle-visible state, at any count.
+  async function privateTap(statement: string): Promise<void> {
+    try {
+      const session = await writeSessionFor(config, controller, null);
+      await writePrivateTap(session.fetch, session.ownBase, {
+        onStatement: statement,
+        creator: session.identity ?? "",
+        circle: circle?.id ?? "",
+        created: new Date().toISOString(),
+      });
+      setPrivatelyTapped((prev) => new Set([...prev, statement]));
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : String(e));
+    }
   }
 
   const beats = notetakerBeats({
@@ -306,16 +400,49 @@ export function Circle({
       </p>
       {loadError && <p className="notice error">{loadError}</p>}
 
-      {summary !== null && <SummaryPanel summary={summary} />}
+      {summary !== null && (
+        <SummaryPanel
+          summary={summary}
+          onPrivateTap={(s) => void privateTap(s)}
+          privatelyTapped={privatelyTapped}
+        />
+      )}
 
       <div className="v2-thread" role="log" aria-live="polite" aria-label="circle conversation">
         <Notetaker text={HANDSHAKE} />
         <Notetaker text={openingPrompt(circle.prompt)} />
-        {messages.map((m) => (
-          <PersonMessage key={m.id} author={m.author} you={m.author === identity}>
-            {m.content}
-          </PersonMessage>
-        ))}
+        {messages.map((m) => {
+          const cannedMirror = m.author === identity ? null : personaMirrorFor(m.resource);
+          return (
+            <div key={m.id}>
+              <PersonMessage author={m.author} you={m.author === identity}>
+                {m.content}
+              </PersonMessage>
+              {/* The demo-scribe overlay (06 §4): canned persona mirrors ONLY —
+                  labeled demo voice; a visitor's free text can never land here
+                  (the overlay is keyed by seed name). */}
+              {cannedMirror !== null && (
+                <details className="v2-mirror">
+                  <summary className="v2-seam">
+                    the notetaker's mirror <span className="badge demo">{DEMO_VOICE_LABEL}</span>
+                  </summary>
+                  <NotetakerLine />
+                  <p className="v2-msg-text">{cannedMirror}</p>
+                  <p className="v2-seam-text">
+                    This one was pre-written for the staged seat — {SCRIBE_SEAM}{" "}
+                    <a href="#/how">the long version →</a>
+                  </p>
+                </details>
+              )}
+            </div>
+          );
+        })}
+
+        {/* AIRTIME repair (04 §4): the gentle open-door — never a stat. */}
+        {openDoorFor !== null && <Notetaker text={airtimeOpenDoor(displayName(openDoorFor))} />}
+
+        {/* The missing-voice invitation (03 §4) — the jitter-masked beat. */}
+        {missingVoice && <Notetaker text={MISSING_VOICE_INVITE} />}
 
         {/* The mirror: attached quietly under the person's message (02 §4). */}
         {pending?.kind === "draft" && pending.mirror !== null && (
@@ -414,8 +541,49 @@ export function Circle({
           </div>
         )}
 
+        {/* HIDDEN-PROFILE correction (04 §4): once the visitor's loop has
+            closed, one cross-cluster story arrives as a PERSON — the gallery's
+            contact prior, with its literal-fields seam. */}
+        {galleryBeat !== null && adoptedCount > 0 && reactedStance !== null && (
+          <div className="v2-mirror">
+            <Notetaker text={hiddenProfileIntro(displayName(galleryBeat.vision.creator))} />
+            {galleryBeat.vision.title !== undefined && (
+              <p className="v2-msg-who">“{galleryBeat.vision.title}”</p>
+            )}
+            <p className="v2-msg-text">{galleryBeat.vision.content}</p>
+            <p className="v2-msg-who">— {displayName(galleryBeat.vision.creator)}</p>
+            <p className="v2-seam-text">
+              Why this story?{" "}
+              {gallerySeam(
+                displayName(galleryBeat.vision.creator),
+                galleryBeat.sharedNeedConcepts,
+                galleryBeat.acrossTheDivide,
+              )}{" "}
+              <a href="#/how">the long version →</a>
+            </p>
+          </div>
+        )}
+
+        {/* THE EXPERT MOMENT (05 §1–2): exists only once the circle's own
+            conversation holds a stable recurring question — and is sequenced
+            AFTER the visitor has joined the room, so the in-context consent
+            ask (02 §7) always PRECEDES the introduction, never retro-appears
+            under an expert who was already reading. The about-resource is
+            derived from the read thread, so a route remount cannot skip it. */}
+        {identity && ownContribution !== null && (
+          <ExpertMoment
+            turns={turns}
+            identity={identity}
+            config={config}
+            aboutResource={ownContribution}
+          />
+        )}
+
         {notice && !pendingBoundary && <Notetaker text={notice} />}
       </div>
+
+      {/* THE PRIVATE NUDGE (05 §3): renders ONLY to a named recipient. */}
+      {identity && <NudgeCard identity={identity} turns={turns} />}
 
       <div className="v2-chips">
         {COMPOSER_CHIPS.map((chip) => (
@@ -431,6 +599,17 @@ export function Circle({
             {chip}
           </button>
         ))}
+        {/* Beat 2's prop (06 §3): visibly a borrowed memory, never a rail. */}
+        <button
+          type="button"
+          className="v2-chip"
+          onClick={() => {
+            setComposer((c) => (c.length > 0 ? c : BORROW_MEMORY));
+            composerRef.current?.focus();
+          }}
+        >
+          {BORROW_MEMORY_LABEL}
+        </button>
       </div>
       <div className="v2-composer">
         <textarea
@@ -452,6 +631,10 @@ export function Circle({
       <p className="muted small">
         Your words stay in your own pod, visible to this circle. Nothing enters the shared picture
         unless you adopt it.
+      </p>
+      <p className="muted small">
+        The crossing this circle raised already has a life of its own —{" "}
+        <a href="#/story/maple-crossing">see what came of it</a>.
       </p>
     </section>
   );

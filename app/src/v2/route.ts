@@ -1,19 +1,30 @@
 // AUTHORED-BY Claude Fable 5 (PSS agent)
 //
 // The v2 surface's hash routes (design/v2 07 §2): #/commons, #/circle/<id>,
-// #/notebook, #/how, #/story/<id> — the same tiny hash-router pattern as
-// ui/route.ts, parsed by the v2 surface ONLY (the v1 router is untouched;
-// under the v1 surface these hashes fall through to the v1 default view, and
-// under the v2 surface any v1/unknown hash falls through to the commons).
-// Pure parse helpers + one hook; fail-closed — anything unrecognised resolves
-// to the default route, never a throw. A route's <id> is an OPAQUE SELECTOR
-// used only to look up a KNOWN circle/story record — it is never fetched,
-// never interpolated into a URL.
+// #/notebook, #/how, #/story/<id> — plus the V3–V5 surfaces: #/circles (the
+// composed-circle invitations), #/arc (the five-minute walk), #/curtain
+// (behind-the-curtain, 06 §5) and #/join-us (the pitch, 06 §6) — the same
+// tiny hash-router pattern as ui/route.ts, parsed by the v2 surface ONLY
+// (the v1 router is untouched; under the v1 surface these hashes fall
+// through to the v1 default view, and under the v2 surface any v1/unknown
+// hash falls through to the commons). Pure parse helpers + one hook;
+// fail-closed — anything unrecognised resolves to the default route, never a
+// throw. A route's <id> is an OPAQUE SELECTOR used only to look up a KNOWN
+// circle/story record — it is never fetched, never interpolated into a URL.
 
 import { useCallback, useEffect, useState } from "react";
 
 /** The v2 views — stable ids, they appear in URLs. */
-export type V2ViewId = "commons" | "circle" | "notebook" | "how" | "story";
+export type V2ViewId =
+  | "commons"
+  | "circle"
+  | "notebook"
+  | "how"
+  | "story"
+  | "circles"
+  | "arc"
+  | "curtain"
+  | "join-us";
 
 /** A parsed v2 route: the view + the optional path id (circle/story only). */
 export interface V2Route {
@@ -24,7 +35,17 @@ export interface V2Route {
 
 export const DEFAULT_V2_ROUTE: V2Route = { view: "commons" };
 
-const V2_VIEW_SET: ReadonlySet<string> = new Set(["commons", "circle", "notebook", "how", "story"]);
+const V2_VIEW_SET: ReadonlySet<string> = new Set([
+  "commons",
+  "circle",
+  "notebook",
+  "how",
+  "story",
+  "circles",
+  "arc",
+  "curtain",
+  "join-us",
+]);
 
 /** Views that take a path id. */
 const PARAM_VIEWS: ReadonlySet<V2ViewId> = new Set<V2ViewId>(["circle", "story"]);

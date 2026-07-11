@@ -18,6 +18,13 @@ describe("parseV2Hash", () => {
     expect(parseV2Hash("#/story/crossing")).toEqual({ view: "story", id: "crossing" });
   });
 
+  it("parses the V3–V5 routes (circles / arc / curtain / join-us)", () => {
+    expect(parseV2Hash("#/circles")).toEqual({ view: "circles" });
+    expect(parseV2Hash("#/arc")).toEqual({ view: "arc" });
+    expect(parseV2Hash("#/curtain")).toEqual({ view: "curtain" });
+    expect(parseV2Hash("#/join-us")).toEqual({ view: "join-us" });
+  });
+
   it("is lenient on the leading #/ and query-ish suffixes", () => {
     expect(parseV2Hash("#commons")).toEqual({ view: "commons" });
     expect(parseV2Hash("#/commons?x=1")).toEqual({ view: "commons" });

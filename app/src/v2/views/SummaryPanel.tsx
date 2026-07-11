@@ -8,21 +8,51 @@
 // carries its quiet seam.
 
 import { displayName } from "../../ui/hooks.js";
+import { TAP_ACK } from "../private-tap.js";
 import { differSeam, stillFormingSeam } from "../seams.js";
 import type { LivingSummary, SummaryLine } from "../summary.js";
 
-function Line({ line }: { line: SummaryLine }): React.JSX.Element {
+function Line({
+  line,
+  onPrivateTap,
+  tapped,
+}: {
+  line: SummaryLine;
+  /** The private "actually, I don't" tap (03 §4) — circling lines only. */
+  onPrivateTap?: ((statement: string) => void) | undefined;
+  tapped?: boolean | undefined;
+}): React.JSX.Element {
   return (
     <li>
       “{line.words}” <span className="muted small">— {displayName(line.author)}</span>
       {!line.heardFromViewer && (
         <span className="muted small"> · we haven't heard you on this one — no pressure</span>
       )}
+      {onPrivateTap !== undefined && !tapped && (
+        <>
+          {" "}
+          <button type="button" className="v2-seam" onClick={() => onPrivateTap(line.statement)}>
+            actually, I don't (private)
+          </button>
+        </>
+      )}
+      {/* The ack renders to the tapper ONLY — it is component state, written
+          nowhere the circle reads; the tap itself lives in the separate
+          signal store and changes nothing this panel computes (03 §4). */}
+      {tapped === true && <p className="v2-seam-text">{TAP_ACK}</p>}
     </li>
   );
 }
 
-export function SummaryPanel({ summary }: { summary: LivingSummary }): React.JSX.Element | null {
+export function SummaryPanel({
+  summary,
+  onPrivateTap,
+  privatelyTapped,
+}: {
+  summary: LivingSummary;
+  onPrivateTap?: ((statement: string) => void) | undefined;
+  privatelyTapped?: ReadonlySet<string> | undefined;
+}): React.JSX.Element | null {
   const empty =
     summary.circling.length === 0 && summary.differ.length === 0 && summary.forming.length === 0;
   if (empty) return null;
@@ -34,7 +64,12 @@ export function SummaryPanel({ summary }: { summary: LivingSummary }): React.JSX
           <p className="muted small">We're circling agreement on:</p>
           <ul>
             {summary.circling.map((l) => (
-              <Line key={l.statement} line={l} />
+              <Line
+                key={l.statement}
+                line={l}
+                onPrivateTap={onPrivateTap}
+                tapped={privatelyTapped?.has(l.statement)}
+              />
             ))}
           </ul>
         </>
