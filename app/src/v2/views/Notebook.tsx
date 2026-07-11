@@ -9,10 +9,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { demoForDeliberation } from "../../demo/pods.js";
-import { DEFAULT_K_THRESHOLD, MAXNEEF_BY_IRI } from "../../lib/fut.js";
-import { needProfile } from "../../lib/gallery.js";
+import { MAXNEEF_BY_IRI } from "../../lib/fut.js";
 import { NEED_PHRASES } from "../../lib/mirror-draft.js";
-import { buildMatrix, cluster } from "../../lib/ranking.js";
 import type { AggregateState } from "../../ui/hooks.js";
 import { type DeliberationConfig, sessionIdentity } from "../../ui/state.js";
 import { type CircleMessage, readCircleMessages } from "../circle-data.js";
@@ -20,6 +18,7 @@ import { DEMO_CIRCLE } from "../demo-circle.js";
 import { deleteOwnResource, type OwnStatements, readOwnStatements } from "../notebook-data.js";
 import { REACTION_LABELS } from "../script.js";
 import { whereYouSitSeam } from "../seams.js";
+import { whereYouSit as computeWhereYouSit } from "../where-you-sit.js";
 
 const STANCE_WORDS: Record<string, string> = {
   Resonates: REACTION_LABELS.resonates,
@@ -89,47 +88,17 @@ export function Notebook({
     return m;
   }, [aggregate.result]);
 
-  // "Where you sit" — computed fresh from the community matrix, never stored.
+  // "Where you sit" — computed fresh from the community matrix, never stored;
+  // the P11 k-floor on the split percentage lives in the pure helper.
   const whereYouSit = useMemo(() => {
     const result = aggregate.result;
     if (!result || !identity) return null;
-    const participants = result.verified.map((v) => v.webId);
-    const matrix = buildMatrix(
-      participants,
-      result.needs.map((n) => n.id),
-      result.resonances,
-    );
-    const clustering = cluster(matrix, 2);
-    const i = matrix.participants.indexOf(identity);
-    if (i < 0) return null;
-    const g = clustering.assignments[i];
-    if (g === undefined) return null;
-    // Characterize the viewer's cluster by its members' top need concepts —
-    // never a label, never politics (03 §4).
-    const concepts = new Map<string, number>();
-    for (let j = 0; j < matrix.participants.length; j++) {
-      if (clustering.assignments[j] !== g) continue;
-      const who = matrix.participants[j];
-      if (who === undefined) continue;
-      for (const c of needProfile(who, result.needs, result.resonances)) {
-        concepts.set(c, (concepts.get(c) ?? 0) + 1);
-      }
-    }
-    const top = [...concepts.entries()]
-      .sort((a, b) => (b[1] !== a[1] ? b[1] - a[1] : a[0] < b[0] ? -1 : 1))
-      .slice(0, 2)
-      .map(([iri]) => {
-        const name = MAXNEEF_BY_IRI.get(iri)?.name;
-        return name !== undefined ? (NEED_PHRASES[name] ?? name) : null;
-      })
-      .filter((p): p is string => p !== null);
-    const size = clustering.sizes[g] ?? 0;
-    const others = matrix.participants.length - size;
-    const fraction =
-      matrix.participants.length >= DEFAULT_K_THRESHOLD && others > 0
-        ? Math.round((others / matrix.participants.length) * 100)
-        : null;
-    return { top, fraction, communitySize: matrix.participants.length };
+    return computeWhereYouSit({
+      viewer: identity,
+      participants: result.verified.map((v) => v.webId),
+      needs: result.needs,
+      resonances: result.resonances,
+    });
   }, [aggregate.result, identity]);
 
   return (

@@ -101,4 +101,15 @@ describe("surfaceHref", () => {
   it("degrades a malformed search to just the surface param", () => {
     expect(surfaceHref("v2", "x".repeat(5000), "not-a-hash")).toBe("?surface=v2");
   });
+
+  it("pins the scope when given (a v2→v1 link must carry society)", () => {
+    expect(surfaceHref("v1", null, "#/deck", "society")).toBe("?surface=v1&scope=society#/deck");
+    // An existing scope param is overwritten to the pinned one.
+    expect(surfaceHref("v1", "?scope=apps", "#/bridge", "society")).toBe(
+      "?scope=society&surface=v1#/bridge",
+    );
+    // An invalid/absent scope is ignored (fail-safe — no bogus scope param).
+    expect(surfaceHref("v1", null, "#/deck", null)).toBe("?surface=v1#/deck");
+    expect(surfaceHref("v1", null, "#/deck")).toBe("?surface=v1#/deck");
+  });
 });

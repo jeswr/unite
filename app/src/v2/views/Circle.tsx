@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { demoWebId } from "../../demo/fixtures.js";
 import { demoForDeliberation } from "../../demo/pods.js";
-import { routeDeck } from "../../lib/deck.js";
+import { type DeckEntry, routeDeck } from "../../lib/deck.js";
 import type { Stance } from "../../lib/fut.js";
 import { compressClaim, draftMirror, type MirrorDraftResult } from "../../lib/mirror-draft.js";
 import type { Claim } from "../../lib/model-society.js";
@@ -38,6 +38,7 @@ import {
   MIRROR_ACTIONS,
   notetakerBeats,
   openingPrompt,
+  peerBeat,
 } from "../script.js";
 import { deckBeatSeam } from "../seams.js";
 import { livingSummary } from "../summary.js";
@@ -93,6 +94,11 @@ export function Circle({
   const [adoptedCount, setAdoptedCount] = useState(0);
   const [adoptedPhrase, setAdoptedPhrase] = useState<string | null>(null);
   const [reactedStance, setReactedStance] = useState<Stance | null>(null);
+  // The peer card the viewer reacted to — PINNED so it stays mounted through
+  // the post-reaction distribution reveal (P4). Without this the card would
+  // unmount the instant `reacted` flips (the deck advances / the fate beat
+  // takes over) and the reveal would never show.
+  const [reactedPeer, setReactedPeer] = useState<{ claim: Claim; entry: DeckEntry } | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const lastUtteranceRef = useRef<string | null>(null);
 
@@ -127,7 +133,9 @@ export function Circle({
       viewer: identity,
       participants: result.verified.map((v) => v.webId),
       needStatements: result.needs.map((n) => n.id),
-      deckStatements: result.claims.map((c) => c.id),
+      // The deck deals PEER statements — never the viewer's own, or an adopted
+      // claim could be dealt back as "Here's how You put it" (a pseudo-peer).
+      deckStatements: result.claims.filter((c) => c.creator !== identity).map((c) => c.id),
       resonances: result.resonances,
     });
     const top = queue[0];
@@ -153,16 +161,21 @@ export function Circle({
     });
   }, [aggregate.result, circle, identity]);
 
+  // The card currently in front of the viewer: the pinned reacted card (so it
+  // stays mounted through the P4 reveal) else the next deck card once they've
+  // adopted something (beat 4).
+  const activePeer = reactedPeer ?? (adoptedCount > 0 ? peerCard : null);
+
   // Community-scale tally for the reacted statement (the Distribution's data).
   const reactedDistribution = useMemo(() => {
     const result = aggregate.result;
-    if (!result || !peerCard || reactedStance === null) return null;
+    if (!result || !activePeer || reactedStance === null) return null;
     let resonates = 0;
     let conflicts = 0;
     let unsure = 0;
     const latest = new Map<string, string>();
     for (const r of result.resonances) {
-      if (r.onStatement !== peerCard.claim.id) continue;
+      if (r.onStatement !== activePeer.claim.id) continue;
       latest.set(r.creator, r.stance);
     }
     for (const stance of latest.values()) {
@@ -171,7 +184,7 @@ export function Circle({
       else unsure++;
     }
     return { resonates, conflicts, unsure };
-  }, [aggregate.result, peerCard, reactedStance]);
+  }, [aggregate.result, activePeer, reactedStance]);
 
   if (!circle) {
     return (
@@ -340,52 +353,59 @@ export function Circle({
           </div>
         )}
 
-        {/* The notetaker's trailing beats (ask / boundary / peer / fate). */}
-        {beats.map((b) => (
-          <div key={b.kind}>
-            <Notetaker text={b.text} />
-            {b.kind === "boundary" && (
-              <div className="v2-chips" style={{ marginLeft: "2.2rem" }}>
-                <button type="button" className="v2-chip" onClick={() => setPending(null)}>
-                  {BOUNDARY_ACTIONS.keep}
-                </button>
-                <button
-                  type="button"
-                  className="v2-chip"
-                  onClick={() => {
-                    setPending(null);
-                    composerRef.current?.focus();
-                  }}
-                >
-                  {BOUNDARY_ACTIONS.reword}
-                </button>
-              </div>
-            )}
-            {b.kind === "peer" && peerCard && identity && (
-              <div className="v2-mirror">
-                <p className="v2-msg-text">“{peerCard.claim.content}”</p>
-                <p className="v2-msg-who">— {displayName(peerCard.claim.creator)}</p>
-                <SessionReaction
-                  statement={peerCard.claim.id}
-                  config={config}
-                  identity={identity}
-                  yours={reactedStance}
-                  onStance={setReactedStance}
-                  onReacted={aggregate.refresh}
-                >
-                  <Distribution
-                    tally={reactedDistribution}
-                    viewerReacted={reactedStance !== null}
-                  />
-                </SessionReaction>
-                <p className="v2-seam-text">
-                  Why this one? {deckBeatSeam(peerCard.entry)}{" "}
-                  <a href="#/how">the long version →</a>
-                </p>
-              </div>
-            )}
+        {/* The notetaker's trailing beats (ask / boundary / fate) — the PEER
+            beat's text renders with the pinned peer card below, not here. */}
+        {beats
+          .filter((b) => b.kind !== "peer")
+          .map((b) => (
+            <div key={b.kind}>
+              <Notetaker text={b.text} />
+              {b.kind === "boundary" && (
+                <div className="v2-chips" style={{ marginLeft: "2.2rem" }}>
+                  <button type="button" className="v2-chip" onClick={() => setPending(null)}>
+                    {BOUNDARY_ACTIONS.keep}
+                  </button>
+                  <button
+                    type="button"
+                    className="v2-chip"
+                    onClick={() => {
+                      setPending(null);
+                      composerRef.current?.focus();
+                    }}
+                  >
+                    {BOUNDARY_ACTIONS.reword}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+
+        {/* The dealt peer statement + its reaction + the POST-REACTION
+            distribution (P4). Rendered from the PINNED card so it stays
+            mounted through the reveal — a reaction never unmounts it. */}
+        {activePeer && identity && (
+          <div className="v2-mirror">
+            <Notetaker text={peerBeat(displayName(activePeer.claim.creator))} />
+            <p className="v2-msg-text">“{activePeer.claim.content}”</p>
+            <p className="v2-msg-who">— {displayName(activePeer.claim.creator)}</p>
+            <SessionReaction
+              statement={activePeer.claim.id}
+              config={config}
+              identity={identity}
+              yours={reactedStance}
+              onStance={(s) => {
+                setReactedStance(s);
+                setReactedPeer(activePeer);
+              }}
+              onReacted={aggregate.refresh}
+            >
+              <Distribution tally={reactedDistribution} viewerReacted={reactedStance !== null} />
+            </SessionReaction>
+            <p className="v2-seam-text">
+              Why this one? {deckBeatSeam(activePeer.entry)} <a href="#/how">the long version →</a>
+            </p>
           </div>
-        ))}
+        )}
 
         {notice && !pendingBoundary && <Notetaker text={notice} />}
       </div>

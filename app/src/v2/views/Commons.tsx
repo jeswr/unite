@@ -66,6 +66,19 @@ function gardenBeds(
   return beds;
 }
 
+/**
+ * The garden's text equivalent (02 §9) — COUNT-FREE (P8/P11): it names the
+ * SHAPE (groups, whether common ground is bridging them), never a tally. A
+ * bridge count is still a number, so the copy never renders one — pure so the
+ * count-free property is fixture-pinned.
+ */
+export function gardenText(bedCount: number, bridgeCount: number): string {
+  if (bedCount < 2) return "The sky is still gathering — groups appear as people react.";
+  return bridgeCount === 0
+    ? "Two groups of neighbours read the street differently, with no common ground bridging them yet."
+    : "Two groups of neighbours read the street differently, and common ground is starting to bridge them.";
+}
+
 /** The garden (constellation form — the 07 §6 default), with text equivalent. */
 function Garden({ beds, bridges }: { beds: Bed[]; bridges: Digest["emerged"] }): React.JSX.Element {
   return (
@@ -113,16 +126,10 @@ function Garden({ beds, bridges }: { beds: Bed[]; bridges: Digest["emerged"] }):
             );
           })}
       </svg>
-      {/* The text equivalent (02 §9) — same information, no chart needed. */}
-      <p className="muted small">
-        {beds.length < 2
-          ? "The sky is still gathering — groups appear as people react."
-          : `Two groups of neighbours read the street differently. ${
-              bridges.length === 0
-                ? "No bridge stands between them yet."
-                : `${bridges.length} bridge${bridges.length === 1 ? "" : "s"} of common ground stand${bridges.length === 1 ? "s" : ""} between them.`
-            }`}
-      </p>
+      {/* The text equivalent (02 §9) — same SHAPE as the constellation, and
+          COUNT-FREE like it (P8/P11): the garden shows no numbers, so neither
+          does its text alternative (a bridge count is still a tally). */}
+      <p className="muted small">{gardenText(beds.length, bridges.length)}</p>
       <p className="v2-seam-text">
         {gardenSeam()} <a href="#/how">the long version →</a>
       </p>

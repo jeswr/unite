@@ -8,7 +8,7 @@
 // in-flow seam's "the long version →" lands on this page.
 
 import { MIRROR_DRAFT_PLAN } from "../../lib/mirror-draft.js";
-import { surfaceHref } from "../../scope/surface.js";
+import { SURFACES, surfaceHref } from "../../scope/surface.js";
 
 function Section({
   id,
@@ -29,7 +29,9 @@ function Section({
 
 export function How(): React.JSX.Element {
   const loc = typeof window === "undefined" ? null : window.location;
-  const v1 = (hash: string) => surfaceHref("v1", loc?.search, hash);
+  // v2→v1 must carry the v2 surface's forced scope (society) so the instrument
+  // views land in the SAME deliberation, not the default apps scope.
+  const v1 = (hash: string) => surfaceHref("v1", loc?.search, hash, SURFACES.v2.forcesScope);
   return (
     <section className="view">
       <h2>How unite listens</h2>

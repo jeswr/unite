@@ -86,6 +86,57 @@ describe("livingSummary — the two-scale rule", () => {
     }
   });
 
+  it("a sub-k DIVISIVE result never renders an anonymous verdict (P11 floor)", () => {
+    const S = "https://s.example/claims/thin-divisive";
+    const out = communityResonances().filter((r) => r.onStatement !== S_DIVISIVE);
+    // Only 4 community votes on S — a 2-vs-2 cross-cluster split, BELOW k=5.
+    out.push(vote(P(1), S, STANCE_RESONATES), vote(P(2), S, STANCE_RESONATES));
+    out.push(vote(P(5), S, STANCE_CONFLICTS), vote(P(6), S, STANCE_CONFLICTS));
+    const summary = livingSummary({
+      circleStatements: [{ id: S, content: "Ban through-traffic.", creator: P(1) }],
+      participants: PARTICIPANTS,
+      needStatements: [N1, N2],
+      resonances: out,
+      viewer: P(2),
+    });
+    // NOT characterized: it stays "still forming", never differ.
+    expect(summary.differ).toEqual([]);
+    expect(summary.forming.map((l) => l.statement)).toEqual([S]);
+  });
+
+  it("a sub-k COMMON-GROUND result never renders an anonymous verdict (P11 floor)", () => {
+    const S = "https://s.example/claims/thin-common";
+    const out = communityResonances().filter((r) => r.onStatement !== S_DIVISIVE);
+    // Only 3 community votes, both clusters positive — common ground, BELOW k=5.
+    out.push(vote(P(1), S, STANCE_RESONATES), vote(P(2), S, STANCE_RESONATES));
+    out.push(vote(P(5), S, STANCE_RESONATES));
+    const summary = livingSummary({
+      circleStatements: [{ id: S, content: "A bench.", creator: P(1) }],
+      participants: PARTICIPANTS,
+      needStatements: [N1, N2],
+      resonances: out,
+      viewer: P(3),
+    });
+    expect(summary.circling).toEqual([]);
+    expect(summary.forming.map((l) => l.statement)).toEqual([S]);
+  });
+
+  it("the k floor is configurable (a lower floor lets the same result characterize)", () => {
+    const S = "https://s.example/claims/thin-common";
+    const out = communityResonances().filter((r) => r.onStatement !== S_DIVISIVE);
+    out.push(vote(P(1), S, STANCE_RESONATES), vote(P(2), S, STANCE_RESONATES));
+    out.push(vote(P(5), S, STANCE_RESONATES));
+    const summary = livingSummary({
+      circleStatements: [{ id: S, content: "A bench.", creator: P(1) }],
+      participants: PARTICIPANTS,
+      needStatements: [N1, N2],
+      resonances: out,
+      viewer: P(3),
+      k: 3,
+    });
+    expect(summary.circling.map((l) => l.statement)).toEqual([S]);
+  });
+
   it("marks what the viewer hasn't spoken to (pressure-free, viewer-relative)", () => {
     const summary = livingSummary({
       circleStatements: [

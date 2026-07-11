@@ -19,6 +19,7 @@
 // surface") a structural property, fixture-pinned in summary.test.ts.
 
 import { candidateReception } from "../lib/convergence.js";
+import { DEFAULT_K_THRESHOLD } from "../lib/fut.js";
 import type { Resonance } from "../lib/model.js";
 
 /** One summary line: attributed words + the community-scale verdict. NO tallies. */
@@ -58,6 +59,13 @@ export interface LivingSummaryOptions {
   readonly resonances: readonly Resonance[];
   /** The viewer (for the pressure-free "we haven't heard you" marker). */
   readonly viewer: string;
+  /**
+   * The k-anonymity floor for a rendered COMMUNITY-scale verdict (P11):
+   * fewer than k community votes → the "forming" state, never an anonymous
+   * common-ground/divisive characterization. Defaults to the engine's
+   * DEFAULT_K_THRESHOLD (= 5).
+   */
+  readonly k?: number;
 }
 
 /**
@@ -66,6 +74,7 @@ export interface LivingSummaryOptions {
  * construction — the circle's membership never reaches the reception math.
  */
 export function livingSummary(options: LivingSummaryOptions): LivingSummary {
+  const k = options.k ?? DEFAULT_K_THRESHOLD;
   const reactedByViewer = new Set<string>();
   for (const r of options.resonances) {
     if (r.creator === options.viewer) reactedByViewer.add(r.onStatement);
@@ -80,12 +89,18 @@ export function livingSummary(options: LivingSummaryOptions): LivingSummary {
       options.resonances,
       stmt.id,
     );
+    // P11 k-floor: a community-scale characterization renders ONLY at/above k.
+    // Below it, the statement is "still forming" — an anonymous verdict over a
+    // sub-k group (a 2-vote cross-cluster split, a 3-person common ground) is
+    // exactly the deanonymization P11 forbids, so it never renders as one.
     const verdict =
-      reception.outcome === "endorsed"
-        ? "circling"
-        : reception.outcome === "disagreement"
-          ? "differ"
-          : "forming";
+      reception.totalSeen < k
+        ? "forming"
+        : reception.outcome === "endorsed"
+          ? "circling"
+          : reception.outcome === "disagreement"
+            ? "differ"
+            : "forming";
     scored.push({
       line: {
         statement: stmt.id,

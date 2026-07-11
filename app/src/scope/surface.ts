@@ -9,7 +9,7 @@
 // the default (v1) surface, never a throw — so the v1 surface is what renders
 // unless something explicitly, validly selects v2.
 
-import type { ScopeId } from "./scopes.js";
+import { isScopeId, type ScopeId } from "./scopes.js";
 
 /** The two surface ids. Stable — they appear in URLs (`?surface=`). */
 export type SurfaceId = "v1" | "v2";
@@ -117,11 +117,18 @@ function surfaceFromHostname(hostname: string | null | undefined): SurfaceId | n
  * param and the hash (the scopeHref discipline: auth callback state and return
  * routing must not be dropped by a surface switch). Fail-safe: a malformed
  * search degrades to just `?surface=<id>`, never a throw.
+ *
+ * `scope` PINS the scope on the switch — load-bearing for a v2→v1 link: the v2
+ * surface forces the society scope (07 §2) but need not carry `scope=society`
+ * in the URL, so a bare `surface=v1` link would land in the DEFAULT apps scope
+ * (a `#/deck` link falling back to overview). Passing the leaving surface's
+ * forced scope keeps the instrument links pointed at the same deliberation.
  */
 export function surfaceHref(
   id: SurfaceId,
   search?: string | null | undefined,
   hash?: string | null | undefined,
+  scope?: ScopeId | null | undefined,
 ): string {
   let params: URLSearchParams;
   try {
@@ -131,6 +138,7 @@ export function surfaceHref(
     params = new URLSearchParams();
   }
   params.set("surface", id);
+  if (isScopeId(scope)) params.set("scope", scope);
   const fragment =
     typeof hash === "string" && hash.startsWith("#") && hash.length <= 4096 ? hash : "";
   return `?${params.toString()}${fragment}`;

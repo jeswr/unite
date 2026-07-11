@@ -13,7 +13,7 @@
 
 import { FeedbackButton, ThemeToggle } from "@jeswr/app-shell";
 import { SCOPES } from "../scope/scopes.js";
-import { surfaceHref } from "../scope/surface.js";
+import { SURFACES, surfaceHref } from "../scope/surface.js";
 import { useController } from "../ui/auth.js";
 import { useAggregate } from "../ui/hooks.js";
 import { collectionKinds, demoConfig } from "../ui/state.js";
@@ -95,8 +95,10 @@ export function V2App(): React.JSX.Element {
 
       <p className="footer-note">
         unite · everything you say lives in your own pod ·{" "}
-        <a href={surfaceHref("v1", loc?.search, "#/overview")}>see the v1 instrument surface</a> ·
-        under active development
+        <a href={surfaceHref("v1", loc?.search, "#/overview", SURFACES.v2.forcesScope)}>
+          see the v1 instrument surface
+        </a>{" "}
+        · under active development
       </p>
     </div>
   );
