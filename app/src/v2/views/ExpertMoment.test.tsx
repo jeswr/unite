@@ -79,6 +79,32 @@ describe("the expert moment", () => {
     });
   });
 
+  it("a failed pod write leaves the ask standing — an unrecorded consent decides nothing", async () => {
+    const demo = await getDemoDeliberation("society");
+    // A demo-mode config with a non-demo deliberation IRI: the write session
+    // fails closed (ui/hooks writeSessionFor), so the record cannot land.
+    const broken = { ...CONFIG, deliberation: "https://demo.unite.example/deliberations/nope" };
+    render(
+      <AuthProvider controller={new DevLoginController()}>
+        <ExpertMoment
+          turns={QUESTION_TURNS}
+          identity="https://demo.unite.example/people/you/profile#me"
+          config={broken}
+          aboutResource={`${demo.you.base}claims/one.ttl`}
+        />
+      </AuthProvider>,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Okay — she can see the question and the summary/ }),
+    );
+    // The failure surfaces, the consent prompt STAYS, and Maria never appears.
+    expect(await screen.findByText(/demo mode requires a demo deliberation/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Okay — she can see the question and the summary/ }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/three ways councils usually do this/)).toBeNull();
+  });
+
   it("a no is honoured, acknowledged, and never re-asked (session memory)", async () => {
     const demo = await getDemoDeliberation("society");
     const first = mount(QUESTION_TURNS, `${demo.you.base}claims/one.ttl`);

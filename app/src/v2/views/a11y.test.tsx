@@ -58,7 +58,10 @@ describe("the a11y floor on the V3–V5 views", () => {
       const { container } = render(mount());
       expect(screen.getAllByRole("heading", { level: 2 }).length).toBe(1);
       for (const el of container.querySelectorAll("button, a")) {
-        expect((el.textContent ?? "").trim().length, `${name}: unnamed ${el.tagName}`).toBeGreaterThan(0);
+        expect(
+          (el.textContent ?? "").trim().length,
+          `${name}: unnamed ${el.tagName}`,
+        ).toBeGreaterThan(0);
       }
       // No click handlers on non-interactive elements (keyboard reachability).
       expect(container.querySelectorAll("div[onclick], span[onclick]").length).toBe(0);

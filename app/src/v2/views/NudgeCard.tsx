@@ -27,7 +27,7 @@ export function NudgeCard({
     if (nudge !== null) return; // once per mount; the memory guards remounts
     const found = nudgeFor(identity, turns, seenThemes());
     if (found !== null) {
-      markThemeSeen(found.themeKey); // at most once per theme per person
+      markThemeSeen(identity, found.themeKey); // once per theme per PERSON
       setNudge(found);
     }
   }, [identity, turns, nudge]);

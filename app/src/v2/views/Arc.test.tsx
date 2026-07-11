@@ -9,7 +9,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PERSONA_SEATS } from "../personas.js";
-import { Arc, ARC_BEATS, STAGED_HONESTY_LINE } from "./Arc.js";
+import { ARC_BEATS, Arc, STAGED_HONESTY_LINE } from "./Arc.js";
 
 afterEach(cleanup);
 

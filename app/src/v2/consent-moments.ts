@@ -3,9 +3,22 @@
 // IN-CONTEXT CONSENT MOMENTS (design/v2 02 §7, 07 §3 V4): nothing is asked at
 // signup; the moment a context CHANGE would happen (here: a circle question +
 // consented synthesis flowing to an expert), the person is asked THEN, about
-// THAT — and the answer is written into their own pod as an ODRL policy the
-// machinery obeys (lib/consent.ts, UNCHANGED — the same consentQuads the v1
-// compose path writes).
+// THAT — and the answer is written into their own pod as an ODRL policy
+// (lib/consent.ts consentQuads — the same typed builder the v1 compose path
+// uses), alongside the plain-words ask it answered.
+//
+// ENFORCEMENT HONESTY (scope of what is wired TODAY): the standing consent
+// gates (the aggregate's ODRL checks, the letter's isQuotable) parse the
+// policy INLINE ON the statement resource itself — they do not read this
+// `consents/` record. What ENFORCES an expert-moment decision today is the
+// asking surface: a declined ExpertMoment renders nothing of the decliner's
+// and stages the introduction on others' consented content only (the demo's
+// expert is client-side staged; no machine path ships anything to a real
+// expert). This record is the person's AUDITABLE decision trail — their pod,
+// their words, their answer. Folding it into the statement's own inline
+// policy (so the engine-level gates see it too) is flagged follow-up work
+// for the live expert pipeline; the surface copy says exactly this and does
+// not overclaim.
 //
 // A "no" is respected structurally: it is recorded the same way, and the
 // session memory ensures it is never re-asked as though it were a mistake.
@@ -37,8 +50,9 @@ const DCT_DESCRIPTION = "http://purl.org/dc/terms/description";
 /**
  * Record a consent decision to the person's OWN pod: the ODRL policy for the
  * `about` resource (granted → synthesize permitted per the v1 default shape;
- * declined → everything beyond the defaults stays prohibited), plus the
- * plain-words ask it answered. Typed quads, fail-closed scope guard.
+ * declined → synthesize prohibited), plus the plain-words ask it answered.
+ * Typed quads, fail-closed scope guard. This is the auditable decision
+ * record — see the header for what enforces the decision today.
  */
 export async function recordConsentDecision(
   fetchFn: typeof fetch,

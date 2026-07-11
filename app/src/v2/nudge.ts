@@ -54,18 +54,27 @@ export const NUDGE_PROMISES =
   "anyone else.";
 
 /**
+ * The seen-memory key: PER PERSON per theme ("once per theme per PERSON" —
+ * one recipient seeing a theme must never suppress another recipient's nudge).
+ */
+export function seenKey(viewer: string, themeKey: string): string {
+  return `${viewer}::${themeKey}`;
+}
+
+/**
  * The nudge for THIS viewer, or null. Null when: no readiness signal exists,
- * the viewer is not a named recipient, or the theme was already shown/declined
- * this session (`seenThemeKeys`). Pure given its inputs.
+ * the viewer is not a named recipient, or THIS VIEWER already saw/declined
+ * the theme this session (`seenKeys` holds viewer-scoped {@link seenKey}s).
+ * Pure given its inputs.
  */
 export function nudgeFor(
   viewer: string,
   turns: readonly ConversationTurn[],
-  seenThemeKeys: ReadonlySet<string>,
+  seenKeys: ReadonlySet<string>,
 ): NudgeView | null {
   for (const signal of detectReadiness(turns)) {
     if (!signal.recipients.includes(viewer)) continue;
-    if (seenThemeKeys.has(signal.themeKey)) continue;
+    if (seenKeys.has(seenKey(viewer, signal.themeKey))) continue;
     return toView(viewer, signal);
   }
   return null;
@@ -83,10 +92,11 @@ function toView(viewer: string, signal: ReadinessSignal): NudgeView {
   };
 }
 
-// ── The session memory (once per theme per person; declines sticky) ─────────
+// ── The session memory (once per theme per PERSON; declines sticky) ─────────
 // In-memory, session-scoped: the demo evaporates on reload by design (06 §7),
-// so the promise's scope is the session. A live deployment would persist the
-// seen-set to the person's own pod.
+// so the promise's scope is the session. Keys are viewer-scoped (seenKey) so
+// one recipient's sighting never suppresses another's. A live deployment
+// would persist each person's seen-set to their own pod.
 
 const seen = new Set<string>();
 
@@ -94,8 +104,8 @@ export function seenThemes(): ReadonlySet<string> {
   return seen;
 }
 
-export function markThemeSeen(themeKey: string): void {
-  seen.add(themeKey);
+export function markThemeSeen(viewer: string, themeKey: string): void {
+  seen.add(seenKey(viewer, themeKey));
 }
 
 /** TEST-ONLY: reset the session memory. */

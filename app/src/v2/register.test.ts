@@ -8,8 +8,8 @@
 import { describe, expect, it } from "vitest";
 import { HOW_LISTENS } from "../content-v2/how-listens.js";
 import { PITCH } from "../content-v2/pitch.js";
-import { DEMO_STORIES } from "./demo-stories.js";
 import { PERSONA_MIRRORS, SCRIBE_SEAM } from "./demo-scribe.js";
+import { DEMO_STORIES } from "./demo-stories.js";
 import { EXPERT_SEES, expertChipSeam, expertConsentAsk, MARIA, MARIA_REPLY } from "./expert.js";
 import { NUDGE_PROMISES, nudgeAsk } from "./nudge.js";
 import { MISSING_VOICE_INVITE, TAP_ACK, TAPPED_ANNOTATION } from "./private-tap.js";

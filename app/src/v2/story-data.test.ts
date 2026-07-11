@@ -13,8 +13,8 @@ import {
   nextReturnLoop,
   RETURN_LOOP_DAYS,
   returnLoopDue,
-  type Story,
   STORY_STATE_WORDS,
+  type Story,
   type StoryStateId,
 } from "./story-data.js";
 

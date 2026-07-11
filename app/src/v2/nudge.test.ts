@@ -64,8 +64,18 @@ describe("nudgeFor — recipient-only, once per theme (05 §3)", () => {
   it("fires at most once per theme per person (the session memory)", () => {
     const first = nudgeFor("alice", TURNS, seenThemes());
     expect(first).not.toBeNull();
-    if (first !== null) markThemeSeen(first.themeKey);
+    if (first !== null) markThemeSeen("alice", first.themeKey);
     expect(nudgeFor("alice", TURNS, seenThemes())).toBeNull();
+  });
+
+  it("one recipient seeing a theme does NOT suppress another recipient", () => {
+    const forAlice = nudgeFor("alice", TURNS, seenThemes());
+    expect(forAlice).not.toBeNull();
+    if (forAlice !== null) markThemeSeen("alice", forAlice.themeKey);
+    // Bob is a distinct named recipient — his nudge must still fire.
+    const forBob = nudgeFor("bob", TURNS, seenThemes());
+    expect(forBob).not.toBeNull();
+    expect(forBob?.yourOffers.every((o) => o.author === "bob")).toBe(true);
   });
 
   it("states the three standing promises in the nudge itself", () => {

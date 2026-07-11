@@ -61,10 +61,11 @@ export function ExpertMoment({
 
   async function decide(granted: boolean): Promise<void> {
     if (key === null) return;
-    rememberDecision(key, granted);
-    setDecision(granted);
     setError(null);
-    // The decision is WRITTEN — a policy term in the person's own pod (02 §7).
+    // The pod write comes FIRST (02 §7: the answer is recorded, durably, in
+    // the person's own pod) — only a successful record advances the flow. On
+    // failure the ask stays on screen and nothing is remembered: an
+    // unrecorded consent must not unlock (or lock) anything.
     if (aboutResource !== null) {
       try {
         const session = await writeSessionFor(config, controller, null);
@@ -77,8 +78,11 @@ export function ExpertMoment({
         });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
+        return; // the consent prompt stays; the decision did not happen
       }
     }
+    rememberDecision(key, granted);
+    setDecision(granted);
   }
 
   // Nothing of the visitor's exists yet → nothing of theirs travels, so no
@@ -99,8 +103,9 @@ export function ExpertMoment({
             </button>
           </div>
           <p className="v2-seam-text" style={{ marginLeft: "2.2rem" }}>
-            Your answer is written into your own pod as a policy the machinery obeys — and a no is
-            never asked again. <a href="#/how">the long version →</a>
+            Your answer is recorded in your own pod, and this surface obeys it: a no means nothing
+            of yours reaches her — the question proceeds on what others consented to. A no is never
+            asked again. <a href="#/how">the long version →</a>
           </p>
         </>
       ) : decision === false ? (

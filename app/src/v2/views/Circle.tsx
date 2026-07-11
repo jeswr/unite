@@ -190,6 +190,14 @@ export function Circle({
     [messages],
   );
 
+  // The visitor's latest own contribution, derived from the READ thread (not
+  // a session ref, which a route remount would reset) — the resource the
+  // expert-consent moment is about.
+  const ownContribution = useMemo(() => {
+    const own = messages.filter((m) => m.author === identity);
+    return own[own.length - 1]?.resource ?? null;
+  }, [messages, identity]);
+
   // AIRTIME EQUITY (04 §4) — the hidden health metric, repaired
   // conversationally: the open-door line is the ONLY rendered artifact; the
   // counts themselves never render anywhere.
@@ -560,13 +568,14 @@ export function Circle({
             conversation holds a stable recurring question — and is sequenced
             AFTER the visitor has joined the room, so the in-context consent
             ask (02 §7) always PRECEDES the introduction, never retro-appears
-            under an expert who was already reading. */}
-        {identity && messages.some((m) => m.author === identity) && (
+            under an expert who was already reading. The about-resource is
+            derived from the read thread, so a route remount cannot skip it. */}
+        {identity && ownContribution !== null && (
           <ExpertMoment
             turns={turns}
             identity={identity}
             config={config}
-            aboutResource={lastUtteranceRef.current}
+            aboutResource={ownContribution}
           />
         )}
 

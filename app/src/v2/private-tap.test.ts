@@ -19,7 +19,7 @@ import {
   readPrivateTaps,
   writePrivateTap,
 } from "./private-tap.js";
-import { livingSummary, type LivingSummaryOptions } from "./summary.js";
+import { type LivingSummaryOptions, livingSummary } from "./summary.js";
 
 beforeEach(resetDemoInstances);
 
