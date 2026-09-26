@@ -1,0 +1,181 @@
+// Talk with Unite: a private AI interview, one question at a time. The
+// conversation lives only in this tab (memory plus sessionStorage); the
+// server relays each turn to the Claude Code CLI and keeps nothing.
+
+import { aiRequest, disclosure, giveConsent, hasConsent, withdrawConsent } from '../aiclient.js';
+import { tabStore } from '../api.js';
+import { h, uid } from '../dom.js';
+import { joinPrompt } from '../ui.js';
+
+const STORE_KEY = 'unite.v4.interview';
+const MAX_MESSAGES = 40;
+export const OPENER = "What is one thing about your everyday life right now that you would most like to be different in ten years' time, for you or for people around you?";
+
+const AIMS = [
+  'Your life now',
+  'The future you would want',
+  'The values underneath',
+  'Constraints you face',
+  'Trade-offs you would accept or refuse',
+  'What you might contribute (never required)',
+  'What would change your mind',
+];
+
+function load() {
+  try {
+    const saved = JSON.parse(tabStore.get(STORE_KEY) ?? 'null');
+    if (Array.isArray(saved?.messages)) return saved.messages.filter((m) => m && typeof m.text === 'string' && (m.role === 'interviewer' || m.role === 'participant'));
+  } catch {
+    // start fresh
+  }
+  return [];
+}
+
+function save(messages) {
+  tabStore.set(STORE_KEY, JSON.stringify({ messages }));
+}
+
+export function renderTalk(ctx) {
+  const ui = (ctx.ui.talk ??= { messages: load(), busy: null, error: '' });
+  const ai = ctx.data.ai;
+  return h('section', { class: 'view', 'aria-labelledby': 'talk-title' },
+    h('header', { class: 'view-head' },
+      h('p', { class: 'eyebrow' }, 'Private interview'),
+      h('h1', { id: 'talk-title' }, 'Talk with Unite'),
+      h('p', { class: 'lede' }, 'An AI interviewer asks about your life and the future you want, one question at a time. When you are ready, you can turn part of it into a public post. You review every word first.'),
+    ),
+    h('p', { class: 'scope-note' }, h('strong', null, 'Private to this tab. '), 'Stored only in this tab\'s session storage and cleared when the tab closes. Never added to the feed, to common-ground summaries or to the export.'),
+    body(ctx, ui, ai),
+    h('details', { class: 'card quiet', 'data-open-key': 'aims' },
+      h('summary', null, 'What Unite asks about'),
+      h('ul', { class: 'differences small' }, AIMS.map((aim) => h('li', null, aim))),
+      h('p', { class: 'small muted' }, 'Inspired by Anthropic\'s large interview study, which paired fixed interview aims with adaptive follow-up questions. Answers here are self-selected and represent only the person giving them.')),
+  );
+}
+
+function body(ctx, ui, ai) {
+  if (!ai.enabled) {
+    return h('div', { class: 'card' },
+      h('h2', null, 'AI conversation is off on this server'),
+      h('p', null, ai.reason),
+      h('p', { class: 'small' }, 'Unite does not simulate replies, so nothing will pretend to be the AI. You can still post your thoughts directly in any room.'),
+      h('p', null, h('a', { href: '#/room/future' }, 'Go to Our shared future')),
+    );
+  }
+  if (!ctx.me) return joinPrompt(ctx, 'Join with a display name to start. Your display name is not sent to the AI.');
+  if (!hasConsent()) return consentCard(ctx);
+  return chat(ctx, ui);
+}
+
+function consentCard(ctx) {
+  return h('section', { class: 'card consent', 'aria-labelledby': 'consent-title' },
+    h('h2', { id: 'consent-title' }, 'Before you start'),
+    disclosure(ctx.data.ai.model),
+    h('div', { class: 'row' }, h('button', {
+      type: 'button', class: 'primary', 'data-focus': 'consent',
+      onClick: () => { giveConsent(); ctx.rerender(); document.querySelector('[data-draft="talk:answer"]')?.focus(); },
+    }, 'I understand, start the interview')),
+  );
+}
+
+function chat(ctx, ui) {
+  const messages = [{ role: 'interviewer', text: OPENER, opener: true }, ...ui.messages];
+  const answerId = uid('answer');
+  const textarea = h('textarea', { id: answerId, rows: 3, maxlength: 2000, 'data-draft': 'talk:answer', value: ctx.draft('talk:answer'), disabled: Boolean(ui.busy) });
+  const full = ui.messages.length >= MAX_MESSAGES - 1;
+
+  const send = async (mode) => {
+    const text = textarea.value.trim();
+    if (mode === 'question' && !text) {
+      // An empty send retries after a failed turn; otherwise there is nothing to send.
+      if (ui.messages.at(-1)?.role !== 'participant') return;
+    } else if (mode === 'question') {
+      ui.messages.push({ role: 'participant', text });
+      ctx.clearDraft('talk:answer');
+      save(ui.messages);
+    }
+    const controller = new AbortController();
+    ui.busy = { mode, controller };
+    ui.error = '';
+    ctx.rerender();
+    try {
+      const outgoing = [{ role: 'interviewer', text: OPENER }, ...ui.messages].map(({ role, text: t }) => ({ role, text: t }));
+      const result = await aiRequest('/api/interview', { mode, messages: outgoing }, controller.signal);
+      if (mode === 'question') {
+        ui.messages.push({ role: 'interviewer', text: result.text });
+        save(ui.messages);
+        ctx.announce(`Unite asks: ${result.text}`);
+      } else {
+        ctx.openPublish({
+          text: result.text,
+          title: 'Review your post before publishing',
+          intro: 'The AI drafted this from your interview. Change anything, or cancel. Nothing is public until you press Publish.',
+        });
+      }
+    } catch (error) {
+      ui.error = error.name === 'AbortError' ? 'Stopped. Nothing further was sent.' : error.message;
+      if (error.status === 403 || error.code === 'disabled') await ctx.refresh();
+    } finally {
+      ui.busy = null;
+      ctx.rerender();
+    }
+  };
+
+  const form = h('form', { class: 'card composer', 'aria-label': 'Your answer' },
+    h('label', { for: answerId }, 'Your answer'),
+    textarea,
+    h('p', { class: 'hint' }, 'Press Send, or Ctrl/⌘ + Enter. Skip anything you would rather not answer.'),
+    h('div', { class: 'row between' },
+      h('span', { class: 'small muted' }, full ? 'This conversation is at its length limit. Draft a post or start again.' : ''),
+      h('button', { type: 'submit', class: 'primary', disabled: Boolean(ui.busy) || full }, 'Send')),
+  );
+  form.addEventListener('submit', (event) => { event.preventDefault(); send('question'); });
+  textarea.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); form.requestSubmit(); }
+  });
+
+  const hasAnswers = ui.messages.some((m) => m.role === 'participant');
+  const lastOwn = [...ui.messages].reverse().find((m) => m.role === 'participant');
+
+  return h('div', { class: 'field' },
+    h('ol', { class: 'chat', 'aria-label': 'Interview' },
+      messages.map((m) => h('li', { class: `bubble ${m.role}` },
+        h('span', { class: 'who' }, m.role === 'participant' ? 'You' : m.opener ? 'Unite · opening question written by the demo, not the AI' : 'Unite (AI)'),
+        m.text))),
+    ui.busy ? h('div', { class: 'row', role: 'status' },
+      h('p', { class: 'thinking' }, ui.busy.mode === 'draft' ? 'Drafting a post from your interview…' : 'Unite is thinking… (up to two minutes)'),
+      h('button', { type: 'button', class: 'small', 'data-focus': 'stop', onClick: () => ui.busy?.controller.abort() }, 'Stop')) : null,
+    ui.error ? h('div', { class: 'alert row between', role: 'alert' }, ui.error,
+      !ui.busy && ui.messages.at(-1)?.role === 'participant'
+        ? h('button', { type: 'button', class: 'small', 'data-focus': 'retry', onClick: () => send('question') }, 'Try again')
+        : null) : null,
+    form,
+    h('section', { class: 'card quiet', 'aria-labelledby': 'share-title' },
+      h('h2', { id: 'share-title' }, 'Share something publicly'),
+      h('p', { class: 'small' }, 'Choose what, if anything, to share. The AI can draft a short post from your interview, or you can start from your last answer. Either way you edit it and pick a room before it is published.'),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', 'data-focus': 'draft-ai', disabled: !hasAnswers || Boolean(ui.busy), onClick: () => send('draft') }, 'Draft a post with AI'),
+        h('button', {
+          type: 'button', 'data-focus': 'draft-self', disabled: !lastOwn,
+          onClick: () => ctx.openPublish({ text: lastOwn?.text.slice(0, 1200) ?? '', title: 'Publish part of your answer', intro: 'Edit this down to what you want to say publicly.' }),
+        }, 'Start from my last answer'),
+      )),
+    h('div', { class: 'row' },
+      h('button', {
+        type: 'button', class: 'ghost small danger', disabled: Boolean(ui.busy) || !ui.messages.length,
+        onClick: async () => {
+          if (await ctx.confirm({ title: 'Clear this conversation?', body: 'It is deleted from this tab. Nothing public changes.', confirmLabel: 'Clear conversation' })) {
+            ui.messages = [];
+            ui.error = '';
+            save([]);
+            ctx.rerender();
+          }
+        },
+      }, 'Clear conversation'),
+      h('button', {
+        type: 'button', class: 'ghost small',
+        onClick: () => { withdrawConsent(); ctx.rerender(); },
+      }, 'Withdraw AI consent for this tab'),
+    ),
+  );
+}

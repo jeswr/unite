@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Unite · talk about our shared future, then act</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/app.css">
+  <script type="module" src="/js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <div class="shell">
+    <header class="sidebar">
+      <p class="brand"><a href="#/">Unite</a></p>
+      <nav aria-label="Primary" class="nav">
+        <ul>
+          <li><a href="#/" data-nav="feed">Conversations</a></li>
+          <li><a href="#/talk" data-nav="talk">Talk with Unite</a></li>
+          <li><a href="#/act" data-nav="act">Act next</a></li>
+          <li><a href="#/futures" data-nav="futures">Possible futures</a></li>
+          <li><a href="#/about" data-nav="about">About this demo</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Rooms" class="rooms-nav">
+        <p class="nav-label" id="rooms-label">Rooms</p>
+        <ul id="room-links" aria-labelledby="rooms-label"></ul>
+      </nav>
+      <div class="me" id="me"></div>
+    </header>
+
+    <div class="content">
+      <p class="demo-notice">
+        <strong>Local demo.</strong> Public posts live in this computer's server memory and vanish when it restarts. Sample people are fictional.
+        <a href="#/about">What this is</a>
+        <span class="live" id="live" role="status">Connecting…</span>
+      </p>
+      <main id="main" tabindex="-1">
+        <p class="loading">Loading Unite…</p>
+      </main>
+    </div>
+  </div>
+
+  <p class="toast" id="toast" role="status" aria-live="polite"></p>
+  <p class="visually-hidden" id="announcer" aria-live="polite"></p>
+  <div id="dialogs"></div>
+  <noscript><p class="noscript">Unite needs JavaScript to talk to its local server.</p></noscript>
+</body>
+</html>
