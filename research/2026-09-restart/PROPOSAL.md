@@ -2,6 +2,8 @@
 
 Research and operating proposal • 26 September 2026 • Version 0.2
 
+**Product direction updated:** the founder has requested live social discourse and AI conversation. Read [Unite: a conversation that becomes collective work](CONVERSATIONAL-UNITE.md) first for the current experience, new research and societal transition proposal. This document remains background on precedents, institutions, funding and the lean learning-cycle budget; its form-based product sequence is superseded.
+
 **Purpose:** enable people everywhere to participate in designing the future of humanity. Unite should connect people's desired lives, shared possibilities, expert knowledge and collective action across countries and communities. The subject is our common future: learning, health and care, livelihoods, housing, nature, technology, fairness and the institutions we share.
 
 **Recommendation:** build a worldwide space for imagining and shaping those futures, connected to networks of people and institutions able to act. Keep broad exploration open; use bounded experiments and explicit decision processes when a proposal is ready for action. An initial learning exercise tests that pathway without redefining the whole platform around one topic, country, industry or technical ecosystem.

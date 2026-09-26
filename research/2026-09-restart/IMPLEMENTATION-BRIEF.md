@@ -1,5 +1,7 @@
 # Unite: product acceptance and staged implementation
 
+**Historical v3 brief.** The founder rejected this form-based experience. The current direction is [conversational Unite](CONVERSATIONAL-UNITE.md), implemented separately in [prototype v4](../../prototype-v4/IMPLEMENTATION.md). The constraints and acceptance criteria below describe v3 only.
+
 26 September 2026. Product brief for Claude Opus 5.5. This document commissions work; it does not assert that the functions below have all been implemented. See the prototype's implementation report for actual capability and tests.
 
 ## Purpose of this iteration

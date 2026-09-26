@@ -1,19 +1,24 @@
-# Unite restart: start here
+# Unite: start with the conversation
 
-26 September 2026. Research by Codex; software engineering delegated to the user's requested **Claude Opus 5.5**.
+26 September 2026. Research by Codex; all software engineering delegated to the user's requested **Claude Opus 5.5**.
 
-**The purpose:** enable people around the world to participate in designing humanity's future. Connect personal aspirations, shared possibilities, expertise and action across communities. Keep broad exploration open, and make authority and resources explicit when a particular process promises a decision or implementation.
+**Current direction:** people around the world discuss the future they want, converse with a personal AI interviewer, develop and contest shared proposals, and turn them into prioritized collective work. The founder rejected the earlier form-based experience. The current work explores social participation and AI facilitation, alongside alternative economic futures and a practical transition path.
 
 | Read | What it provides |
 |---|---|
-| [Research and proposal](PROPOSAL.md) | Precedents, psychology, political integration, experts, global participation, governance, funding and a lean $12,000 learning-cycle budget including $100 implementation credits |
-| [Operating templates](OPERATING-TEMPLATES.md) | Pilot charter, proposal and expert briefs, funder concept, interview guide and founder actions |
-| [Product implementation brief](IMPLEMENTATION-BRIEF.md) | Prototype acceptance criteria and the route from demonstration to a real pilot |
-| [New prototype implementation report](../../prototype-v3/IMPLEMENTATION.md) | Claude's engineering decisions, run instructions, verification and remaining limits |
-| [Final verification and provenance](VERIFICATION.md) | Model confirmation, 45 passing tests, browser acceptance of the global revision and the boundary between demo and live service |
+| [Conversational Unite](CONVERSATIONAL-UNITE.md) | Current product proposal; Anthropic's 80,508-interview study; social psychology; consensus and action; possible public-service economies and a migration path |
+| [Social prototype implementation](../../prototype-v4/IMPLEMENTATION.md) | Actual v4 capabilities, run instructions, tests and limitations |
+| [Earlier research and operating proposal](PROPOSAL.md) | Background on participation tools, political integration, experts, decentralization, funding and the lean $12,000 optional learning-cycle budget |
+| [Operating templates](OPERATING-TEMPLATES.md) | Background templates for a charter, delivery brief, expert commission and funder concept |
+| [Earlier prototype brief](IMPLEMENTATION-BRIEF.md) | Historical v3 acceptance criteria; superseded as the desired product experience |
+| [Earlier prototype verification](VERIFICATION.md) | Historical v3 model confirmation, tests and browser acceptance |
 
-The current scope is humanity's shared future, with no technical-community prerequisite. The budget reflects the user's report that the first prototype used about US$10 or less in Claude Code credits. No community, funder, institution or expert has been contacted. The historical application is preserved; the current prototype is an exploration of a worldwide participation workflow, not a live service or evidence of global adoption.
+The public-service economic direction is a proposal people can dispute, not a hidden outcome the platform should steer everyone toward. The worldwide ambition has no technical-community prerequisite. Neither prototype establishes public legitimacy, real funding, institutional authority or global adoption.
+
+The budget reflects the founder's report that an early prototype used about US$10 or less in Claude Code credits. Live interviewing has separate ongoing inference costs that must be measured; inexpensive software development does not imply free public services or unlimited AI use.
+
+No community, funder, institution or expert has been contacted. No grant has been submitted. The historical application and v3 remain preserved.
 
 The two supplied Claude URLs are authorization links, not saved conversations. The earlier work was found in a local checkout of [jeswr/unite](https://github.com/jeswr/unite), commit `0569e17`, and its design documents were used as reference. No prior Claude session was recovered from those links.
 
-The immediate work is to invite perspectives across places, languages and lived experiences, and let participants help frame the first shared questions. For proposals that promise action, establish **who has the resources and authority to act**. The prototype helps test the experience; the charter makes those commitments explicit.
+The immediate learning questions concern social entry versus personal AI entry, whether shared summaries preserve disagreement, and whether a prioritized action leads to a useful completed task. Participants should help redesign the process and challenge the societal scenarios.
