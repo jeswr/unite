@@ -1,13 +1,22 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as M from '../js/model.js';
-import { STORAGE_KEY, UNREADABLE_KEY, clearState, loadState, resolveStorage, saveState } from '../js/storage.js';
+import {
+  LEGACY_KEYS,
+  STORAGE_KEY,
+  UNREADABLE_KEY,
+  clearState,
+  hasLegacyData,
+  loadState,
+  resolveStorage,
+  saveState,
+} from '../js/storage.js';
 import { FakeStorage, NOW, validDecision, withDraft } from './helpers.js';
 
 test('state survives a save and load unchanged', () => {
   const storage = new FakeStorage();
   const { state } = withDraft();
-  const decided = M.recordDecision(M.toggleBookmark(state, 'asp-first-day'), validDecision(), { now: NOW });
+  const decided = M.recordDecision(M.toggleBookmark(state, 'asp-cooler-streets'), validDecision(), { now: NOW });
   assert.deepEqual(saveState(storage, decided), { ok: true });
   const loaded = loadState(storage);
   assert.equal(loaded.status, 'loaded');
@@ -48,22 +57,22 @@ test('tampered records are dropped individually; valid drafts survive', () => {
     ...state,
     drafts: [...state.drafts, { id: 'draft-bad', hard: 42 }],
     shared: [
-      { id: 'asp-first-day', title: 'Impersonates a seed', topic: 'onboarding', horizon: 'none', hard: 'h', different: 'd', protect: '', inspiredBy: null, author: M.LOCAL_AUTHOR },
-      { id: 'asp-local-x1', title: 'Pretends to be seed', topic: 'onboarding', horizon: 'none', hard: 'h', different: 'd', protect: '', inspiredBy: null, author: { kind: 'seed', label: 'Fake (fictional)' } },
+      { id: 'asp-cooler-streets', title: 'Impersonates a seed', topic: 'climate', horizon: 'none', hard: 'h', different: 'd', protect: '', inspiredBy: null, author: M.LOCAL_AUTHOR },
+      { id: 'asp-local-x1', title: 'Pretends to be seed', topic: 'climate', horizon: 'none', hard: 'h', different: 'd', protect: '', inspiredBy: null, author: { kind: 'seed', label: 'Fake (fictional)' } },
     ],
-    bookmarks: ['asp-first-day', 'asp-does-not-exist'],
+    bookmarks: ['asp-cooler-streets', 'asp-does-not-exist'],
     responses: [
       { id: 'response-local-a1', optionId: 'option-missing', stance: 'support', reason: '', author: M.LOCAL_AUTHOR },
-      { id: 'response-local-a2', optionId: 'option-keep-current', stance: 'concern', reason: 'kept', author: M.LOCAL_AUTHOR },
+      { id: 'response-local-a2', optionId: 'option-current-provision', stance: 'concern', reason: 'kept', author: M.LOCAL_AUTHOR },
     ],
-    delivery: { commitmentId: 'commitment-pilot-response', history: [{ state: 'delivered', at: '2026-09-01T09:00:00Z', evidence: 'skipped ahead' }] },
+    delivery: { commitmentId: 'commitment-learning-example', history: [{ state: 'delivered', at: '2026-09-01T09:00:00Z', evidence: 'skipped ahead' }] },
   };
   storage.setItem(STORAGE_KEY, JSON.stringify(tampered));
   const loaded = loadState(storage);
   assert.equal(loaded.status, 'loaded');
   assert.deepEqual(loaded.state.drafts.map((d) => d.id), [draft.id]);
   assert.deepEqual(loaded.state.shared, []);
-  assert.deepEqual(loaded.state.bookmarks, ['asp-first-day']);
+  assert.deepEqual(loaded.state.bookmarks, ['asp-cooler-streets']);
   assert.deepEqual(loaded.state.responses.map((r) => r.id), ['response-local-a2']);
   assert.deepEqual(loaded.state.delivery, M.initialDelivery());
   assert.ok(loaded.skipped >= 5);
@@ -79,7 +88,7 @@ function decidedAfterWithdrawal() {
   const sharedA = share(a.state, a.draft.id, 'Shared A');
   const b = withDraft(sharedA.state, { inspiredBy: sharedA.record.id });
   const sharedB = share(b.state, b.draft.id, 'Shared B');
-  let state = M.setResponse(sharedB.state, { optionId: 'option-onboarding-kit', stance: 'concern', reason: 'Local concern' });
+  let state = M.setResponse(sharedB.state, { optionId: 'option-learning-circles', stance: 'concern', reason: 'Local concern' });
   state = M.recordDecision(state, validDecision(), { now: NOW });
   return { state, withdrawnId: sharedA.record.id, keptId: sharedB.record.id };
 }
@@ -157,4 +166,30 @@ test('reset clears both the demo state and any unreadable copy', () => {
   assert.equal(storage.getItem(STORAGE_KEY), null);
   assert.equal(storage.getItem(UNREADABLE_KEY), null);
   assert.equal(storage.getItem('someone-else'), 'z', 'reset only touches this demo');
+});
+
+test('data from the earlier example is detected but never read, rewritten or deleted', () => {
+  const storage = new FakeStorage();
+  assert.equal(hasLegacyData(storage), false);
+  // What the earlier example stored: its own options, a decision and euros.
+  const earlier = JSON.stringify({
+    storageVersion: 1,
+    drafts: [{ id: 'draft-old', hard: 'An earlier draft' }],
+    responses: [{ id: 'response-local-old', optionId: 'option-earlier-example', stance: 'support' }],
+    decision: { outcome: 'option-earlier-example', funding: { kind: 'budget', amount: 18000 } },
+  });
+  storage.setItem(LEGACY_KEYS[0], earlier);
+  storage.setItem(LEGACY_KEYS[1], 'unreadable earlier text');
+  assert.ok(!LEGACY_KEYS.includes(STORAGE_KEY) && !LEGACY_KEYS.includes(UNREADABLE_KEY));
+  assert.equal(hasLegacyData(storage), true);
+
+  const loaded = loadState(storage);
+  assert.equal(loaded.status, 'fresh', 'the current example starts clean');
+  assert.deepEqual(loaded.state, M.emptyState());
+
+  const { state } = withDraft(loaded.state);
+  saveState(storage, M.recordDecision(state, validDecision(), { now: NOW }));
+  clearState(storage);
+  assert.equal(storage.getItem(LEGACY_KEYS[0]), earlier);
+  assert.equal(storage.getItem(LEGACY_KEYS[1]), 'unreadable earlier text');
 });

@@ -14,8 +14,23 @@ import {
 } from './model.js';
 import { ASPIRATIONS, CLAIMS, COMMITMENTS, EXPERTS, MAIN_COMMITMENT_ID, PROPOSAL, QUESTIONS, RESPONSES } from './seed.js';
 
-export const STORAGE_KEY = 'unite-demo-v3';
-export const UNREADABLE_KEY = 'unite-demo-v3-unreadable';
+// The learning example uses its own keys. Data saved by the earlier example
+// (different options, amounts in euros) stays under the legacy keys, untouched:
+// it is never read into this example, rewritten or deleted, not even by reset.
+export const STORAGE_KEY = 'unite-demo-learning-example';
+export const UNREADABLE_KEY = 'unite-demo-learning-example-unreadable';
+export const LEGACY_KEYS = Object.freeze(['unite-demo-v3', 'unite-demo-v3-unreadable']);
+
+// Only checks whether earlier-example data exists, so the page can explain
+// why it is not shown. Never parses or changes it.
+export function hasLegacyData(storage) {
+  if (!storage) return false;
+  try {
+    return LEGACY_KEYS.some((key) => storage.getItem(key) !== null);
+  } catch {
+    return false;
+  }
+}
 
 // Returns a usable Storage, or null when the browser blocks it.
 export function resolveStorage(getStorage) {
@@ -154,6 +169,7 @@ export function normalizeStoredState(parsed) {
     checkDeliveryHistory(state.delivery, state.decision);
     if (state.decision) {
       checkDecisionConsistency(state.decision, {
+        proposal: PROPOSAL,
         commitments: COMMITMENTS,
         responses: [...RESPONSES, ...state.responses],
         delivery: state.delivery,

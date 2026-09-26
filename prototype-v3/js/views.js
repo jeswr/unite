@@ -1,7 +1,7 @@
 // Read-only renderers shared by the demo app and the reader. They take plain
 // public records (as found in a bundle) and return DOM nodes.
 
-import { formatDate, formatDateTime, formatEuro, h } from './dom.js';
+import { formatDate, formatDateTime, h } from './dom.js';
 import { commitmentStatus } from './model.js';
 import * as S from './schema.js';
 
@@ -14,6 +14,12 @@ export function authorLine(author) {
 
 function textList(items) {
   return h('ul', { class: 'plain-list' }, items.map((item) => h('li', null, item)));
+}
+
+// What kind of change the option is: current provision, an experiment the
+// example group can fund, or a recommendation others would have to adopt.
+export function scopeLine(option) {
+  return h('p', { class: `scope scope--${option.scope}` }, h('span', { class: 'tag' }, S.OPTION_SCOPES[option.scope]));
 }
 
 export function costLine(option) {
@@ -151,7 +157,7 @@ export function commitmentCard(commitment, decision, today, level) {
   const budget =
     commitment.proposedBudget === null
       ? 'No budget attached'
-      : `${formatEuro(commitment.proposedBudget)} proposed (fictional; no real money)`;
+      : `${S.formatMoney(commitment.proposedBudget)} available (fictional; no real money)`;
   return h(
     'article',
     { class: `card commitment commitment--${status.kind}` },
@@ -181,7 +187,7 @@ function fundingFacts(decision, delivery) {
   }
   const confirmed = delivery.history.find((step) => step.state === 'resources-committed');
   return [
-    h('div', null, h('dt', null, 'Budget allocated'), h('dd', null, `${formatEuro(decision.funding.amount)} (fictional; no real money)`)),
+    h('div', null, h('dt', null, 'Budget allocated'), h('dd', null, `${S.formatMoney(decision.funding.amount)} (fictional; no real money)`)),
     h(
       'div',
       null,

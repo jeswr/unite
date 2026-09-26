@@ -4,7 +4,11 @@
 
 ## Purpose of this iteration
 
-Make the proposed participation-to-delivery journey tangible enough for people to criticize. Retain the existing July application and design as reference. A new prototype should let us question the interface and process without carrying every prior architectural assumption forward.
+Make worldwide participatory design of humanity's future tangible enough for people to criticize. People should encounter a broad invitation to describe desired lives, connect aspirations and develop possibilities together. Retain the existing July application and design as historical reference, while removing the technical-ecosystem framing from this iteration.
+
+The user has clarified that this is for everyone around the world. A sample decision is one illustration of how ideas reach action, not the platform's whole identity. Use ordinary life themes: learning, health and care, livelihoods, climate and nature, housing and belonging, voice and fairness. The demo remains English-only; multilingual, low-bandwidth and assisted access are priorities for live participation.
+
+Software implementation should use inexpensive AI-assisted iteration. The user reports about US$10 or less in credits for the first demo. The research now allocates $100 for implementation credits in a lean 90-day cycle, with hosting and targeted review separately itemized. Do not reproduce conventional salaried engineering estimates in sample platform budgets.
 
 The original prompt's closing paragraph about performance and dependency cleanup appears to belong to an earlier engineering task. No specific performance issue or benchmark was supplied for this restart. It is therefore not a new performance workstream. Any pull request remains a draft on the user's repository; no merge is authorized by this brief.
 
@@ -14,12 +18,14 @@ The original prompt's closing paragraph about performance and dependency cleanup
 2. Explore distinct fictional aspirations, filter by topic, bookmark an idea and carry inspiration attribution into a new contribution.
 3. Compare alternatives, including current practice; distinguish cost estimates, evidence and value choices. Record support, concern or a need for information without implying an official vote.
 4. Ask a question for an expert. Preserve unresolved concerns separately from a favorable summary.
-5. Inspect a named fictional decision owner, remit, response date, resource status and delivery trail. Record a simulated decision with required reasons and authority fields. Preserve concerns through later stages.
+5. Inspect a named fictional decision owner, remit, response date, resource status and delivery trail for a specific example. Distinguish an experiment within a group's control from a policy recommendation requiring institutional adoption. Record a simulated decision with required reasons and authority fields. Preserve concerns through later stages.
 6. Export the public demo record and read it in another view. Private drafts must be absent. Explain that a second view is not yet an independent implementation or a working federation.
 
 ## Demonstration boundaries
 
-All sample people, institutions, funding, dates and project results must be labelled fictional. User interactions happen locally. Nothing is sent to an expert, public body or community. Browser storage is not encryption. No real authentication, identity assurance, binding voting, payments, AI mediation or Solid/ActivityPub federation is claimed.
+All sample people, institutions, funding, dates and project results must be labelled fictional. User interactions happen locally. Nothing is sent to an expert, public body or community. Browser storage is not encryption. No real authentication, identity assurance, binding voting, payments, AI mediation or live federation is claimed.
+
+When changing the demonstration's context, never relabel a previous response, decision or monetary amount as consent to a different option. Preserve earlier browser data rather than deleting it automatically; clearly identify incompatible older records and the new context.
 
 No chat-first assumption is mandatory. Test whether an understandable sequence of contribution, options and follow-through gives people better agency than conversation alone. The needs taxonomy and any scoring system remain open research choices.
 
@@ -40,10 +46,10 @@ Claude should author meaningful automated checks for these boundaries and docume
 
 ## What comes after the prototype
 
-**First real pilot:** choose the partner and charter; evaluate whether existing Decidim, CONSUL, Loomio or Polis services cover the immediate process. Only commission custom production components where the pilot demonstrates a gap. Make storage, identity, privacy, moderation, operation and maintenance decisions with the actual partner.
+**First learning cycle:** invite people across contexts to describe desired futures and shape the initial questions. For any promised action, choose a responsible partner and charter; evaluate whether existing Decidim, CONSUL, Loomio or Polis services cover that process. Make storage, identity, privacy, moderation, operation and maintenance decisions from actual participation needs. Open exploration does not depend on first securing an institutional sponsor.
 
 **First interoperability trial:** publish a small versioned profile and conformance examples; commission an independent implementer; demonstrate that meaning and permissions survive transfer. Assess the existing federation repositories against this bounded task. Avoid inventing a universal ontology before communities reveal their differences.
 
-**First public-institution deployment:** agree legal authority and institutional procedure, recruitment and accessibility, procurement and operating support, security and data review, independent facilitation and evaluation, and public response obligations. A successful Solid pilot supplies implementation learning; it does not substitute for these requirements.
+**First public-institution deployment:** agree legal authority and institutional procedure, recruitment and accessibility, procurement and operating support, security and data review, independent facilitation and evaluation, and public response obligations. An open worldwide discussion supplies ideas and learning; it does not substitute for the relevant decision procedure.
 
-**Expansion:** replicate with a different convenor and a nontechnical community before making claims about general use. Let evidence from those cycles determine which parts become infrastructure and which remain local practice.
+**Expansion:** extend languages, access methods and community relationships across regions. Compare what transfers between contexts and what needs local adaptation. Let evidence from those cycles determine which parts become common infrastructure and which remain local practice.

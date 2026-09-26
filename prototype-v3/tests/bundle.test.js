@@ -9,20 +9,20 @@ import { NOW, validDecision, withDraft } from './helpers.js';
 function richState() {
   const { state, draft } = withDraft();
   let next = M.shareDraft(state, draft.id, {
-    title: 'Sign-up I can finish myself',
-    hard: 'Sign-up needs sighted help.',
-    different: 'I can sign up with a keyboard.',
-    protect: 'Keep human help available.',
+    title: 'Learning after my shift',
+    hard: 'Courses run while I am at work.',
+    different: 'I can learn in the evening.',
+    protect: 'Keep it possible without a smartphone.',
     confirm: true,
   }).state;
   next = M.setResponse(next, {
-    optionId: 'option-onboarding-kit',
+    optionId: 'option-learning-circles',
     stance: 'concern',
-    reason: 'Minority concern: rural users have slow connections.',
+    reason: 'Minority concern: people far from the three venues are left out.',
   });
-  next = M.addQuestion(next, { text: 'Who maintains the fixes after six months?', to: 'expert-accessibility', optionId: '' }).state;
+  next = M.addQuestion(next, { text: 'Who keeps the circles going after 90 days?', to: 'expert-work-delivery', optionId: '' }).state;
   next = M.recordDecision(next, validDecision(), { now: NOW });
-  return M.advanceDelivery(next, 'Budget holder confirmed €18,000 release in November (simulated).', { now: NOW + 1000 });
+  return M.advanceDelivery(next, 'Budget holder confirmed US$2,000 release in November (simulated).', { now: NOW + 1000 });
 }
 
 const exported = () => buildPublicBundle(richState(), { now: NOW + 2000 });
@@ -51,11 +51,13 @@ test('round trip preserves dissent, provenance, attribution and decision authori
   assert.ok(concerns.some((c) => c.id === 'response-seed-sam'));
 
   const shared = bundle.aspirations.find((a) => a.author.kind === 'local');
-  assert.equal(shared.inspiredBy, 'asp-screen-reader-signup');
+  assert.equal(shared.inspiredBy, 'asp-evening-learning');
   assert.equal(shared.author.label, 'Participant in this browser');
 
-  assert.equal(bundle.decision.authority, 'Community pilot budget, not a public mandate');
-  assert.equal(bundle.decision.owner, 'Pilot stewarding group (fictional)');
+  assert.equal(bundle.currency, 'USD');
+  assert.equal(bundle.decision.authority, M.mainCommitment().authority);
+  assert.equal(bundle.decision.owner, 'Example stewarding group (fictional)');
+  assert.deepEqual(bundle.decision.funding, { kind: 'budget', amount: 2000 });
   const attached = bundle.decision.attachedConcerns.map((c) => c.responseId);
   for (const c of concerns) assert.ok(attached.includes(c.id), `concern ${c.id} detached from decision`);
   assert.deepEqual(
@@ -77,7 +79,23 @@ test('rejects input that is not a Unite bundle', () => {
   rejects(parseBundle('{not json'), /not valid JSON/);
   rejects(parseBundle('[]'), /bundle: expected an object/);
   rejects(parseBundle('{"format":"something-else"}'), /bundle\.format/);
-  rejects(mutate((b) => { b.schemaVersion = 2; }), /schemaVersion/);
+  rejects(mutate((b) => { b.schemaVersion = 3; }), /schemaVersion/);
+});
+
+test('exports from the earlier example are refused, never relabelled or converted', () => {
+  // The shape a version 1 export had: another example, amounts in euros, no currency field.
+  const v1 = { ...structuredClone(exported()), schemaVersion: 1 };
+  delete v1.currency;
+  v1.decision.funding.amount = 18000;
+  rejects(roundTrip(v1), /version 1 export from an earlier demo example.*euros.*nothing in it is converted/);
+  // A current-version file must say its currency, and it must be US dollars.
+  rejects(mutate((b) => { delete b.currency; }), /bundle\.currency/);
+  rejects(mutate((b) => { b.currency = 'EUR'; }), /never converted/);
+});
+
+test('an imported decision must respect the example group’s funding limits', () => {
+  rejects(mutate((b) => { b.decision.funding.amount = 18000; }), /decision\.funding\.amount: must not be more than the US\$2,000/);
+  rejects(mutate((b) => { b.decision.outcome = 'option-paid-learning-time'; }), /decision\.funding\.kind: .*recommendation/);
 });
 
 test('rejects oversize files before parsing', () => {
@@ -157,7 +175,7 @@ test('without signatures, deleting every concern and every attachment together c
 });
 
 test('decision, commitment and delivery trail must agree', () => {
-  rejects(mutate((b) => { b.decision.commitmentId = 'commitment-translated-guide'; }), /not the commitment the delivery trail follows/);
+  rejects(mutate((b) => { b.decision.commitmentId = 'commitment-step-free-venue'; }), /not the commitment the delivery trail follows/);
   rejects(mutate((b) => { b.decision.authority = 'Binding public mandate'; }), /does not match the authority named on the commitment/);
   rejects(mutate((b) => { b.delivery.history.splice(1); }), /no “decision-recorded” step/);
   rejects(mutate((b) => { b.delivery.history[1].at = '2026-09-26T09:59:00Z'; }), /does not match when the decision was recorded/);
@@ -180,7 +198,7 @@ test('disclosures and attribution in a file cannot be forged', () => {
   const local = (b) => b.aspirations.findIndex((a) => a.author.kind === 'local');
   rejects(mutate((b) => { b.aspirations[local(b)].author.label = 'Sam (fictional)'; }), /must be “Participant in this browser”/);
   rejects(mutate((b) => { b.aspirations[local(b)].author = { kind: 'seed', label: 'Sam (fictional)' }; }), /must be “Participant in this browser”/);
-  rejects(mutate((b) => { b.questions.at(-1).author = { kind: 'expert-role', label: 'Accessibility auditor (fictional role)' }; }), /questions\[3\]\.author/);
+  rejects(mutate((b) => { b.questions.at(-1).author = { kind: 'expert-role', label: 'Adult learning and access adviser (fictional role)' }; }), /questions\[3\]\.author/);
   rejects(mutate((b) => { b.responses[0].author.label = 'A Real Person'; }), /built-in fictional attribution/);
   rejects(mutate((b) => { b.aspirations[0].author = { kind: 'local', label: 'Participant in this browser' }; }), /built-in fictional attribution/);
 });
@@ -201,7 +219,7 @@ test('withdrawing an inspiration keeps the decision and the export valid', () =>
   const sharedA = share(a.state, a.draft.id, 'Shared A');
   const b = withDraft(sharedA.state, { inspiredBy: sharedA.record.id });
   const sharedB = share(b.state, b.draft.id, 'Shared B');
-  let state = M.setResponse(sharedB.state, { optionId: 'option-onboarding-kit', stance: 'concern', reason: 'Local concern' });
+  let state = M.setResponse(sharedB.state, { optionId: 'option-learning-circles', stance: 'concern', reason: 'Local concern' });
   state = M.recordDecision(state, validDecision(), { now: NOW });
   state = M.withdrawShared(state, sharedA.record.id);
 

@@ -250,7 +250,26 @@ export function validateDecisionInput(input) {
   if (values.outcome === S.DEFER && values.fundingKind === 'budget') {
     throw new FieldErrors({ fundingKind: 'cannot allocate a budget to a deferred decision' });
   }
+  const problem = fundingProblem(values.outcome, { kind: values.fundingKind, amount: values.amount }, mainCommitment(), PROPOSAL.options);
+  if (problem) throw new FieldErrors({ [problem.field === 'amount' ? 'amount' : 'fundingKind']: problem.detail });
   return values;
+}
+
+// The example group's own money can go only to a community experiment, and
+// only up to the budget named on the commitment. Current provision spends
+// nothing new, and a recommendation needs a separate institution to fund it.
+export function fundingProblem(outcome, funding, commitment, options) {
+  if (funding.kind !== 'budget') return null;
+  const scope = options.find((o) => o.id === outcome)?.scope;
+  if (scope === 'recommendation') {
+    return { field: 'kind', detail: 'cannot allocate this group’s budget to a recommendation; it needs a separate institution to adopt and fund it' };
+  }
+  if (scope !== 'experiment') return { field: 'kind', detail: 'can allocate a budget only to a community experiment' };
+  if (commitment.proposedBudget === null) return { field: 'kind', detail: 'cannot allocate a budget; the commitment has none' };
+  if (funding.amount > commitment.proposedBudget) {
+    return { field: 'amount', detail: `must not be more than the ${S.formatMoney(commitment.proposedBudget)} named on the commitment` };
+  }
+  return null;
 }
 
 export function recordDecision(state, input, { now = Date.now() } = {}) {
@@ -274,7 +293,7 @@ export function recordDecision(state, input, { now = Date.now() } = {}) {
   next.decision = decision;
   const funding =
     values.fundingKind === 'budget'
-      ? `€${values.amount.toLocaleString('en-GB')} allocated; release still to be confirmed by the budget holder`
+      ? `${S.formatMoney(values.amount)} allocated; release still to be confirmed by the budget holder`
       : 'no budget allocated';
   next.delivery.history.push({
     state: 'decision-recorded',
@@ -292,7 +311,14 @@ export function nextDeliveryStep(delivery, decision) {
   if (!decision) return { next: null, reason: 'No decision has been recorded yet.' };
   if (decision.outcome === S.DEFER) return { next: null, reason: 'The decision was deferred, so nothing moves forward.' };
   if (current === 'decision-recorded' && decision.funding.kind === 'none') {
-    return { next: null, reason: 'No budget was allocated, so the trail stops at “Decision recorded”.' };
+    const scope = PROPOSAL.options.find((o) => o.id === decision.outcome)?.scope;
+    return {
+      next: null,
+      reason:
+        scope === 'recommendation'
+          ? 'The outcome is a recommendation. It is published for others to adopt; this example cannot fund or deliver it, so the trail stops at “Decision recorded”.'
+          : 'No budget was allocated, so the trail stops at “Decision recorded”.',
+    };
   }
   const index = S.DELIVERY_ORDER.indexOf(current);
   if (index === S.DELIVERY_ORDER.length - 1) return { next: null, reason: 'The trail is complete.' };
@@ -334,11 +360,11 @@ export function checkDeliveryHistory(delivery, decision, path = 'delivery') {
   }
 }
 
-// Rules tying a decision to its commitment, its trail and the concerns it
-// carries, checked on import and on load. Responses close when a decision is
-// recorded, so every concern response must be attached exactly once, as an
-// unchanged copy, and nothing else may be attached.
-export function checkDecisionConsistency(decision, { commitments, responses, delivery }, path = 'decision') {
+// Rules tying a decision to its commitment, its funding limits, its trail and
+// the concerns it carries, checked on import and on load. Responses close when
+// a decision is recorded, so every concern response must be attached exactly
+// once, as an unchanged copy, and nothing else may be attached.
+export function checkDecisionConsistency(decision, { proposal, commitments, responses, delivery }, path = 'decision') {
   const commitment = commitments.find((c) => c.id === decision.commitmentId);
   if (!commitment) throw new S.SchemaError(`${path}.commitmentId`, `refers to an unknown commitment “${decision.commitmentId}”`);
   if (decision.commitmentId !== delivery.commitmentId) {
@@ -347,6 +373,8 @@ export function checkDecisionConsistency(decision, { commitments, responses, del
   if (decision.authority !== commitment.authority) {
     throw new S.SchemaError(`${path}.authority`, 'does not match the authority named on the commitment');
   }
+  const problem = fundingProblem(decision.outcome, decision.funding, commitment, proposal.options);
+  if (problem) throw new S.SchemaError(`${path}.funding.${problem.field}`, problem.detail);
   const concerns = new Map(responses.filter((r) => r.stance === 'concern').map((r) => [r.id, r]));
   const attached = new Set();
   decision.attachedConcerns.forEach((c, i) => {

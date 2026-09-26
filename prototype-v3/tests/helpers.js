@@ -6,12 +6,12 @@ export function withDraft(state = M.emptyState(), overrides = {}) {
   return M.saveDraft(
     state,
     {
-      hard: 'PRIVATE-HARD I cannot finish sign-up alone.',
-      different: 'PRIVATE-DIFFERENT I can set up without help.',
+      hard: 'PRIVATE-HARD Every course I find runs while I am at work.',
+      different: 'PRIVATE-DIFFERENT I can learn in the evening near home.',
       protect: 'PRIVATE-PROTECT my health condition must stay private.',
-      topic: 'accessibility',
+      topic: 'learning',
       horizon: 'year',
-      inspiredBy: 'asp-screen-reader-signup',
+      inspiredBy: 'asp-evening-learning',
       ...overrides,
     },
     { now: NOW },
@@ -19,12 +19,12 @@ export function withDraft(state = M.emptyState(), overrides = {}) {
 }
 
 export const validDecision = (overrides = {}) => ({
-  outcome: 'option-onboarding-kit',
-  owner: 'Pilot stewarding group (fictional)',
-  reasons: 'Newcomers are the biggest group affected; concerns from blind users are addressed by co-selecting the apps.',
+  outcome: 'option-learning-circles',
+  owner: 'Example stewarding group (fictional)',
+  reasons: 'Adults who missed out are reached first; disabled learners co-choose rooms and materials before the first circle.',
   decidedOn: '2026-10-15',
   fundingKind: 'budget',
-  amount: '18000',
+  amount: '2000',
   ...overrides,
 });
 

@@ -7,12 +7,13 @@ import { clearErrors, setStatus, showErrors } from './forms.js';
 import * as M from './model.js';
 import * as S from './schema.js';
 import { ACCEPTANCE, CLAIMS, COMMITMENTS, EXPERTS, PROPOSAL, QUESTIONS } from './seed.js';
-import { clearState, loadState, resolveStorage, saveState } from './storage.js';
+import { clearState, hasLegacyData, loadState, resolveStorage, saveState } from './storage.js';
 import * as V from './views.js';
 
 const $ = (selector) => document.querySelector(selector);
 const storage = resolveStorage(() => window.localStorage);
 const loaded = loadState(storage);
+const legacy = hasLegacyData(storage);
 
 let state = loaded.state;
 const ui = { editingId: null, inspiredBy: null, shareDraftId: null, filter: { topic: 'all', savedOnly: false } };
@@ -34,14 +35,18 @@ function showStorageStatus(message) {
   el.textContent = message;
 }
 
+// Earlier-example data is explained, never shown, migrated or deleted.
+const LEGACY_NOTE =
+  'This browser also holds data from an earlier version of this demo, which used a different example with amounts in euros. It is left untouched and is not shown here, so none of its drafts, responses, decisions or budgets appear as if they belonged to this example. Resetting this demo does not remove it; your browser’s site-data settings can.';
+
 function initialStorageMessage() {
   if (loaded.status === 'unavailable') {
     return 'Browser storage is not available here, so the demo is running in memory only. Everything is lost when you close or reload this tab.';
   }
+  const notes = legacy ? [LEGACY_NOTE] : [];
   if (loaded.status === 'unreadable') {
-    return 'Saved demo data in this browser could not be read, so the demo started fresh. The unreadable copy is kept aside until you reset the demo.';
+    notes.push('Saved demo data in this browser could not be read, so the demo started fresh. The unreadable copy is kept aside until you reset the demo.');
   }
-  const notes = [];
   if (loaded.skipped > 0) {
     notes.push(`${loaded.skipped} saved ${loaded.skipped === 1 ? 'record' : 'records'} could not be read and ${loaded.skipped === 1 ? 'was' : 'were'} skipped.`);
   }
@@ -198,7 +203,7 @@ async function removeDraft(draft) {
 async function withdrawCopy(draft) {
   const ok = await confirmAction({
     title: 'Withdraw your shared copy?',
-    body: 'It is removed from Explore and from future exports in this browser. In a real federation, copies other communities had already received could not be guaranteed to disappear.',
+    body: 'It is removed from Explore and from future exports in this browser. In a real shared service, copies that other people had already received could not be guaranteed to disappear.',
     confirmLabel: 'Withdraw copy',
   });
   if (!ok) return;
@@ -418,6 +423,7 @@ function optionCard(option, index) {
       { class: 'card option', 'aria-labelledby': titleId },
       h('p', { class: 'eyebrow' }, `Option ${index + 1}`),
       h('h3', { id: titleId }, option.title),
+      V.scopeLine(option),
       h('p', null, option.summary),
       V.costLine(option),
       V.optionDetails(option),
@@ -555,10 +561,13 @@ const decisionFields = {
   reasons: { id: 'dec-reasons', label: 'Public reasons', required: 'Give the public reasons for the decision.' },
   decidedOn: { id: 'dec-date', label: 'Decision date', required: 'Enter the decision date.' },
   fundingKind: { id: 'dec-funding-budget', label: 'Funding', required: 'Choose whether a budget is allocated.' },
-  amount: { id: 'dec-amount', label: 'Amount', required: 'Enter the budget in whole euros, or choose “No budget allocated”.' },
+  amount: { id: 'dec-amount', label: 'Amount', required: 'Enter the budget in whole US dollars, or choose “No budget allocated”.' },
 };
 
 function initDecision() {
+  const commitment = M.mainCommitment();
+  $('#dec-owner-hint').textContent = `The body named on the commitment: ${commitment.owner}.`;
+  $('#dec-funding-hint').textContent = `The decision allocates up to ${S.formatMoney(commitment.proposedBudget)}, and only to the community experiment. A recommendation is published for others to adopt and fund. Confirming that allocated money will be released is a separate, later step on the delivery trail.`;
   fillSelect($('#dec-outcome'), [['', 'Choose an outcome'], ...PROPOSAL.options.map((o) => [o.id, o.title]), [S.DEFER, 'Defer: no decision yet']]);
   const form = $('#decision-form');
   form.addEventListener('submit', (event) => {
@@ -663,7 +672,7 @@ function exportText() {
 
 function initExport() {
   $('#export-download').addEventListener('click', () => {
-    const name = `unite-demo-public-export-${todayISO()}.json`;
+    const name = `unite-demo-learning-example-v${S.SCHEMA_VERSION}-${todayISO()}.json`;
     const url = URL.createObjectURL(new Blob([exportText()], { type: 'application/json' }));
     const link = h('a', { href: url, download: name, hidden: true });
     document.body.append(link);
@@ -677,7 +686,7 @@ function initExport() {
   $('#reset-button').addEventListener('click', async () => {
     const ok = await confirmAction({
       title: 'Reset the whole demo?',
-      body: 'This deletes everything this demo stored in this browser: private drafts, shared demo records, bookmarks, responses, questions, the decision and delivery progress. Files you exported are not affected. This cannot be undone.',
+      body: 'This deletes everything this demo stored in this browser for the current example: private drafts, shared demo records, bookmarks, responses, questions, the decision and delivery progress. Files you exported and data from earlier versions of the demo are not affected. This cannot be undone.',
       confirmLabel: 'Reset demo',
     });
     if (!ok) return;
@@ -687,8 +696,8 @@ function initExport() {
     for (const form of document.querySelectorAll('#question-form, #decision-form, #advance-form')) form.reset();
     render();
     PROPOSAL.options.forEach((o) => syncResponseForm(o.id));
-    showStorageStatus(loaded.status === 'unavailable' ? initialStorageMessage() : '');
-    setStatus($('#reset-status'), 'The demo was reset. Everything it stored in this browser was removed.');
+    showStorageStatus(loaded.status === 'unavailable' ? initialStorageMessage() : legacy ? LEGACY_NOTE : '');
+    setStatus($('#reset-status'), 'The demo was reset. Everything it stored in this browser for the current example was removed.');
   });
 }
 

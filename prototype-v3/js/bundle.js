@@ -10,16 +10,17 @@ import { ASPIRATIONS, CLAIMS, COMMITMENTS, EXPERTS, PROPOSAL, QUESTIONS, RESPONS
 // notice differs is rejected, so the reader only ever shows this text.
 export const NOTICE = Object.freeze({
   fictionalSeed:
-    'All seeded people, expert roles, support, budgets, dates and commitments are fictional and were written for this demo.',
+    'The proposal is a labelled example. All seeded people, expert roles, responses, costs, dates and commitments are fictional and were written for this demo.',
   userAuthored:
     'Records attributed to “Participant in this browser” were written by whoever used the demo and chose to add them.',
   scope:
-    'This file comes from a local browser demo. It was not sent to any community, is not a vote or a representative sample, and does not use Solid or ActivityPub.',
+    'This file comes from a local browser demo. It was not sent to anyone, is not a vote or a representative sample of any place or population, and sets no policy. Amounts are fictional US dollars.',
 });
 
 const TOP_LEVEL_KEYS = [
   'format',
   'schemaVersion',
+  'currency',
   'exportedAt',
   'notice',
   'proposal',
@@ -40,6 +41,7 @@ export function buildPublicBundle(state, { now = Date.now() } = {}) {
   const draft = {
     format: S.BUNDLE_FORMAT,
     schemaVersion: S.SCHEMA_VERSION,
+    currency: S.CURRENCY,
     exportedAt: new Date(now).toISOString().replace(/\.\d{3}Z$/, 'Z'),
     notice: { ...NOTICE },
     proposal: PROPOSAL,
@@ -59,14 +61,25 @@ export function buildPublicBundle(state, { now = Date.now() } = {}) {
 
 export function validateBundle(value) {
   S.object(value, 'bundle');
-  for (const key of Object.keys(value)) {
-    if (!TOP_LEVEL_KEYS.includes(key)) throw new S.SchemaError(`bundle.${key}`, 'is not part of a public bundle');
-  }
+  // Format and version come first, so an older export gets the clearest
+  // explanation rather than a complaint about some field that changed.
   if (value.format !== S.BUNDLE_FORMAT) {
     throw new S.SchemaError('bundle.format', `expected “${S.BUNDLE_FORMAT}”; this is not a Unite demo export`);
   }
+  if (value.schemaVersion === 1) {
+    throw new S.SchemaError(
+      'bundle.schemaVersion',
+      'this is a version 1 export from an earlier demo example, with different options and amounts in euros. It is not opened as the current example, and nothing in it is converted',
+    );
+  }
   if (value.schemaVersion !== S.SCHEMA_VERSION) {
     throw new S.SchemaError('bundle.schemaVersion', `expected ${S.SCHEMA_VERSION}; this reader only understands version ${S.SCHEMA_VERSION}`);
+  }
+  for (const key of Object.keys(value)) {
+    if (!TOP_LEVEL_KEYS.includes(key)) throw new S.SchemaError(`bundle.${key}`, 'is not part of a public bundle');
+  }
+  if (value.currency !== S.CURRENCY) {
+    throw new S.SchemaError('bundle.currency', `expected “${S.CURRENCY}”; amounts are never converted between currencies`);
   }
   S.object(value.notice, 'bundle.notice');
   for (const [key, text] of Object.entries(NOTICE)) {
@@ -77,6 +90,7 @@ export function validateBundle(value) {
   const bundle = {
     format: value.format,
     schemaVersion: value.schemaVersion,
+    currency: value.currency,
     exportedAt: S.datetime(value.exportedAt, 'bundle.exportedAt'),
     notice: { ...NOTICE },
     proposal: S.proposal(value.proposal, 'bundle.proposal'),

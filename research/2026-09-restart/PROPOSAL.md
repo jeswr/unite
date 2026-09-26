@@ -1,8 +1,10 @@
 # Unite: from imagining a better future to making it happen
 
-Research and first operating proposal • 26 September 2026 • Version 0.1
+Research and operating proposal • 26 September 2026 • Version 0.2
 
-**Recommendation:** build Unite as a network of communities that turn people's aspirations into accountable experiments and decisions. Start with one funded Solid-community challenge, then test the process in a community outside technology. Earn broader influence through useful outcomes, fair participation and independently usable infrastructure.
+**Purpose:** enable people everywhere to participate in designing the future of humanity. Unite should connect people's desired lives, shared possibilities, expert knowledge and collective action across countries and communities. The subject is our common future: learning, health and care, livelihoods, housing, nature, technology, fairness and the institutions we share.
+
+**Recommendation:** build a worldwide space for imagining and shaping those futures, connected to networks of people and institutions able to act. Keep broad exploration open; use bounded experiments and explicit decision processes when a proposal is ready for action. An initial learning exercise tests that pathway without redefining the whole platform around one topic, country, industry or technical ecosystem.
 
 This is a fresh proposal, informed by precedents and the existing repository. Statements about existing projects have sources; proposed mechanisms, targets and budgets are our hypotheses. No partner, expert, funding, public mandate or participant demand has been secured by this research.
 
@@ -10,9 +12,9 @@ This is a fresh proposal, informed by precedents and the existing repository. St
 
 The original idea has three valuable commitments: people can articulate their own futures; expertise helps make those futures achievable; and nobody should acquire an exclusive right to mediate that process. Keep all three.
 
-Reconsider the assumption that everybody must adopt one social platform, that convergence is always desirable, or that building applications is the easy part. People will have incompatible preferences and unequal power. A working application also needs maintenance, accessibility, security, support and someone accountable when it fails. Generating code reduces some costs; it does not provide those institutions.
+Design for everyone to have a route to participate, while allowing different clients, communities and degrees of involvement. People will have incompatible preferences and unequal power; convergence is not always desirable. AI-assisted implementation makes early software experiments very inexpensive, as this prototype illustrates. Use that advantage to iterate rapidly, while explicitly assigning responsibility for maintenance, accessibility, security and operation as real use grows.
 
-The credible promise is: **“Describe something you want to change. Help shape a practical response. See who will act and what happens next.”** The global ambition can remain, while each individual invitation has a bounded purpose and an honest account of its influence.
+The promise is: **“Describe the future you want. Discover what others hope for. Shape possibilities together, and help make them real.”** People can imagine long-term change before a sponsor or budget exists. When a particular process promises a decision, its authority and influence must be explicit.
 
 The July repository already articulates dissent, federation, expert input and action trails. Its v2 design explicitly describes a vision-selling prototype. This proposal does not claim those ideas are new; it makes partner commitments, delivery resources, evidence and evaluation the organizing structure, and reopens design choices the earlier plan treated as fixed. Repository reference: [existing design](../../design/v2/README.md).
 
@@ -35,6 +37,8 @@ These examples support assembling useful practices. They do not demonstrate that
 
 ## The product people would use
 
+The entry point is humanity's future, with pathways into themes and places rather than a single sponsored challenge. Someone might describe a day with more time for care, affordable housing, healthier ecosystems or a meaningful say at work. They can connect that aspiration to related experiences elsewhere, follow emerging proposals and choose how to help. A local experiment can contribute evidence to a worldwide question; a worldwide discussion does not automatically acquire power over a locality.
+
 Offer three levels of participation: five minutes to describe a need or react to an option; an hour to help investigate it; several sessions to develop and judge a response. Someone can benefit without becoming a governance enthusiast.
 
 Begin with “Describe a better day.” Ask what is difficult now, what should change, what matters about that change, and what must not be sacrificed. Permit uncertainty, voice or assisted participation, and revision. Do not require people to classify their lives into a particular psychological model. Taxonomies are optional, versioned interpretations, not authoritative descriptions of human needs. Value Sensitive Design provides a useful discipline: investigate stakeholder values, real contexts and technical consequences together, including people affected indirectly. [VSD Lab](https://vsdesign.org/vsd/)
@@ -55,7 +59,15 @@ flowchart LR
   F --> A
 ```
 
-The record connecting these steps is the core product. “Chosen,” “funded,” “built,” “used” and “beneficial” are distinct states. Show who made each claim and the supporting evidence. A reasoned rejection, unresolved disagreement, missed deadline or failed experiment must remain visible too.
+The record connecting these steps is the core product. “Chosen,” “funded,” “built,” “used” and “beneficial” are distinct states. Show who made each claim and the supporting evidence. A reasoned rejection, unresolved disagreement, missed deadline or failed experiment must remain visible too. Label contributions as exploration, community experiments, recommendations for an institution, or decisions within an explicitly delegated remit. An idea need not be discarded because nobody can implement it yet.
+
+## Worldwide participation in practice
+
+Treat global participation as a design requirement from the outset: language choice, plain wording, low-bandwidth mobile access, asynchronous contributions across time zones, and trusted people who can help others participate offline. Plan translation with correction by contributors and community reviewers; retain the original alongside a translation and disclose uncertainty. The current prototype is English-only and browser-local, so these are implementation priorities, not claims of existing coverage.
+
+Allow both universal questions and context-specific answers. People can compare what a secure home or a worthwhile working life means in different circumstances without forcing everyone into one cultural model of a good life. Display whose perspectives are present and absent; do not let English fluency, income, free time or the size of an organized group stand in for humanity's preferences.
+
+Build participation through relationships across regions, languages and lived experiences. Open access and deliberate outreach should coexist. For a consequential decision, define who is affected and which institution can act; a global open discussion is not a world electorate. Over time, use independently facilitated cross-community exchanges to test whether local conclusions travel and where they fail.
 
 ## Psychology: enable cooperation without engineering conformity
 
@@ -79,13 +91,14 @@ Recruit a paid social or political psychologist and a deliberation practitioner 
 
 ## How Unite connects to political and organizational decisions
 
-**No consultation should launch without saying who can do what with its results.** OECD guidance emphasizes purpose, meaningful influence, inclusion and feedback; poorly implemented participation can damage trust. [Participation guidance](https://www.oecd.org/en/publications/oecd-guidelines-for-citizen-participation-processes_f765caf6-en/full-report/component-6.html)
+**A process promising influence over a decision must say who can do what with its results.** Open futures exploration can begin without an institutional sponsor, provided it is labelled as exploration. OECD guidance emphasizes purpose, meaningful influence, inclusion and feedback in participation processes; poorly implemented participation can damage trust. [Participation guidance](https://www.oecd.org/en/publications/oecd-guidelines-for-citizen-participation-processes_f765caf6-en/full-report/component-6.html)
 
 Use a published process charter agreed by the commissioning body and community representatives. It names the question, affected population, powers and limits, available resources, recruitment, decision rule, conflicts of interest, publication policy, response deadline and appeal route. Fix the rule before seeing the result. Material changes require an explained amendment and, where necessary, renewed participation.
 
 | Situation | Legitimate use of Unite | Required institutional connection |
 |---|---|---|
-| Solid or other open-source community | Discover needs, prioritize an agreed pilot budget, commission work | Maintainer and budget-holder commitment; explicit merge and maintenance responsibility |
+| Worldwide futures discussion | Share aspirations, connect experiences, develop alternatives and unanswered questions | No implied mandate; identify missing perspectives and seek willing delivery or policy partners |
+| Cross-community experiment | Test a shared idea in several settings and compare results | Named local delivery partners, a bounded shared fund and agreed evaluation |
 | School, cooperative, union or nonprofit | Co-design a service or policy within delegated powers | Board or authorized body's agreed remit; affected members' rights |
 | Local government | Input to a service decision, budget allocation or representative panel | Named officer and elected sponsor, lawful procedure, published response and delivery ownership |
 | National policy | Public input and evidence for parliamentary or administrative processes | Formal sponsor, appropriate recruitment, expert scrutiny and jurisdiction-specific legal review |
@@ -101,7 +114,7 @@ Require a short project brief for each shortlisted option: need addressed, benef
 
 Run a portfolio rather than a winner-takes-all tournament. A modest budget can support a few different experiments, including a minority-backed option that addresses a serious underserved need. Publish the allocation rule and all conflicts. Funders may set an openly declared program remit; they should not secretly change rankings or suppress unfavorable findings.
 
-For a Solid pilot, the delivery sequence is user research → acceptance criteria → technical feasibility and security review → bounded implementation → user acceptance → maintained release → follow-up. Claude can implement approved software briefs and propose tests. Humans accountable to the pilot own approvals and acceptance. An autonomous agent does not receive authority to spend, merge or deploy just because a proposal has support.
+For an experiment, the delivery sequence is lived-experience research → practical brief → feasibility and resource check → small implementation → acceptance by affected people → operation and follow-up. It might be a learning circle, a care arrangement, a service change, a shared resource or software. Where software helps, use Claude for rapid implementation and tests with a small metered tools allowance. People accountable to the process own acceptance and operating responsibilities. An autonomous agent does not receive authority to spend, merge or deploy just because a proposal has support.
 
 For a public-service pilot, replace the software steps as needed with policy analysis, procurement, operational design and service delivery. A shared record can span both; the legal decision procedure and delivery method should be configurable, not forced into one global voting mechanism.
 
@@ -111,7 +124,7 @@ Build a small paid roster around actual challenges, rather than an undifferentia
 
 For each consequential claim, record the question, evidence source and date, confidence, known disagreement, expertise and interests of the contributor. Ask specialists what would change their judgment. Give participants plain-language answers and the opportunity to commission another view. Weight evidence by quality, rather than manufacturing equal airtime for unsupported claims. Involve's guidance gives a practical model for balanced evidence and participant questions. [Expert evidence guidance](https://www.involve.org.uk/resources/knowledge-base/how-do-i-setup-citizens-assembly/7-generative-learning)
 
-Initial prospective collaborators, **not confirmed partners**: Involve or DemocracyNext for process design; the Computational Democracy Project for opinion mapping; a Value Sensitive Design/HCI group for values and interface research; a political-psychology research group for evaluation; accessibility organizations and Solid practitioners for the pilot. Recruit an independent evaluator early enough to influence the protocol, with the right to publish negative results.
+Initial prospective collaborators, **not confirmed partners**: Involve or DemocracyNext for process design; the Computational Democracy Project for opinion mapping; a Value Sensitive Design/HCI group for values and interface research; a political-psychology research group for evaluation; accessibility organizations, local convenors and civil-society networks across regions. Recruit an independent evaluator early enough to influence the protocol, with the right to publish negative results.
 
 ## Decentralization must include the ability to leave
 
@@ -119,13 +132,13 @@ Multiple servers running one dominant implementation still leave concentrated po
 
 The proposed minimum common language describes aspirations, needs, questions, evidence, alternatives, concerns, decisions, commitments and observations. Include stable identifiers, revisions, language, attribution, audience, provenance and a process charter. Keep personal records and formal collective records separate. Decisions need a verifiable history; private drafts need deletion and correction. Do not put intimate personal data on an immutable public ledger.
 
-[Solid](https://solidproject.org/TR/protocol) can provide permissioned access to externally stored data; the published document reviewed is a Community Group report, not a W3C Recommendation. [ActivityPub](https://www.w3.org/TR/activitypub/) provides a standardized federation building block. Neither establishes one-human-one-vote, representative recruitment, legal authority, semantic agreement or guaranteed deletion of copies held elsewhere. [ODRL](https://www.w3.org/TR/odrl-model/) describes permitted use; our architectural conclusion is that a policy statement alone cannot prevent misuse.
+Choose storage and transport technologies around these requirements, without tying participation to membership of a technical ecosystem. [ActivityPub](https://www.w3.org/TR/activitypub/) provides one standardized federation building block. A federation protocol does not establish one-human-one-vote, representative recruitment, legal authority, semantic agreement or guaranteed deletion of remote copies. [ODRL](https://www.w3.org/TR/odrl-model/) describes permitted use; our architectural conclusion is that a policy statement alone cannot prevent misuse.
 
-Adopt your data-model federation work where it earns its complexity: several communities can publish versioned profiles and documented mappings, with lossy translations visibly identified. An extension must not silently redefine a core field. Registries should be replaceable and mirrorable; existing records must remain interpretable when one operator disappears.
+Allow several communities to publish versioned data profiles and documented mappings, with lossy translations visibly identified. An extension must not silently redefine a core field. Registries should be replaceable and mirrorable; existing records must remain interpretable when one operator disappears.
 
 Require two genuinely independently maintained implementations and two independent operators before claiming that Unite has escaped dependence on a single codebase. Fund the second implementation explicitly. Sharing code is allowed, but a second skin over the same engine is not independent governance. Conformance fixtures should cover preserved dissent, audience boundaries, unknown versions, identifier conflicts and round-trip meaning.
 
-Identity should be proportional to the decision: pseudonyms for exploratory discussion; process-scoped eligibility checks for scarce funds or formal decisions; stronger assurance only where justified. Separate eligibility from publicly displayed identity. WebIDs, emails, signatures and multiple servers do not by themselves prevent duplicate people or coordinated capture.
+Identity should be proportional to the decision: pseudonyms for exploratory discussion; process-scoped eligibility checks for scarce funds or formal decisions; stronger assurance only where justified. Separate eligibility from publicly displayed identity. Account identifiers, emails, signatures and multiple servers do not by themselves prevent duplicate people or coordinated capture.
 
 Unite will still need discovery, search, moderation, translation, indexing and operational funding. Make indexes nonexclusive, moderation decisions appealable and export useful. Decide explicitly which information can be cached, for how long, and what withdrawal means. A technically federated system can still be socially centralized.
 
@@ -143,11 +156,11 @@ Do not require a public biography to participate. Avoid profiling children in th
 
 ## Adoption: a network of useful communities
 
-The early customer is a convenor with a real problem, a trusted relationship with participants and some capacity to act. The early user's reward is influence over something they recognize, plus evidence that their time mattered.
+An early participant's reward is being able to articulate a desired future, find people who share or challenge that hope, and see a route to contributing. Convenors and institutions can support particular processes when they have a real problem and capacity to act. They are important partners, without becoming the sole gatekeepers of what people may imagine or discuss.
 
-Start in Solid because you have relevant context and access to implementers. Include people who need applications but do not build protocols. Otherwise the pilot tests an expert hobby community and teaches little about broader adoption. A second pilot should involve a less technical community and a different decision owner.
+Begin with a small cross-regional group discussing everyday futures, recruited through varied community relationships. Let people help choose the first question; learning opportunities for everyone is a possible example, not a permanent product boundary. Test both open imagination and the path into one or two tangible experiments. Publish where participation remains narrow and recruit beyond the founder's own networks.
 
-Distribute through organizations people already trust: community groups, libraries, cooperatives, schools, civil-society networks and existing collaboration tools. Offer assisted and offline participation, portable reports and embeds. Participants should not have to understand pods, cryptography or a federation before contributing.
+Distribute through organizations people already trust: community groups, libraries, cooperatives, schools, civil-society networks and existing collaboration tools. Offer assisted and offline participation, portable reports and embeds. Participants should not have to understand the underlying technical architecture before contributing.
 
 Scale first by repeating one useful process, then training independent convenors, then supporting interoperable implementations. Permit long gaps between visits. A resident who returns when a relevant decision arises is a successful user; daily screen time is a poor mission metric.
 
@@ -169,33 +182,38 @@ Long-term income should combine philanthropy for public infrastructure and resea
 
 Separate platform operating funds from the money communities allocate to projects. Ring-fence participant support and independent evaluation. Budget maintenance and operator succession, not just launch.
 
-## A first 90 days and a credible budget
+## A first 90 days with inexpensive software iteration
 
-All counts and costs below are planning assumptions, not market quotes or grant conditions. Proposed scale: 60–100 recruited contributors and a paid 12–16-person design group across users, maintainers, accessibility needs and relevant perspectives. This is a community pilot, not a statistically representative public assembly. Small subgroup estimates will be uncertain; do not publish misleading consensus percentages.
+All counts and costs below are planning assumptions, not market quotes or grant conditions. Proposed first learning cycle: 40–60 invited contributors reached through 3–5 community relationships in different countries, plus an 8–12-person paid design group and open expressions of interest. Initial language coverage depends on the partners and access budget. This samples different contexts; it does not represent the world's population. Broader worldwide participation is the product's purpose, and growing access remains ongoing work.
 
 | Period | Work and owner | Concrete result / gate |
 |---|---|---|
-| Days 1–14 | Founder + convenor: 12–15 interviews, decision-owner recruitment, community framing | A bounded question, named responsible partner, draft charter and credible resource commitment. If nobody can act, revise the use case. |
-| Days 15–30 | Facilitator + researcher + designer: paid co-design sessions and prototype testing | Clear privacy and authority understanding; shortlist of 2–3 options; recruitment gaps documented. Secure funds before commissioning delivery. |
+| Days 1–14 | Founder + community contacts: 12–15 interviews across contexts, open aspirations and framing | A first shared question, documented differences and access needs; identify partners for any promised action. Exploration can continue where implementation is not yet available. |
+| Days 15–30 | Participants + facilitator: paid co-design sessions and inexpensive prototype iterations | Clear privacy and authority understanding; shortlist of 2–3 options; recruitment and language gaps documented. Secure funds before commissioning delivery. |
 | Days 31–60 | Community + experts: learn, compare, amend and decide | Published decision and reasons, concerns retained, one or two funded implementation briefs, owners and acceptance criteria. |
 | Days 61–90 | Delivery lead + independent evaluator: build/test one bounded change | Demonstrated result with affected users; expenditure and failures reported; decision on another cycle. |
-| Following 6–12 months | Partners and independent implementer | Repeat use, follow-up outcomes, a nontechnical-community pilot and an independently implemented interoperability test. |
+| Following 6–12 months | Participants, regional convenors and independent implementer | Repeat use, additional languages and regions, follow-up outcomes and an independently implemented interoperability test. |
 
-Illustrative 90-day budget, GBP:
+The founder reports that the first working demo used **about US$10 or less in Claude Code credits**. Use that founder-reported prototype expense to ground the software budget. Subsequent AI-assisted implementation is a small, metered tools expense, with no salaried developer assumed; commission human review where the particular release needs it. No model price or production-scale usage is assumed here.
+
+Illustrative lean 90-day cash budget, **USD**, with founder-led implementation and coordination:
 
 | Item | Estimate | Assumption |
 |---|---:|---|
-| Product/research lead | £18,000 | 3 months at £6,000 fully loaded |
-| Engineering | £27,000 | 3 months at £9,000 fully loaded |
-| Facilitation and partner operations | £12,000 | 30 days at £400 |
-| Participant pay, access and translation | £8,000 | Recruitment and needs determine final mix |
-| Domain experts and independent evaluation | £8,000 | Limited paid engagements |
-| Privacy/security advice, infrastructure and tools | £7,000 | Scope-specific review and operation |
-| Community implementation pot | £10,000 | Ring-fenced beyond platform engineering |
-| Contingency | £10,000 | Approximately 11% of pre-contingency costs |
-| **Total** | **£100,000** | Indicative planning envelope; confirm tax and sponsor overhead |
+| AI-assisted software implementation | $100 | Credit allowance for repeated small iterations; track actual charges |
+| Hosting, domain and backup allowance | $150 | Small early service; verify actual bills before scaling |
+| Targeted human security/accessibility review | $750 | Bounded external review where needed; no assumed full-time developer |
+| Coordination | $1,500 | Modest contribution to founder/partner time; remaining time recorded as in-kind |
+| Facilitation and community support | $2,000 | Limited paid sessions and preparation across participating groups |
+| Participant pay, access and translation | $2,500 | Prioritize actual language, connectivity and participation needs |
+| Domain experts and independent evaluation | $1,500 | A few scoped commissions and an honest feasibility report |
+| Community experiment fund | $2,000 | Ring-fenced for practical action, separate from building Unite |
+| Contingency | $1,500 | Allowance for unanticipated access and operating needs |
+| **Total** | **$12,000** | Planning cap for a lean learning cycle; confirm taxes and any sponsor overhead |
 
-If £100,000 is unavailable, do a £15,000–£25,000 discovery and facilitated manual cycle using existing tools. Reduce software ambition and the number of experiments; retain participant support and a real decision owner. Do not call a cheap unmoderated website a substitute for the participation process.
+The software/tools/review subtotal is **$1,000**, of which only **$100 is implementation credits**. The remaining $11,000 funds participation, coordination, expertise, experiments and contingency. This is a cash budget, not a claim that founder and partner time has no value; record donated time explicitly. It funds a limited learning cycle, not worldwide operational coverage or a production security audit.
+
+There is no need to raise $12,000 to keep improving the prototype. A founder-led discovery phase can begin with the existing demo, a tools ceiling around $100 and volunteered time, then raise money for the access, facilitation and experiments participants actually need. Keep any production service's recurring model use, storage, moderation and support costs separate and revise them from measured usage. Do not inflate software costs to reach a grant minimum; a larger grant needs a genuinely larger community-led program.
 
 ## How to know whether it worked
 
@@ -214,6 +232,6 @@ Stop or redesign if the institution repeatedly ignores agreed response obligatio
 
 ## Immediate decisions and deliverables
 
-Proceed with Solid as the working pilot assumption, subject to your preference. Select one problem and one accountable partner before scaling the platform. In parallel, assess whether an existing U.S. community relationship makes the Humanity AI opportunity credible; do not manufacture a partnership just to fit a deadline.
+Proceed with humanity's shared future as the platform's purpose. Invite people across contexts to describe desired lives and help choose the first shared question. Find accountable partners for proposals that promise action, while allowing broader imagination to remain open. In parallel, assess whether an existing U.S. community relationship makes a distinct Humanity AI program credible; do not narrow the global mission or manufacture a partnership just to fit a deadline.
 
 The accompanying [operating templates](OPERATING-TEMPLATES.md) make the charter, expert brief, funding concept and evaluation usable. The separate [implementation brief](IMPLEMENTATION-BRIEF.md) describes what to validate next. Engineering is delegated to Claude Opus 5.5; prototype capability and actual verification are documented separately from this proposal.

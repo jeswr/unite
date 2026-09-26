@@ -38,7 +38,6 @@ const dateTimeFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', t
 
 export const formatDate = (isoDate) => dateFormat.format(new Date(`${isoDate}T00:00:00Z`));
 export const formatDateTime = (iso) => dateTimeFormat.format(new Date(iso));
-export const formatEuro = (amount) => `€${amount.toLocaleString('en-GB')}`;
 export function todayISO(now = new Date()) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;

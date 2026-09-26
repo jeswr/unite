@@ -2,9 +2,13 @@
 // local persistence and the tests. Validators never trust their input: each
 // returns a fresh object containing only known fields, or throws SchemaError.
 
-export const SCHEMA_VERSION = 1;
+// Version 2 carries the "Learning opportunities for everyone" example with
+// amounts in US dollars. Version 1 files carried a different example with
+// amounts in euros; they are rejected, never relabelled or converted.
+export const SCHEMA_VERSION = 2;
 export const BUNDLE_FORMAT = 'unite-demo-public-bundle';
-export const STORAGE_VERSION = 1;
+export const STORAGE_VERSION = 2;
+export const CURRENCY = 'USD';
 
 export const LIMITS = {
   title: 120,
@@ -18,12 +22,21 @@ export const LIMITS = {
 };
 
 export const TOPICS = {
-  accessibility: 'Accessibility',
-  switching: 'Switching providers',
-  onboarding: 'Getting started',
-  hosting: 'Hosting costs',
-  privacy: 'Privacy and control',
-  collaboration: 'Working together',
+  learning: 'Learning',
+  care: 'Health and care',
+  livelihoods: 'Work and livelihoods',
+  climate: 'Climate and nature',
+  housing: 'Housing and belonging',
+  voice: 'Voice and fairness',
+};
+
+// What kind of change an option is, so that a community experiment is never
+// presented as if it were policy, and a recommendation is never presented as
+// if this example could adopt or fund it.
+export const OPTION_SCOPES = {
+  current: 'Current provision',
+  experiment: 'Community experiment this group can fund',
+  recommendation: 'Recommendation: needs an institution to adopt and fund it',
 };
 
 export const HORIZONS = {
@@ -73,6 +86,9 @@ export const DELIVERY_ORDER = Object.keys(DELIVERY_STATES);
 
 export const FUNDING_KINDS = { budget: 'Budget allocated', none: 'No budget allocated' };
 export const DEFER = 'defer';
+
+// Every amount in this format is a whole number of US dollars.
+export const formatMoney = (amount) => `US$${amount.toLocaleString('en-GB')}`;
 
 export class SchemaError extends Error {
   constructor(path, detail) {
@@ -211,6 +227,7 @@ export function option(value, path) {
   return {
     id: id(value.id, `${path}.id`),
     title: text(value.title, `${path}.title`, { max: LIMITS.title }),
+    scope: oneOf(value.scope, `${path}.scope`, OPTION_SCOPES),
     summary: text(value.summary, `${path}.summary`, { max: LIMITS.body }),
     relativeCost: oneOf(value.relativeCost, `${path}.relativeCost`, RELATIVE_COSTS),
     costEstimate: text(value.costEstimate, `${path}.costEstimate`, { max: LIMITS.title }),

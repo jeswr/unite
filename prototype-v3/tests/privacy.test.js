@@ -15,26 +15,26 @@ test('a private draft never appears in the public export', () => {
 });
 
 test('bookmarks stay private and are not exported', () => {
-  const state = M.toggleBookmark(M.emptyState(), 'asp-first-day');
-  assert.deepEqual(state.bookmarks, ['asp-first-day']);
+  const state = M.toggleBookmark(M.emptyState(), 'asp-cooler-streets');
+  assert.deepEqual(state.bookmarks, ['asp-cooler-streets']);
   assert.ok(!exportText(state).includes('bookmark'));
 });
 
 test('sharing creates a separate record containing only the reviewed text', () => {
   const { state, draft } = withDraft();
   const { state: shared, record } = M.shareDraft(state, draft.id, {
-    title: 'Sign-up I can finish myself',
-    hard: 'Sign-up needs sighted help.',
-    different: 'I can sign up with a keyboard.',
+    title: 'Learning after my shift',
+    hard: 'Courses run while I am at work.',
+    different: 'I can learn in the evening.',
     protect: '',
     confirm: true,
   });
   assert.notEqual(record.id, draft.id);
-  assert.equal(record.inspiredBy, 'asp-screen-reader-signup', 'public provenance is kept');
+  assert.equal(record.inspiredBy, 'asp-evening-learning', 'public provenance is kept');
   assert.deepEqual(record.author, M.LOCAL_AUTHOR);
 
   const text = exportText(shared);
-  assert.ok(text.includes('Sign-up I can finish myself'));
+  assert.ok(text.includes('Learning after my shift'));
   for (const secret of ['PRIVATE-HARD', 'PRIVATE-PROTECT', draft.id]) assert.ok(!text.includes(secret));
 
   // Later edits to the private draft do not flow into the shared copy.
@@ -56,7 +56,7 @@ test('sharing requires explicit confirmation', () => {
 
 test('deleting one draft keeps other demo state; withdrawing removes the shared copy from export', () => {
   const first = withDraft();
-  const second = withDraft(first.state, { hard: 'Second draft about hosting', topic: 'hosting', inspiredBy: null });
+  const second = withDraft(first.state, { hard: 'Second draft about housing', topic: 'housing', inspiredBy: null });
   const { state: shared, record } = M.shareDraft(second.state, first.draft.id, {
     title: 'Shared title',
     hard: 'h text',
@@ -64,7 +64,7 @@ test('deleting one draft keeps other demo state; withdrawing removes the shared 
     protect: '',
     confirm: true,
   });
-  const withResponse = M.setResponse(shared, { optionId: 'option-keep-current', stance: 'support', reason: '' });
+  const withResponse = M.setResponse(shared, { optionId: 'option-current-provision', stance: 'support', reason: '' });
 
   const afterDelete = M.deleteDraft(withResponse, first.draft.id);
   assert.deepEqual(afterDelete.drafts.map((d) => d.id), [second.draft.id]);
