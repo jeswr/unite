@@ -55,9 +55,25 @@ computer. Each tab joins with its own display name.
   withdraw their own posts. Replies stay; the withdrawn post shows
   "Withdrawn by its author".
 - New posts, replies, stances, revisions and actions reach every connected
-  tab through server-sent events. A status indicator shows Live,
-  Reconnecting… or Server unreachable. Drafts, focus, cursor position and
-  open `<details>` survive live re-renders.
+  tab. Drafts, focus, cursor position and open `<details>` survive every
+  re-render. The status indicator shows one of: Live, Connecting…,
+  Reconnecting…, Server unreachable, Paused while hidden, Checking every
+  few seconds, or Many tabs open: checking every few seconds.
+- **Connection budget.** Browsers allow about six HTTP/1.1 connections per
+  host, shared across all tabs. `127.0.0.1` and `localhost` are separate
+  hosts. Each open event stream holds one connection, so:
+  - A **hidden** tab closes its stream. When shown again it reopens the
+    stream, and the first frame resyncs it.
+  - A **visible window without focus for 20 s** switches to 3-second polls of
+    `GET /api/rev`, and gets its stream back on focus.
+  - A stream that **cannot open within 6 s** (connection pool full) also
+    falls back to polling.
+
+  Usually only the focused window holds a stream, plus any window focused
+  in the last 20 s. This has been tested in node with stand-in browser
+  objects only, not with six or more real tabs.
+- Search and filters sit in a panel. It is open by default on desktop and
+  folded on phones, and it opens itself while a filter is active.
 - There are no likes, reaction counts, follower counts, presence, typing
   indicators or ranking algorithm, and no activity is scripted over time.
 
@@ -75,6 +91,13 @@ computer. Each tab joins with its own display name.
 - Busy state, Stop (aborts the fetch, and the server kills the CLI
   process), a 120 s server timeout, Try again after a failure, and Clear
   conversation.
+- Clear conversation and Withdraw AI consent each:
+  - abort any request in flight;
+  - discard a reply that arrives later;
+  - empty the screen-reader live region.
+
+  Clear also deletes the unsent answer. Announcements of AI questions
+  clear themselves after 8 s, so private text does not linger in the page.
 - The conversation lives in this tab's memory and `sessionStorage`
   (`unite.v4.interview`). The server is stateless for it: each turn sends
   the bounded transcript.
@@ -104,11 +127,17 @@ computer. Each tab joins with its own display name.
   text.
 - "Ask AI to suggest a synthesis" sends only the room's public posts and
   its current statement. Sample posts are marked as fictional; display
-  names are not sent. The result is a private suggestion shown only in the
-  requesting tab: statement, differences, cited posts, and a count of
-  citations that matched no post. It changes no shared state. "Edit and
-  propose" opens the normal editor. Once proposed, the version is labelled
-  "Drafted with AI help", with the human as proposer.
+  names are not sent. The prompt requires neutrality between economic and
+  political systems, keeps views found in a single post visible as
+  differences, and forbids weighting by frequency or inventing balance.
+- The result is a private suggestion shown only in the requesting tab:
+  statement, differences, cited posts, and a count of citations that
+  matched no post. It changes no shared state.
+- "Edit and propose" opens the normal editor, with the AI-assisted box
+  checked and locked. Other proposers can tick the box themselves. A
+  proposed version shows "AI-assisted (declared by the proposer)". The
+  label is **self-declared, not verified**; the public data says so
+  (`aiAssistedSource`), and so does the export notice.
 
 ### Act next
 - "Turn this into an action" works from any room's current statement, even
@@ -118,36 +147,85 @@ computer. Each tab joins with its own display name.
   2. Scope (community experiment or institutional proposal, with the
      institution's name), then an optional rights, access or dependency
      concern, *then* impact, urgency and effort (1 to 3 each).
+
+  Only the visible step is shown and checked. Enter in step 1 acts as
+  Next, and Back never validates. If the statement changes while the
+  dialog is open, the server refuses (409). The dialog then shows the new
+  version as its basis, keeps what was typed and asks the person to check
+  again.
+- Check-in dates are the participant's local date. The server accepts from
+  one day before to one day after its UTC window, so every time zone's
+  "today" works.
 - The server snapshots the statement version, text, differences, tally
   and concern reasons. Priority = impact + urgency + (4 − effort), a whole
   number from 3 to 9, is computed on the server and explained on every
   card and in "How priority is computed". Viewers can order by priority,
   needs attention, urgency, impact, least effort, soonest check-in or
   newest, and filter by room and scope.
-- Every card shows readiness before its score: open concerns, a missing
-  owner, concerns recorded at creation, stale context, and, for
-  institutional proposals, "Needs adoption by X. Not adopted: … naming an
-  institution gives no authority."
-- Stale context is computed at read time. It is flagged when the room's
-  statement has been revised or the responses to that version have
-  changed since creation.
-- Statuses are proposed, ready, doing and done. Only the owner moves them,
-  one step at a time, and stepping back is always allowed. Moving forward
-  is blocked while any concern is open. Anyone may record how a concern
-  will be handled, which lets the action move again. Only the person who
-  raised a concern may reopen it. Concerns are never deleted, and their
-  history is kept. Participants can volunteer or stop volunteering, and
-  can take ownership when there is no owner. Owners and volunteers can
-  update the next step; the history is kept.
+- Every card shows readiness before its score. That covers open concerns,
+  a missing owner, pending owner review, concerns recorded at creation,
+  changes since creation, and, for institutional proposals, "Would need
+  adoption by X. Adoption unconfirmed … naming an institution gives no
+  authority."
+- **Owner review of the room context.** An action depends on the room's
+  current statement version and the concern stances on it. The server
+  identifies that context with a hash, `context.id`. The owner must record
+  a short review, `POST /api/actions/:id/review {contextId, text}`, before
+  the next forward move in any of these cases:
+  - the action was created while concerns remained;
+  - the statement was revised later;
+  - a concern was added or reworded later.
+
+  The server accepts a review only for the exact context it names, so a
+  change that happens during the review gives a 409 and needs a fresh
+  review. A review never removes a concern. It records who reviewed, why,
+  which version and exactly which concerns. New support or abstain
+  responses, and withdrawn concerns, need no review; they appear only as
+  information ("Changed since creation"). A concern is not a permanent
+  veto.
+- Statuses are proposed, ready, doing and done:
+  - Only the owner moves them, one step at a time. Stepping back is always
+    allowed.
+  - Moving forward is blocked while a concern on the action is open or an
+    owner review is pending.
+  - Anyone may record how a concern will be handled, which lets the action
+    move again. Only the person who raised a concern may reopen it.
+  - Concerns are never deleted, and their history is kept. Every recorded
+    response leaves room for one more reopen, so a history cap always
+    leaves the concern **open**, never locked as addressed.
+- Participants can volunteer or stop volunteering, and can take ownership
+  when there is no owner. Owners and volunteers can update the next step;
+  the history is kept.
+- **Institutional proposals** can move all the way to done, because
+  drafting and submitting a proposal is real work. Each one has
+  `institutionalAdoption: "unconfirmed"`, which no request can change, and
+  a server-written `statusMeaning`. For example, done reads "Proposal work
+  completed; institutional adoption unconfirmed." Neither the institution
+  name nor the status is ever read as adoption or funding. The export
+  carries the same fields and says so in its notice.
 - No money, payment, funding or authority is modelled anywhere.
 
 ### Possible futures
-- Three models: a universal public-service economy (many democratic
-  employers, local autonomy), labelled "Founder's proposal"; one global
-  public employer; and a mixed economy with stronger guarantees and
-  cooperatives. Each has an illustrative fictional "ordinary day",
-  strengths, risks and a staged migration path. There is also a comparison
-  table.
+- Three models:
+  1. **A universal public-service economy** with many democratic employers
+     and local autonomy. It is labelled "One proposed interpretation" of
+     the founder's direction. The founder asked to explore universal public
+     contribution, including government employment, and has not chosen
+     this or any design.
+  2. **One global public employer**, presented at its strongest. It could
+     delegate power constitutionally to local and worker councils, and
+     could offer portable rights, independent courts and unions, freedom to
+     refuse tasks, and basic security independent of work. Its hard
+     problems are named too: no alternative employer, central override,
+     coordination, financing, consent and concentrated power.
+  3. **A mixed economy** with stronger guarantees and cooperatives.
+
+  Each model has an illustrative fictional "ordinary day", possible
+  strengths, possible risks and a staged migration path. In the comparison
+  table, local say is shown as depending on enforceable devolution in
+  every model, not as fixed by the number of employers. A note says every
+  cell is a hypothesis, and that the research's leaning towards plural
+  institutions is not a verdict. All model badges share one neutral style.
 - Commitments every model must keep: freedom to choose work, to reject a
   model and to dissent; and care, study, rest, illness and disability
   without compulsory work.
@@ -161,8 +239,21 @@ computer. Each tab joins with its own display name.
   labelled with the model and the kind of response (validated enums on the
   server).
 
-### About
-One compact persistent notice appears on every page. The About view covers
+### About, and phones
+One short persistent notice appears on every page: "Local demo: samples
+are fictional; public posts are lost when the server restarts", with a link
+to About this demo.
+
+On phones (560 px or narrower):
+- The header is a compact bar: brand and identity on one row, then
+  scrollable navigation and room links.
+- Generic introductions are hidden. Room prompts and the Act and Futures
+  framing stay.
+- The room summary above the feed shows counts and a link, not the full
+  statement.
+- The composer starts short and grows when focused.
+
+The About view covers
 what is real and what is not, data and restart loss, tokens and display
 names, AI disclosure, the design evidence (with caveats), and **Download
 public data (JSON)** (`/api/export`).
@@ -190,7 +281,14 @@ public data (JSON)** (`/api/export`).
 Live updates carry only `{rev, bootId, kind}`. A tab refetches
 `/api/state` when the revision moves. On every (re)connect the server
 first sends the current revision, so a tab that missed events catches up.
-A changed `bootId` tells the tab the server restarted.
+Tabs without a stream poll `GET /api/rev`, which returns only
+`{rev, bootId}`. A changed `bootId` tells the tab the server restarted.
+
+The server serialises the public state once per revision, and adds the AI
+status on each request. The client runs one state fetch at a time. A
+refresh requested during a fetch (a live event, or a finished change)
+triggers another fetch afterwards, so an older response is never the last
+word.
 
 ## Security and privacy invariants
 
@@ -203,7 +301,7 @@ A changed `bootId` tells the tab the server restarted.
 - **Mutations** need a matching `Origin`, `X-Unite-Client: 1` (which forces
   a preflight the server never approves), `Content-Type: application/json`
   and, except for joining, a valid `X-Unite-Session` token. Bodies are
-  capped (16 KB, or 96 KB for the interview). Unknown fields, including
+  capped (16 KB, or 160 KB for the interview). Unknown fields, including
   `__proto__`, `authorId`, `priority` and vote counts, are rejected. Text is
   NFC-normalised and length-limited; control and bidi-override characters
   are rejected.
@@ -222,12 +320,20 @@ A changed `bootId` tells the tab the server restarted.
   allow-list and never include tokens or interview text. The server logs
   only its start-up lines and the class name of unexpected errors, never
   request bodies. CLI stderr is drained and discarded.
-- **Bounds.** 64 SSE connections, 500 participants, 1,000 sessions (12 h
-  idle expiry), 2,000 posts, 200 actions, 50 versions per room, and caps on
-  sources, differences, concerns, updates and volunteers. Rate limits: 20
-  joins per minute; 60 writes per minute per participant; 20 AI requests
-  per 10 minutes per participant; one AI request at a time per
-  participant; two at a time for the server.
+- **Bounds.**
+  - Counts: 64 SSE connections, 500 participants, 1,000 sessions (12 h
+    idle expiry), 2,000 posts, 200 actions, 50 versions per room, and 20
+    owner reviews per action. Sources, differences, concerns, updates and
+    volunteers are capped too.
+  - One shared **archive budget of 20,000 records** covers everything
+    copied into history. At the limit, writes are refused with 503, and
+    nothing is deleted.
+  - Rate limits: 20 joins per minute; 60 writes per minute per
+    participant and 600 across everyone; 1,200 state reads and 20 exports
+    per minute; 20 AI requests per 10 minutes per participant. A "server
+    busy" refusal does not count against the AI quota.
+  - AI concurrency: one request at a time per participant, and two at a
+    time for the server.
 
 ## AI bridge (Claude Code CLI)
 
@@ -254,19 +360,33 @@ A changed `bootId` tells the tab the server restarted.
   their own message. Nothing canned is ever substituted.
 - The `--max-budget-usd 0.50` per-call cap is a cost guard of my own
   choosing.
-- **Assumption to verify in the root's real call:** the JSON result
-  reports `modelUsage` keyed by the exact model ID. If the CLI reports a
-  suffixed ID, or an extra helper model, calls will fail closed with
-  "reported model X instead of claude-opus-5-5". The check is in
-  `parseCliResult` in `server/ai.js`.
+- Root's real synthetic call on the installed CLI passed the exact-model
+  check. The check is unchanged: if a future CLI reports a suffixed ID or
+  an extra helper model, calls fail closed with "reported model X instead
+  of claude-opus-5-5". It lives in `parseCliResult` in `server/ai.js`.
 - For production: a proper provider API with per-tenant keys, quotas,
   abuse controls and a data-processing agreement, not one person's CLI
   login.
 
 ## Verification actually performed
 
-- `npm test`: **61 tests in 17 suites, all passing** (Node 25.1.0).
-  - `store.test.js` (23): samples carry no stances; server-side
+- `npm test`: **83 tests in 25 suites, all passing** (Node 25.1.0, three
+  consecutive runs). `node --check` passes on all 26 JS files. The review
+  pass added 22 tests; see `REVIEW.md` for what each finding changed.
+  - `store.test.js` (33). Added in the review pass:
+    - owner review: an inherited concern holds the action; new support
+      does not; new, reworded and revised context does; a withdrawn concern
+      does not; a stale `contextId` after a concurrent change is refused;
+      only the owner can review;
+    - institutional proposals reach "done" with adoption unconfirmed, also
+      in the export; a client adoption claim is rejected;
+    - the concern-history cap ends open;
+    - check-in dates near the UTC date change (UTC−7 and UTC+14);
+    - the archive budget refuses writes without deleting anything;
+    - per-revision state caching;
+    - the self-declared AI label.
+
+    From the first build: samples carry no stances; server-side
     authorship; withdraw-by-author-only; reply depth and room; limits,
     control and bidi characters; markup stored literally; future-model
     enums; one changeable stance per participant; concern reasons;
@@ -278,7 +398,10 @@ A changed `bootId` tells the tab the server restarted.
     dates; owner-only single-step transitions held by open concerns;
     concern reopen rights and history; volunteer and next-step rights;
     the export notice has no tokens.
-  - `http.test.js` (13): CSP and headers; exact static list and traversal
+  - `http.test.js` (16). Added: owner review over HTTP, including a
+    refused stale review after a concurrent change; cached state with AI
+    status and `/api/rev`; global write, read and export limits. From the
+    first build: CSP and headers; exact static list and traversal
     attempts; bad Host, Origin and cross-site fetches; the Origin,
     client-header and JSON requirements; invalid and absent sessions;
     413, malformed JSON, `__proto__` and unknown fields; ownership over
@@ -286,7 +409,10 @@ A changed `bootId` tells the tab the server restarted.
     from state and export; SSE broadcast to two streams with
     revision-only payloads; the current revision on reconnect; the SSE
     connection cap.
-  - `ai.test.js` (20): flags present and forbidden flags absent; text only
+  - `ai.test.js` (23). Added: synthesis neutrality and minority-view rules;
+    code-point interview length; a busy refusal does not use up the AI
+    quota; duplicate citations are not counted as unknown. From the first
+    build: flags present and forbidden flags absent; text only
     on stdin; env scrubbing; model verification (other, extra or
     unreported model); error, budget, empty, oversize and unreadable
     results; outcome mapping; disabled or missing CLI runs nothing;
@@ -297,11 +423,24 @@ A changed `bootId` tells the tab the server restarted.
     text absent from state and export, consent and session required,
     disabled reported truthfully, synthesis leaves shared state unchanged
     and excludes display names, one request per participant).
-  - `client.test.js` (5): every browser module parses; imports resolve;
+  - `client.test.js` (11). Added:
+    - the live-connection policy, driven with stand-in document, window and
+      EventSource objects: a hidden tab pauses and resyncs on a fresh
+      stream when shown; a tab that starts hidden starts paused; a stream
+      that cannot open falls back to polling and resyncs; an unfocused
+      window gives up its stream and takes it back on focus;
+    - source guards (not browser checks) that the `[hidden]` rule stays in
+      the CSS and that the old futures wording is gone.
+
+    From the first build: every browser module parses; imports resolve;
     no HTML sinks, inline handlers or remote assets; time and excerpt
     helpers.
   - No test starts the real Claude CLI or makes any Anthropic call.
-- **Headless Chromium smoke check (scratch script, not in the repo).** I
+- **No browser check was done in the review pass.** The hidden-element
+  fix, the phone layout, the tab-connection behaviour and the cleared
+  announcements all need root's browser re-test. The headless run below
+  belongs to the first build.
+- **Headless Chromium smoke check from the first build (scratch script, not in the repo).** I
   drove the locally installed Playwright Chromium through the DevTools
   protocol against an in-process server with a *fake* AI runner, with two
   tabs (1280 px and 390 px mobile emulation). 25 checks passed with no
@@ -339,9 +478,14 @@ A changed `bootId` tells the tab the server restarted.
 - **AI synthesis is a private suggestion with sources.** It needs a human
   proposer, and responses start again on every revision. Tessler et al.
   (2024) is read as a reason for contestation, not as a mandate.
-- **Readiness before score.** A concern holds an action back until someone
-  records how it is handled, but it is not a permanent veto. Only the
-  person who raised it can reopen it.
+- **Readiness before score.** A concern on an action holds it back until
+  someone records how it is handled. Only the person who raised it can
+  reopen it. A concern on the room's statement, or a revised statement,
+  holds the action back until the owner reviews that exact context. Neither
+  is a permanent veto, and new support never holds anything back.
+- **Proposal work is real work; adoption is not ours to record.**
+  Institutional proposals can be completed as proposals, but the data never
+  claims adoption.
 - **Samples have no time and no votes.** Showing "3 h ago" on invented
   posts would suggest fake activity.
 - **No money or authority modelled.** The board describes volunteers' own
@@ -366,7 +510,20 @@ A changed `bootId` tells the tab the server restarted.
 - The whole interview transcript is re-sent on each turn (up to 40
   messages and 30,000 characters). This costs more tokens as the
   conversation grows.
-- The rate limiter is an in-memory fixed window, not abuse-grade.
+- The rate limiters are in-memory fixed windows, not abuse-grade.
+- Windows without a stream see changes up to about 3 s late. The tab
+  limits above describe browser behaviour; they were not measured with six
+  or more real tabs.
+- An action whose owner is gone cannot pass a pending review. Ownership can
+  only be taken when there is no owner, so start a new action instead. The
+  20-review cap also fails closed.
+- The server cannot verify an "AI-assisted" label; it is self-declared.
+- Closed statement versions keep each responder's display name as it was
+  when the version closed.
+- Scripts and other non-browser tools must send `Origin` and
+  `X-Unite-Client: 1` on POST requests.
+- The check-in window is one day looser than any single time zone needs,
+  so that every zone's "today" is accepted.
 - English (en-GB) only. No automated accessibility audit or screen-reader
   testing has been done. The `<search>` element needs a recent browser.
 - Relative times and default check-in dates use the device clock.

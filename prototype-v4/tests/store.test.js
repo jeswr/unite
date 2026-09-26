@@ -284,6 +284,180 @@ describe('actions', () => {
   });
 });
 
+describe('owner review of the room context (F1)', () => {
+  const view = (store) => store.publicState().actions[0];
+  const review = (store, actor, id, text = 'Read the concerns; the pilot is small and reversible.') => store.reviewContext(actor, id, { contextId: view(store).context.id, text });
+
+  it('holds an action created while a room concern remains until the owner reviews it', () => {
+    const { store, alice, bob } = setup();
+    store.setStance(bob, 'work', { stance: 'concern', reason: 'Who covers night shifts?', expectedVersion: 1 });
+    const action = store.createAction(alice, actionBody());
+    assert.ok(view(store).blockers.includes('context-review'));
+    assert.match(view(store).context.reviewNeeded[0], /1 concern/);
+    expectStatus(() => store.setStatus(alice, action.id, { status: 'ready' }), 409, /Review the room/);
+    review(store, alice, action.id);
+    store.setStatus(alice, action.id, { status: 'ready' });
+    // The concern and the review record both remain.
+    assert.equal(store.publicState().grounds.work.tally.concern, 1);
+    const [record] = view(store).reviews;
+    assert.equal(record.by.id, alice.id);
+    assert.deepEqual(record.concerns, [{ name: 'Bob', reason: 'Who covers night shifts?' }]);
+  });
+
+  it('is not needed for new support, but is for a new, reworded or revised context', () => {
+    const { store, alice, bob } = setup();
+    const carol = store.join({ displayName: 'Carol' });
+    const action = store.createAction(alice, actionBody());
+    store.setStance(bob, 'work', { stance: 'support', expectedVersion: 1 });
+    assert.deepEqual(view(store).context.reviewNeeded, []);
+    assert.equal(view(store).stale.length, 1, 'the change is still shown as information');
+    store.setStatus(alice, action.id, { status: 'ready' });
+
+    store.setStance(carol, 'work', { stance: 'concern', reason: 'Agency staff are left out.', expectedVersion: 1 });
+    expectStatus(() => store.setStatus(alice, action.id, { status: 'doing' }), 409);
+    store.setStatus(alice, action.id, { status: 'proposed' }); // stepping back is always allowed
+    review(store, alice, action.id);
+    store.setStatus(alice, action.id, { status: 'ready' });
+
+    store.setStance(carol, 'work', { stance: 'concern', reason: 'Agency and zero-hours staff are left out.', expectedVersion: 1 });
+    assert.ok(view(store).blockers.includes('context-review'), 'a reworded concern needs a fresh review');
+    review(store, alice, action.id);
+    store.setStance(carol, 'work', { stance: 'support', expectedVersion: 1 });
+    assert.deepEqual(view(store).context.reviewNeeded, [], 'a withdrawn concern needs no review');
+
+    store.reviseStatement(bob, 'work', { text: 'Predictable hours for everyone, agency staff included.', differences: [], sourcePostIds: [], expectedVersion: 1 });
+    assert.match(view(store).context.reviewNeeded[0], /version 2; the owner last reviewed version 1/);
+    expectStatus(() => store.setStatus(alice, action.id, { status: 'doing' }), 409);
+    review(store, alice, action.id);
+    store.setStatus(alice, action.id, { status: 'doing' });
+  });
+
+  it('refuses a review of a context that changed concurrently, and only the owner may review', () => {
+    const { store, alice, bob } = setup();
+    store.setStance(bob, 'work', { stance: 'concern', reason: 'No budget for the board.', expectedVersion: 1 });
+    const action = store.createAction(alice, actionBody());
+    const seen = view(store).context.id;
+    expectStatus(() => store.reviewContext(bob, action.id, { contextId: seen, text: 'Looks fine to me.' }), 403);
+    // Someone adds a concern after the owner loaded the page, before they submit.
+    const carol = store.join({ displayName: 'Carol' });
+    store.setStance(carol, 'work', { stance: 'concern', reason: 'Excludes remote workers.', expectedVersion: 1 });
+    expectStatus(() => store.reviewContext(alice, action.id, { contextId: seen, text: 'Reviewed the budget concern.' }), 409, /changed while you were reviewing/);
+    assert.equal(view(store).reviews.length, 0);
+    review(store, alice, action.id);
+    assert.equal(view(store).reviews[0].concerns.length, 2);
+    expectStatus(() => review(store, alice, action.id), 409, /nothing new/);
+    expectStatus(() => store.reviewContext(alice, action.id, { contextId: 'x', text: 'ok', extra: 1 }), 400, /Unknown field/);
+  });
+});
+
+describe('institutional proposals (F2)', () => {
+  it('can complete proposal work while adoption stays unconfirmed', () => {
+    const { store, alice } = setup();
+    const action = store.createAction(alice, actionBody({ scope: 'institutional', institution: 'City council' }));
+    for (const status of ['ready', 'doing', 'done']) store.setStatus(alice, action.id, { status });
+    const view = store.publicState().actions[0];
+    assert.equal(view.status, 'done');
+    assert.equal(view.institutionalAdoption, 'unconfirmed');
+    assert.equal(view.statusMeaning, 'Proposal work completed; institutional adoption unconfirmed.');
+    const exported = publicExport(store);
+    assert.equal(exported.actions[0].institutionalAdoption, 'unconfirmed');
+    assert.match(exported.notice, /adoption is never recorded and is always unconfirmed/);
+  });
+
+  it('never accepts a client claim of adoption and describes community work differently', () => {
+    const { store, alice } = setup();
+    expectStatus(() => store.createAction(alice, actionBody({ scope: 'institutional', institution: 'City council', institutionalAdoption: 'adopted' })), 400, /Unknown field/);
+    const action = store.createAction(alice, actionBody());
+    expectStatus(() => store.setStatus(alice, action.id, { status: 'adopted' }), 400);
+    const view = store.publicState().actions[0];
+    assert.equal(view.institutionalAdoption, null);
+    assert.match(view.statusMeaning, /^Proposed/);
+  });
+});
+
+describe('concern history cap (F4)', () => {
+  it('always leaves room for the raiser to reopen, so the cap ends with the concern open', () => {
+    const { store, alice, bob } = setup();
+    const action = store.createAction(alice, actionBody());
+    const check = store.addCheck(bob, action.id, { kind: 'access', text: 'No step-free access.' });
+    let rounds = 0;
+    for (;;) {
+      try {
+        store.updateCheck(alice, action.id, check.id, { op: 'address', text: `Response number ${rounds}` });
+      } catch (error) {
+        assert.equal(error.status, 409);
+        assert.match(error.message, /stays open/);
+        break;
+      }
+      store.updateCheck(bob, action.id, check.id, { op: 'reopen', text: `Still not solved ${rounds}` });
+      rounds += 1;
+    }
+    const final = store.publicState().actions[0].checks[0];
+    assert.equal(final.status, 'open');
+    assert.equal(final.history.length, LIMITS.maxUpdates - 1);
+    assert.equal(final.history.at(-1).op, 'reopen');
+    expectStatus(() => store.setStatus(alice, action.id, { status: 'ready' }), 409, /open concerns/);
+  });
+});
+
+describe('check-in dates across time zones (F5)', () => {
+  it('accepts the local "today" of any time zone near the UTC date change', () => {
+    // 18:00 on 26 September in UTC−7 is 01:00 on 27 September in UTC.
+    const late = new Store({ now: fixedClock('2026-09-27T01:00:00Z') });
+    const west = late.join({ displayName: 'West' });
+    late.createAction(west, actionBody({ checkIn: '2026-09-26' }));
+    expectStatus(() => late.createAction(west, actionBody({ checkIn: '2026-09-25' })), 400, /between today and 365 days/);
+    // 09:30 on 27 September in UTC+14 is 19:30 on 26 September in UTC.
+    const early = new Store({ now: fixedClock('2026-09-26T19:30:00Z') });
+    const east = early.join({ displayName: 'East' });
+    early.createAction(east, actionBody({ checkIn: '2027-09-27' }));
+    expectStatus(() => early.createAction(east, actionBody({ checkIn: '2027-09-28' })), 400);
+  });
+});
+
+describe('aggregate limits (F6)', () => {
+  it('refuses new history past the shared budget instead of deleting anything', () => {
+    const saved = LIMITS.archiveBudget;
+    try {
+      const { store, alice, bob } = setup();
+      LIMITS.archiveBudget = store.archived + 3;
+      store.setStance(bob, 'work', { stance: 'concern', reason: 'Keep this concern.', expectedVersion: 1 });
+      const action = store.createAction(alice, actionBody()); // 1 action + 1 snapshot concern
+      store.addCheck(bob, action.id, { kind: 'rights', text: 'Check contracts first.' });
+      expectStatus(() => store.addCheck(bob, action.id, { kind: 'rights', text: 'One more concern.' }), 503, /history limit/);
+      expectStatus(() => store.reviseStatement(alice, 'work', { text: 'A different statement.', differences: [], sourcePostIds: [], expectedVersion: 1 }), 503);
+      const state = store.publicState();
+      assert.equal(state.grounds.work.tally.concern, 1);
+      assert.equal(state.grounds.work.current.version, 1);
+      assert.equal(state.actions[0].checks.length, 1);
+      assert.equal(state.joined, 2);
+    } finally {
+      LIMITS.archiveBudget = saved;
+    }
+  });
+
+  it('serialises public state once per revision', () => {
+    const { store, alice } = setup();
+    const first = store.publicStateJson();
+    assert.equal(store.publicStateJson(), first);
+    store.createPost(alice, { roomId: 'work', text: 'New words' });
+    const second = store.publicStateJson();
+    assert.notEqual(second, first);
+    assert.deepEqual(JSON.parse(second), store.publicState());
+  });
+});
+
+describe('AI-assisted label (F7)', () => {
+  it('is published as self-declared', () => {
+    const { store, alice } = setup();
+    store.reviseStatement(alice, 'care', { text: 'Care is work that deserves pay.', differences: [], sourcePostIds: [], expectedVersion: 1, aiAssisted: true });
+    const current = store.publicState().grounds.care.current;
+    assert.equal(current.aiAssisted, true);
+    assert.match(current.aiAssistedSource, /self-declared/);
+    assert.match(publicExport(store).notice, /declared by its proposer and is not verified/);
+  });
+});
+
 describe('public export', () => {
   it('has a fixed notice and no session tokens or private fields', () => {
     const { store, alice } = setup();

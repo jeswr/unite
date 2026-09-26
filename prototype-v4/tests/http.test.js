@@ -109,6 +109,59 @@ describe('HTTP service', () => {
       }
     });
 
+    it('holds an action for owner review over HTTP and refuses a review of a context that has since changed', async () => {
+      const owner = await app.join('Oda');
+      const critic = await app.join('Pip');
+      const ground = (await app.get('/api/state')).json.grounds.care;
+      const version = ground.current.version;
+      await app.post('/api/rooms/care/stance', { stance: 'concern', reason: 'Carers were not asked.', expectedVersion: version }, { token: critic.token });
+      const created = await app.post('/api/actions', {
+        roomId: 'care', expectedVersion: version, title: 'Respite rota', firstStep: 'Ask three carers what would help',
+        ownership: 'me', checkIn: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10), effort: 1, impact: 2, urgency: 2, scope: 'community',
+      }, { token: owner.token });
+      assert.equal(created.status, 200, created.text);
+      const find = async () => (await app.get('/api/state')).json.actions.find((a) => a.id === created.json.id);
+      const seen = (await find()).context.id;
+      assert.equal((await app.post(`/api/actions/${created.json.id}/status`, { status: 'ready' }, { token: owner.token })).status, 409);
+      await app.post('/api/rooms/care/stance', { stance: 'concern', reason: 'Carers were not asked, and respite needs cover.', expectedVersion: version }, { token: critic.token });
+      const stale = await app.post(`/api/actions/${created.json.id}/review`, { contextId: seen, text: 'Carers will be asked first.' }, { token: owner.token });
+      assert.equal(stale.status, 409);
+      const fresh = (await find()).context.id;
+      assert.notEqual(fresh, seen);
+      assert.equal((await app.post(`/api/actions/${created.json.id}/review`, { contextId: fresh, text: 'I read it: ask carers.' }, { token: critic.token })).status, 403);
+      assert.equal((await app.post(`/api/actions/${created.json.id}/review`, { contextId: fresh, text: 'Carers will be asked first.' }, { token: owner.token })).status, 200);
+      assert.equal((await app.post(`/api/actions/${created.json.id}/status`, { status: 'ready' }, { token: owner.token })).status, 200);
+    });
+
+    it('serves cached public state with the current AI status, and a small revision endpoint', async () => {
+      const state = await app.get('/api/state');
+      assert.equal(state.json.ai.enabled, false);
+      assert.equal(typeof state.json.rev, 'number');
+      assert.ok(Array.isArray(state.json.posts));
+      const rev = await app.get('/api/rev');
+      assert.deepEqual(Object.keys(rev.json).sort(), ['bootId', 'rev']);
+      assert.equal(rev.json.rev, state.json.rev);
+    });
+
+    it('applies aggregate write, read and export limits across participants', async () => {
+      const limited = await startServer({ limits: { globalWritesPerMinute: 2, readsPerMinute: 2, exportsPerMinute: 1 } });
+      try {
+        const a = await limited.join('Qin');
+        const b = await limited.join('Ren');
+        const body = { roomId: 'work', text: 'Hello' };
+        assert.equal((await limited.post('/api/posts', body, { token: a.token })).status, 200);
+        assert.equal((await limited.post('/api/posts', body, { token: b.token })).status, 200);
+        assert.equal((await limited.post('/api/posts', body, { token: b.token })).status, 429);
+        assert.equal((await limited.get('/api/state')).status, 200);
+        assert.equal((await limited.get('/api/state')).status, 200);
+        assert.equal((await limited.get('/api/state')).status, 429);
+        assert.equal((await limited.get('/api/export')).status, 200);
+        assert.equal((await limited.get('/api/export')).status, 429);
+      } finally {
+        await limited.close();
+      }
+    });
+
     it('returns session details only to the token holder and never tokens in public state', async () => {
       const { token, participant } = await app.join('Hal');
       const me = await app.get('/api/session', { 'X-Unite-Session': token });

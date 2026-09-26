@@ -36,13 +36,13 @@ function save(messages) {
 }
 
 export function renderTalk(ctx) {
-  const ui = (ctx.ui.talk ??= { messages: load(), busy: null, error: '' });
+  const ui = (ctx.ui.talk ??= { messages: load(), busy: null, error: '', epoch: 0 });
   const ai = ctx.data.ai;
   return h('section', { class: 'view', 'aria-labelledby': 'talk-title' },
     h('header', { class: 'view-head' },
       h('p', { class: 'eyebrow' }, 'Private interview'),
       h('h1', { id: 'talk-title' }, 'Talk with Unite'),
-      h('p', { class: 'lede' }, 'An AI interviewer asks about your life and the future you want, one question at a time. When you are ready, you can turn part of it into a public post. You review every word first.'),
+      h('p', { class: 'lede intro' }, 'An AI interviewer asks about your life and the future you want, one question at a time. When you are ready, you can turn part of it into a public post. You review every word first.'),
     ),
     h('p', { class: 'scope-note' }, h('strong', null, 'Private to this tab. '), 'Stored only in this tab\'s session storage and cleared when the tab closes. Never added to the feed, to common-ground summaries or to the export.'),
     body(ctx, ui, ai),
@@ -65,6 +65,16 @@ function body(ctx, ui, ai) {
   if (!ctx.me) return joinPrompt(ctx, 'Join with a display name to start. Your display name is not sent to the AI.');
   if (!hasConsent()) return consentCard(ctx);
   return chat(ctx, ui);
+}
+
+// Stops any request in flight, makes a late reply be discarded, and removes
+// private text from screen-reader announcements and error messages.
+function forget(ctx, ui) {
+  ui.epoch += 1;
+  ui.busy?.controller.abort();
+  ui.busy = null;
+  ui.error = '';
+  ctx.clearAnnouncements();
 }
 
 function consentCard(ctx) {
@@ -95,12 +105,15 @@ function chat(ctx, ui) {
       save(ui.messages);
     }
     const controller = new AbortController();
+    const epoch = ui.epoch;
     ui.busy = { mode, controller };
     ui.error = '';
     ctx.rerender();
     try {
       const outgoing = [{ role: 'interviewer', text: OPENER }, ...ui.messages].map(({ role, text: t }) => ({ role, text: t }));
       const result = await aiRequest('/api/interview', { mode, messages: outgoing }, controller.signal);
+      // The conversation was cleared or consent withdrawn meanwhile: drop it.
+      if (epoch !== ui.epoch) return;
       if (mode === 'question') {
         ui.messages.push({ role: 'interviewer', text: result.text });
         save(ui.messages);
@@ -113,10 +126,11 @@ function chat(ctx, ui) {
         });
       }
     } catch (error) {
+      if (epoch !== ui.epoch) return;
       ui.error = error.name === 'AbortError' ? 'Stopped. Nothing further was sent.' : error.message;
       if (error.status === 403 || error.code === 'disabled') await ctx.refresh();
     } finally {
-      ui.busy = null;
+      if (ui.busy?.controller === controller) ui.busy = null;
       ctx.rerender();
     }
   };
@@ -164,9 +178,10 @@ function chat(ctx, ui) {
       h('button', {
         type: 'button', class: 'ghost small danger', disabled: Boolean(ui.busy) || !ui.messages.length,
         onClick: async () => {
-          if (await ctx.confirm({ title: 'Clear this conversation?', body: 'It is deleted from this tab. Nothing public changes.', confirmLabel: 'Clear conversation' })) {
+          if (await ctx.confirm({ title: 'Clear this conversation?', body: 'It is deleted from this tab, including your unsent answer. Nothing public changes.', confirmLabel: 'Clear conversation' })) {
+            forget(ctx, ui);
             ui.messages = [];
-            ui.error = '';
+            ctx.clearDraft('talk:answer');
             save([]);
             ctx.rerender();
           }
@@ -174,7 +189,7 @@ function chat(ctx, ui) {
       }, 'Clear conversation'),
       h('button', {
         type: 'button', class: 'ghost small',
-        onClick: () => { withdrawConsent(); ctx.rerender(); },
+        onClick: () => { forget(ctx, ui); withdrawConsent(); ctx.rerender(); },
       }, 'Withdraw AI consent for this tab'),
     ),
   );

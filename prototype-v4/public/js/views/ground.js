@@ -18,7 +18,7 @@ export function renderGround(ctx) {
     h('header', { class: 'view-head' },
       h('p', { class: 'eyebrow' }, room.name),
       h('h1', { id: 'ground-title' }, 'Common ground'),
-      h('p', { class: 'lede' }, 'A proposed statement people here might share, with the differences that remain. Anyone can respond or propose a better version.'),
+      h('p', { class: 'lede intro' }, 'A proposed statement people here might share, with the differences that remain. Anyone can respond or propose a better version.'),
       roomTabs(ctx, room.id, 'ground'),
     ),
     statementCard(ctx, room, ground.current, { current: true }),
@@ -37,7 +37,7 @@ function statementCard(ctx, room, version, { current }) {
     current ? h('h2', { class: 'eyebrow', id: 'statement-title' }, `Proposed statement · version ${version.version}`) : null,
     h('p', { class: 'statement' }, version.text),
     h('p', { class: 'small muted' }, proposer),
-    version.aiAssisted ? h('p', { class: 'small' }, h('span', { class: 'badge violet' }, 'Drafted with AI help'), ' The proposer reviewed and adopted it; the AI did not decide anything.') : null,
+    version.aiAssisted ? h('p', { class: 'small' }, h('span', { class: 'badge violet' }, 'AI-assisted (declared by the proposer)'), ' The proposer says AI helped draft it, and chose to propose it; the AI decided nothing. Unite cannot verify how any text was written.') : null,
     h('h3', null, 'Unresolved differences'),
     version.differences.length
       ? h('ul', { class: 'differences' }, version.differences.map((d) => h('li', null, d)))

@@ -4,7 +4,7 @@
 // request bodies are validated here, and every ID, version, snapshot and
 // priority is decided by the server, never taken from the client.
 
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { ROOMS, ROOM_IDS, SAMPLE_POSTS, SAMPLE_STATEMENTS } from './seed.js';
 import * as v from './validate.js';
 
@@ -29,7 +29,13 @@ export const LIMITS = {
   maxVersions: 50,
   maxChecks: 20,
   maxUpdates: 50,
+  maxReviews: 20,
   maxVolunteers: 100,
+  // One budget for every record copied into history (closed-version
+  // responses, snapshot concerns, concern history, next-step updates and
+  // owner reviews). Each limit above is small on its own, but they multiply;
+  // this caps the total. Reaching it refuses new history, never deletes any.
+  archiveBudget: 20_000,
 };
 
 export const STANCES = ['support', 'concern', 'abstain'];
@@ -47,6 +53,24 @@ export const TRANSITIONS = {
   done: ['doing'],
 };
 
+// What each status means, by scope. Statuses are the owner's own report.
+// For an institutional proposal they track only the work of preparing and
+// submitting the proposal: Unite never records, infers or verifies that an
+// institution adopted or funded anything, whatever the status or name.
+export const STATUS_MEANINGS = {
+  community: {
+    proposed: 'Proposed: not started yet.',
+    ready: 'Ready: the owner reports it can start.',
+    doing: 'Doing: the owner reports work on the next step.',
+    done: 'Done: the owner reports the first step or experiment finished.',
+  },
+  institutional: {
+    proposed: 'Proposal idea: the proposal is not drafted yet.',
+    ready: 'Ready to prepare: the owner reports the proposal can be drafted.',
+    doing: 'Preparing or submitting the proposal. Institutional adoption unconfirmed.',
+    done: 'Proposal work completed; institutional adoption unconfirmed.',
+  },
+};
 export const newId = (prefix) => `${prefix}_${randomBytes(9).toString('base64url')}`;
 
 // Deliberately simple and shown in the UI: each input is 1 to 3, so the
@@ -68,7 +92,17 @@ export class Store {
     this.grounds = new Map();
     this.actions = new Map();
     this.listeners = new Set();
+    this.archived = 0;
+    this.cached = { rev: 0, json: '' };
     this.#seed();
+  }
+
+  // Refuses (503) a write that would push history past the shared budget.
+  #reserve(records) {
+    if (this.archived + records > LIMITS.archiveBudget) {
+      throw new HttpError(503, 'This local demo has reached its history limit. Export the public data, then restart the server to clear it.');
+    }
+    this.archived += records;
   }
 
   onChange(listener) {
@@ -252,6 +286,7 @@ export class Store {
     if (ground.versions.length >= LIMITS.maxVersions) {
       throw new HttpError(503, 'This room has reached its revision limit for the demo.');
     }
+    this.#reserve(ground.stances.size);
     const at = this.#stamp();
     // Close the current version: its responses are kept in history and do
     // not carry over to the changed text.
@@ -322,6 +357,7 @@ export class Store {
       institution: scope === 'institutional' ? institution : null,
       status: 'proposed',
       checks: [],
+      reviews: [],
       snapshot: this.#snapshot(ground, current),
       createdAt: this.#stamp(),
     };
@@ -330,6 +366,7 @@ export class Store {
     if (this.actions.size >= LIMITS.maxActions) {
       throw new HttpError(503, 'This local demo has reached its action limit.');
     }
+    this.#reserve(1 + action.snapshot.concerns.length + action.checks.length);
     this.actions.set(action.id, action);
     this.#changed('actions');
     return action;
@@ -399,6 +436,7 @@ export class Store {
     }
     if (action.updates.length >= LIMITS.maxUpdates) throw conflict('This action has reached its update limit for the demo.');
     const text = v.text(body.text, { label: 'Next step', min: 5, max: LIMITS.step, multiline: true });
+    this.#reserve(1);
     action.nextStep = text;
     action.updates.push({ by: actor.id, text, at: this.#stamp() });
     this.#changed('actions');
@@ -417,6 +455,9 @@ export class Store {
     if (forward && action.checks.some((check) => check.status === 'open')) {
       throw conflict('Respond to the open concerns before moving this action forward.');
     }
+    if (forward && this.#reviewNeeds(action, this.#context(action)).length) {
+      throw conflict('Review the room\'s current statement and concerns before moving this action forward.');
+    }
     action.status = status;
     this.#changed('actions');
     return action;
@@ -428,6 +469,7 @@ export class Store {
     if (action.checks.length >= LIMITS.maxChecks) throw conflict('This action has reached its concern limit for the demo.');
     const kind = v.oneOf(body.kind, CHECK_KINDS, 'Concern type');
     const text = v.text(body.text, { label: 'Concern', min: 5, max: LIMITS.check, multiline: true });
+    this.#reserve(1);
     const check = this.#newCheck(actor, kind, text);
     action.checks.push(check);
     this.#changed('actions');
@@ -436,6 +478,9 @@ export class Store {
 
   // A concern is never deleted. Anyone may record how it is handled, which
   // lets the action move again; the person who raised it may reopen it.
+  // Every response leaves room in the history for one more reopen (both per
+  // concern and in the shared archive budget), so a concern can never be
+  // locked as "addressed" by a cap. At the cap it stays open.
   updateCheck(actor, actionId, checkId, body) {
     v.fields(body, ['op', 'text']);
     const action = this.#action(actionId);
@@ -443,18 +488,87 @@ export class Store {
     if (!check) throw notFound('Concern');
     const op = v.oneOf(body.op, ['address', 'reopen'], 'Operation');
     const text = v.text(body.text, { label: op === 'address' ? 'Response' : 'Reason', min: 5, max: LIMITS.check, multiline: true });
-    if (check.history.length >= LIMITS.maxUpdates) throw conflict('This concern has reached its update limit for the demo.');
     if (op === 'address') {
       if (check.status !== 'open') throw conflict('This concern already has a response.');
+      if (check.history.length >= LIMITS.maxUpdates - 1) {
+        throw conflict('This concern has reached its history limit for the demo, so it stays open. Discuss it in the room, or start a new action.');
+      }
+      this.#reserve(2); // this response, plus a possible reopen
       check.status = 'addressed';
     } else {
       if (check.raisedBy !== actor.id) throw forbidden('Only the person who raised a concern can reopen it.');
       if (check.status !== 'addressed') throw conflict('This concern is already open.');
-      check.status = 'open';
+      check.status = 'open'; // capacity was reserved by the response
     }
     check.history.push({ op, by: actor.id, text, at: this.#stamp() });
     this.#changed('actions');
     return check;
+  }
+
+  // The owner reads the room's current statement and concerns and records
+  // why the action can still go ahead. This clears the review hold for
+  // exactly the context reviewed (identified by `contextId`); a later
+  // revision or a new or reworded concern needs a fresh review. Concerns
+  // themselves stay on the statement and in the review record.
+  reviewContext(actor, actionId, body) {
+    v.fields(body, ['contextId', 'text']);
+    const action = this.#action(actionId);
+    if (action.ownerId !== actor.id) throw forbidden('Only the owner can review the context for this action.');
+    const contextId = v.text(body.contextId, { label: 'Context', max: 40 });
+    const text = v.text(body.text, { label: 'Reason', min: 5, max: LIMITS.check, multiline: true });
+    const context = this.#context(action);
+    if (contextId !== context.id) {
+      throw conflict('The statement or its concerns changed while you were reviewing. Read the current version and review again.');
+    }
+    if (!this.#reviewNeeds(action, context).length) throw conflict('There is nothing new to review for this action.');
+    if (action.reviews.length >= LIMITS.maxReviews) {
+      throw conflict('This action has reached its review limit for the demo, so it stays on hold. Start a new action from the current statement.');
+    }
+    this.#reserve(1 + context.concerns.length);
+    action.reviews.push({
+      by: actor.id,
+      text,
+      contextId: context.id,
+      version: context.version,
+      concernKeys: context.keys,
+      concerns: context.concerns.map((c) => ({ participantId: c.participantId, name: this.#name(c.participantId), reason: c.reason })),
+      at: this.#stamp(),
+    });
+    this.#changed('actions');
+    return action;
+  }
+
+  // The room context an action depends on: the current statement version and
+  // the concern stances on it. Support and abstain responses are not part of
+  // it, so new supportive responses never hold an action back.
+  #context(action) {
+    const ground = this.grounds.get(action.roomId);
+    const version = ground.versions.at(-1).version;
+    const concerns = [...ground.stances]
+      .filter(([, s]) => s.stance === 'concern')
+      .map(([participantId, s]) => ({ participantId, reason: s.reason }));
+    const keys = concerns.map((c) => `${c.participantId}\n${c.reason}`).sort();
+    const id = createHash('sha256').update(JSON.stringify([version, keys])).digest('base64url').slice(0, 22);
+    return { id, version, concerns, keys };
+  }
+
+  // Why the owner must review before the next forward move. The baseline is
+  // the last review, or else the creation snapshot with no concerns counted
+  // as reviewed: concerns inherited at creation need one explicit review.
+  // A concern that is withdrawn needs no review.
+  #reviewNeeds(action, context) {
+    const last = action.reviews.at(-1);
+    const baseVersion = last ? last.version : action.snapshot.version;
+    const reviewed = new Set(last ? last.concernKeys : []);
+    const reasons = [];
+    if (context.version !== baseVersion) {
+      reasons.push(`The statement is now version ${context.version}; ${last ? 'the owner last reviewed' : 'this action was created from'} version ${baseVersion}.`);
+    }
+    const unreviewed = context.keys.filter((key) => !reviewed.has(key)).length;
+    if (unreviewed) {
+      reasons.push(`${unreviewed} ${unreviewed === 1 ? 'concern' : 'concerns'} on the statement ${unreviewed === 1 ? 'has' : 'have'} not been reviewed by the owner${last ? ' since the last review' : ''}.`);
+    }
+    return reasons;
   }
 
   // ---- public views -------------------------------------------------------
@@ -497,6 +611,9 @@ export class Store {
       proposedBy: this.#person(version.proposedBy),
       sampleDraft: version.sampleDraft,
       aiAssisted: version.aiAssisted,
+      // The server cannot tell who or what wrote a text, so the label is
+      // only ever the proposer's own declaration.
+      aiAssistedSource: version.aiAssisted ? 'self-declared by the proposer, not verified' : null,
       createdAt: version.createdAt,
       closed: version.closed && {
         at: version.closed.at,
@@ -557,9 +674,12 @@ export class Store {
 
   #publicAction(action) {
     const openChecks = action.checks.filter((check) => check.status === 'open').length;
+    const context = this.#context(action);
+    const reviewNeeded = this.#reviewNeeds(action, context);
     const blockers = [];
     if (!action.ownerId) blockers.push('needs-owner');
     if (openChecks) blockers.push('open-concerns');
+    if (reviewNeeded.length) blockers.push('context-review');
     return {
       id: action.id,
       roomId: action.roomId,
@@ -577,9 +697,26 @@ export class Store {
       priority: priorityOf(action),
       scope: action.scope,
       institution: action.institution,
+      // Always "unconfirmed" for institutional proposals: nothing in Unite can
+      // change it, whatever the status or the institution's name.
+      institutionalAdoption: action.scope === 'institutional' ? 'unconfirmed' : null,
       status: action.status,
+      statusMeaning: STATUS_MEANINGS[action.scope][action.status],
       nextStatuses: TRANSITIONS[action.status],
       blockers,
+      context: {
+        id: context.id,
+        version: context.version,
+        concerns: context.concerns.length,
+        reviewNeeded,
+      },
+      reviews: action.reviews.map((r) => ({
+        by: this.#person(r.by),
+        text: r.text,
+        version: r.version,
+        concerns: r.concerns.map((c) => ({ name: c.name, reason: c.reason })),
+        at: r.at,
+      })),
       checks: action.checks.map((check) => ({
         id: check.id,
         kind: check.kind,
@@ -612,6 +749,13 @@ export class Store {
     };
   }
 
+  // Serialised public state, built once per revision however many tabs ask.
+  // Every change goes through #changed(), which moves the revision.
+  publicStateJson() {
+    if (this.cached.rev !== this.rev) this.cached = { rev: this.rev, json: JSON.stringify(this.publicState()) };
+    return this.cached.json;
+  }
+
   // Public posts for one room, oldest first, for AI synthesis prompts.
   roomPostsForSynthesis(roomId, max) {
     this.#ground(roomId);
@@ -640,6 +784,10 @@ export function tally(stances) {
 
 export const EXPORT_NOTICE = 'Public data from a local Unite demo server. Sample people are fictional. '
   + 'Counts describe only participants of this local demo and are not a measure of any wider opinion. '
+  + 'Action statuses are reported by their owners. For institutional proposals they describe only the work of '
+  + 'preparing and submitting the proposal: institutional adoption is never recorded and is always unconfirmed, '
+  + 'and naming an institution gives no authority. No money or funding is modelled. '
+  + '"aiAssisted" on a statement version is declared by its proposer and is not verified. '
   + 'Private interview conversations are never stored on the server and are not included.';
 
 export function publicExport(store) {

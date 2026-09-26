@@ -75,8 +75,10 @@ export function id(value, label) {
   return value;
 }
 
-// A calendar date (YYYY-MM-DD) between `from` and `from + maxDays`, compared
-// in UTC so the check does not depend on the server's time zone.
+// A calendar date (YYYY-MM-DD) from "today" to `maxDays` ahead. The browser
+// sends the participant's local date, and local dates run from one day
+// behind to one day ahead of the UTC date (UTC−12 to UTC+14), so the window
+// is widened by a day at each end rather than trusting a client offset.
 export function dateWithin(value, { label, from, maxDays }) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw bad(`${label} must be a date (YYYY-MM-DD).`);
@@ -87,6 +89,8 @@ export function dateWithin(value, { label, from, maxDays }) {
   }
   const start = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
   const days = (parsed.getTime() - start) / 86_400_000;
-  if (days < 0 || days > maxDays) throw bad(`${label} must be between today and ${maxDays} days from now.`);
+  if (days < -1 || days > maxDays + 1) {
+    throw bad(`${label} must be between today and ${maxDays} days from now (in your time zone).`);
+  }
   return value;
 }

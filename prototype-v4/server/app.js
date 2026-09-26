@@ -8,7 +8,7 @@ import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { ClaudeBridge, AiError } from './ai.js';
 import { EventHub } from './events.js';
-import { SECURITY_HEADERS, indexStatic, readJson, sendJson, sendText } from './http.js';
+import { SECURITY_HEADERS, indexStatic, readJson, sendJson, sendJsonText, sendText } from './http.js';
 import { DRAFT_SYSTEM, INTERVIEW_SYSTEM, SYNTHESIS_MAX_POSTS, SYNTHESIS_SYSTEM, interviewPrompt, parseSynthesis, synthesisPrompt, validateInterview } from './prompts.js';
 import { ROOMS, ROOM_IDS } from './seed.js';
 import { RateLimiter, Sessions } from './sessions.js';
@@ -17,7 +17,8 @@ import { HttpError, fields, id, oneOf } from './validate.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 const BODY_LIMIT = 16 * 1024;
-const INTERVIEW_BODY_LIMIT = 96 * 1024;
+// 30,000 characters of non-Latin text can take up to 4 bytes each in UTF-8.
+const INTERVIEW_BODY_LIMIT = 160 * 1024;
 
 export function createUniteServer({
   store = new Store(),
@@ -30,6 +31,11 @@ export function createUniteServer({
   const files = indexStatic(publicDir);
   const joinLimiter = new RateLimiter({ limit: limits.joinsPerMinute ?? 20, windowMs: 60_000 });
   const writeLimiter = new RateLimiter({ limit: limits.writesPerMinute ?? 60, windowMs: 60_000 });
+  // Every client shares 127.0.0.1, so these aggregate limits bound what many
+  // scripted participants can do together.
+  const globalWriteLimiter = new RateLimiter({ limit: limits.globalWritesPerMinute ?? 600, windowMs: 60_000 });
+  const readLimiter = new RateLimiter({ limit: limits.readsPerMinute ?? 1200, windowMs: 60_000 });
+  const exportLimiter = new RateLimiter({ limit: limits.exportsPerMinute ?? 20, windowMs: 60_000 });
   const aiLimiter = new RateLimiter({ limit: limits.aiPerTenMinutes ?? 20, windowMs: 600_000 });
   const aiActive = new Set();
 
@@ -103,9 +109,18 @@ export function createUniteServer({
 
   function get(req, res, pathname) {
     switch (pathname) {
-      case '/api/state':
-        return sendJson(res, 200, { ...store.publicState(), ai: bridge.status() });
+      case '/api/state': {
+        if (!readLimiter.allow('state')) throw new HttpError(429, 'This local server is busy. Try again in a moment.');
+        // The AI status can change without a revision, so it is added to the
+        // cached public state rather than cached with it.
+        const cached = store.publicStateJson();
+        return sendJsonText(res, 200, `{"ai":${JSON.stringify(bridge.status())},${cached.slice(1)}`);
+      }
+      case '/api/rev':
+        // A tiny polling fallback for tabs without a live stream.
+        return sendJson(res, 200, { rev: store.rev, bootId: store.bootId });
       case '/api/export': {
+        if (!exportLimiter.allow('export')) throw new HttpError(429, 'Too many exports in the last minute. Try again shortly.');
         const date = store.now().toISOString().slice(0, 10);
         return sendJson(res, 200, publicExport(store), {
           'Content-Disposition': `attachment; filename="unite-public-${date}.json"`,
@@ -144,6 +159,7 @@ export function createUniteServer({
     }
 
     if (!writeLimiter.allow(actor.id)) throw new HttpError(429, 'You are doing that a lot. Wait a minute and try again.');
+    if (!globalWriteLimiter.allow('all')) throw new HttpError(429, 'This local server is receiving a lot of changes. Wait a minute and try again.');
     const result = mutate(pathname, actor, body);
     return sendJson(res, 200, { ok: true, rev: store.rev, ...result });
   }
@@ -182,6 +198,7 @@ export function createUniteServer({
         }
         if (verb === 'next-step') return { id: store.updateNextStep(actor, actionId, body).id };
         if (verb === 'status') return { id: store.setStatus(actor, actionId, body).id };
+        if (verb === 'review') return { id: store.reviewContext(actor, actionId, body).id };
         if (verb === 'checks') return { id: store.addCheck(actor, actionId, body).id };
       }
       if (parts.length === 4 && verb === 'checks') {
@@ -224,6 +241,8 @@ export function createUniteServer({
 
     if (!bridge.enabled) throw new AiError('disabled', bridge.status().reason, 503);
     if (aiActive.has(actor.id)) throw new HttpError(429, 'You already have an AI request running in this session.');
+    // Checked before the quota, so a busy refusal does not use up a request.
+    if (bridge.status().busy) throw new AiError('busy', 'The AI is busy with other requests on this server. Try again in a moment.', 429);
     if (!aiLimiter.allow(actor.id)) throw new HttpError(429, 'You have reached the AI request limit for now. Try again in a few minutes.');
 
     const controller = new AbortController();

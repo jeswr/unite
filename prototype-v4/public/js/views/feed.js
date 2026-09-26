@@ -18,11 +18,11 @@ export function renderFeed(ctx) {
 
   return h('section', { class: 'view', 'aria-labelledby': 'feed-title' },
     h('header', { class: 'view-head' },
-      h('p', { class: 'eyebrow' }, room ? 'Room' : 'Conversations'),
+      h('p', { class: 'eyebrow intro' }, room ? 'Room' : 'Conversations'),
       h('h1', { id: 'feed-title' }, room ? room.name : 'Talk about the future we share'),
-      h('p', { class: 'lede' }, room
-        ? room.prompt
-        : 'Short posts from people using this local demo, newest first. Say what you want, disagree well, and help shape what happens next.'),
+      room
+        ? h('p', { class: 'lede' }, room.prompt)
+        : h('p', { class: 'lede intro' }, 'Short posts from people using this local demo, newest first. Say what you want, disagree well, and help shape what happens next.'),
       room ? roomTabs(ctx, room.id, 'feed') : null,
     ),
     room ? groundSummary(ctx, room) : null,
@@ -35,7 +35,7 @@ export function renderFeed(ctx) {
 function groundSummary(ctx, room) {
   const ground = ctx.data.grounds[room.id];
   const { tally, coverage } = ground;
-  return h('section', { class: 'card summary-card', 'aria-labelledby': 'summary-title' },
+  return h('section', { class: 'card summary-card room-summary', 'aria-labelledby': 'summary-title' },
     h('p', { class: 'eyebrow', id: 'summary-title' }, `Proposed common ground · version ${ground.current.version}`),
     h('p', { class: 'statement' }, ground.current.text),
     h('p', { class: 'small muted' },
@@ -89,11 +89,19 @@ function filters(ctx, ui, roomId, drawList) {
     select.addEventListener('change', () => { ui.room = select.value; drawList(); });
     roomFilter = h('div', { class: 'field' }, h('label', { for: 'feed-room' }, 'Room'), select);
   }
-  return h('search', { class: 'filters', 'aria-label': 'Filter posts' },
-    h('div', { class: 'field' }, h('label', { for: 'feed-q' }, 'Search posts and replies'), q),
-    roomFilter,
-    h('div', { class: 'field' }, h('label', { for: 'feed-show' }, 'Show'), show),
-  );
+  // Folded away by default on phones so the conversation comes first; it
+  // opens by itself whenever a filter is active.
+  ui.filtersOpen ??= !window.matchMedia('(max-width: 560px)').matches;
+  const active = Boolean(ui.q.trim()) || ui.show !== 'all' || Boolean(!roomId && ui.room);
+  const panel = h('details', { class: 'filter-toggle', open: ui.filtersOpen || active },
+    h('summary', null, active ? 'Search and filters (active)' : 'Search and filters'),
+    h('search', { class: 'filters', 'aria-label': 'Filter posts' },
+      h('div', { class: 'field' }, h('label', { for: 'feed-q' }, 'Search posts and replies'), q),
+      roomFilter,
+      h('div', { class: 'field' }, h('label', { for: 'feed-show' }, 'Show'), show),
+    ));
+  panel.addEventListener('toggle', () => { ui.filtersOpen = panel.open; });
+  return panel;
 }
 
 function matches(ctx, ui, item) {

@@ -26,6 +26,11 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Author `display` rules (.field is a grid, buttons are inline-flex) would
+   otherwise override the browser's own [hidden] style and show hidden
+   elements, such as the second step of the action dialog. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -195,6 +200,7 @@ legend { font-weight: 650; font-size: 0.95rem; padding: 0; margin-bottom: 0.3rem
 .choice.support input:checked + span { background: var(--green-ink); border-color: var(--green-ink); }
 
 search.filters, .filters { display: grid; grid-template-columns: minmax(0, 2fr) repeat(auto-fit, minmax(9rem, 1fr)); gap: 0.6rem; align-items: end; }
+.filter-toggle > summary { font-size: 0.92rem; color: var(--ink-2); }
 
 /* ---- feed -------------------------------------------------------------- */
 
@@ -268,6 +274,7 @@ details[open] > summary { margin-bottom: 0.6rem; }
 .readiness p { font-size: 0.85rem; padding: 0.35rem 0.55rem; border-radius: 7px; background: var(--coral-soft); color: var(--coral-ink); font-weight: 600; }
 .readiness p.stale { background: #fff4d6; color: #6b4d00; }
 .readiness p.adoption { background: var(--violet-soft); color: var(--violet-ink); }
+.status-meaning { color: var(--ink-2); }
 .priority { font-size: 0.84rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .priority strong { color: var(--ink); }
 .action details { border-top: 1px solid var(--line); padding-top: 0.5rem; }
@@ -347,9 +354,38 @@ dialog .steps { font-size: 0.8rem; color: var(--muted); font-weight: 650; }
   .filters > :first-child { grid-column: 1 / -1; }
 }
 
+/* Phones: conversation first. The header becomes a compact bar (brand and
+   identity on one row, then scrollable navigation), repeated introductions
+   are left out, and the composer grows when used. */
 @media (max-width: 560px) {
-  .board { grid-template-columns: 1fr; }
+  .sidebar {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.45rem 0.6rem;
+    grid-template-areas: "brand me" "nav nav" "rooms rooms"; padding: 0.55rem 0.75rem;
+  }
+  .brand { grid-area: brand; align-self: center; }
+  .brand a { font-size: 1.15rem; }
+  .nav { grid-area: nav; }
+  .rooms-nav { grid-area: rooms; }
+  .rooms-nav .nav-label { display: none; }
+  .rooms-nav a { font-size: 0.86rem; padding: 0.25rem 0.6rem; }
+  .me {
+    grid-area: me; justify-self: end; display: flex; align-items: center; gap: 0.4rem;
+    padding: 0; border: 0; background: none; font-size: 0.85rem; min-width: 0;
+  }
+  .me p { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .me .me-hint, .me .me-label { display: none; }
+  .demo-notice { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
   .live { margin-left: 0; }
+  main { padding: 0.9rem 0.75rem 4rem; }
+  .view { gap: 1rem; }
+  h1 { font-size: 1.45rem; }
+  .intro { display: none; }
+  /* The room's summary above the feed; the full statement is one tab away. */
+  .room-summary .statement { display: none; }
+  .room-summary { padding: 0.7rem 0.9rem; gap: 0.35rem; }
+  .composer textarea { min-height: 2.9rem; }
+  .composer:focus-within textarea { min-height: 6rem; }
+  .board { grid-template-columns: 1fr; }
   .bubble { max-width: 92%; }
 }
 

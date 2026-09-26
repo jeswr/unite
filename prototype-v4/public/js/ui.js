@@ -193,12 +193,19 @@ export function openStatementEditor(ctx, roomId, prefill = null) {
       h('label', { for: id, class: 'small' }, `${p.author.name}${p.sample ? ' (sample)' : ''}: “${excerpt(p.text, 80)}”`),
     );
   });
+  // Starting from an AI suggestion always sends the label. Otherwise the
+  // proposer can declare AI help themselves. Either way the label is
+  // self-declared: the server cannot verify who or what wrote the text.
+  const aiBoxId = uid('ai');
+  const aiBox = h('input', { type: 'checkbox', id: aiBoxId, checked: Boolean(start.aiAssisted), disabled: Boolean(start.aiAssisted) });
   modal(`Propose version ${expectedVersion + 1} for ${ctx.roomName(roomId)}`, ({ close, error }) => [
     h('p', { class: 'note' }, `A new version starts with no responses: support given to version ${expectedVersion} does not carry over to changed text. Version ${expectedVersion}, its responses and its concerns stay in the history.`),
-    start.aiAssisted ? h('p', { class: 'alert info' }, 'Starting from a private AI suggestion. Edit it freely; once proposed it is labelled “drafted with AI help” with you as the proposer.') : null,
+    start.aiAssisted ? h('p', { class: 'alert info' }, 'Starting from a private AI suggestion. Edit it freely; once proposed it is labelled “AI-assisted (declared by the proposer)” with you as the proposer.') : null,
     field('Statement', textarea, 'What people here might be able to accept. 10–800 characters.'),
     field('Unresolved differences', diffs, 'One per line, up to 6. Keep minority concerns visible here.'),
     h('fieldset', null, h('legend', null, 'Drawn from these public posts'), boxes.length ? boxes : h('p', { class: 'muted small' }, 'No posts in this room yet.')),
+    h('div', { class: 'row' }, aiBox, h('label', { for: aiBoxId, class: 'small' },
+      start.aiAssisted ? 'AI-assisted: this started from an AI suggestion' : 'I drafted this with help from an AI tool')),
     error,
     actions(close, 'Propose new version'),
   ], {
@@ -206,7 +213,7 @@ export function openStatementEditor(ctx, roomId, prefill = null) {
       const differences = diffs.value.split('\n').map((line) => line.trim()).filter(Boolean);
       const sourcePostIds = boxes.map((row) => row.querySelector('input')).filter((box) => box.checked).map((box) => box.value);
       await post(`/api/rooms/${roomId}/statement`, {
-        text: textarea.value, differences, sourcePostIds, expectedVersion, aiAssisted: Boolean(start.aiAssisted),
+        text: textarea.value, differences, sourcePostIds, expectedVersion, aiAssisted: Boolean(start.aiAssisted) || aiBox.checked,
       });
       close();
       if (start.aiAssisted) delete ctx.ui.suggestions?.[roomId];
@@ -286,7 +293,7 @@ export function openActionDialog(ctx, roomId = 'work') {
   const step2 = h('div', { class: 'field', hidden: true },
     h('p', { class: 'steps' }, 'Step 2 of 2 · Scope, concerns, then size'),
     choiceGroup('Scope', `${g}-scope`, [['community', 'Community experiment'], ['institutional', 'Institutional proposal']], 'community',
-      'A community experiment is something people here can try themselves. An institutional proposal needs an institution to adopt it.'),
+      'A community experiment is something people here can try themselves. An institutional proposal needs an institution to adopt it: the board tracks only the work of drafting and submitting it, and adoption always shows as unconfirmed.'),
     institutionField,
     h('fieldset', null,
       h('legend', null, 'Rights, access or dependency concerns to check first (optional)'),
@@ -299,6 +306,10 @@ export function openActionDialog(ctx, roomId = 'work') {
   );
   institutionField.hidden = true;
 
+  // Two steps in one form. Hidden steps rely on the native `hidden`
+  // attribute (kept effective by `[hidden] { display: none !important }` in
+  // the CSS). Only the visible step is checked when moving on; Back never
+  // validates.
   let step = 1;
   const back = h('button', { type: 'button', hidden: true }, 'Back');
   const next = h('button', { type: 'button', class: 'primary' }, 'Next');
@@ -310,8 +321,10 @@ export function openActionDialog(ctx, roomId = 'work') {
     back.hidden = n !== 2;
     next.hidden = n !== 1;
     submit.hidden = n !== 2;
+    (n === 1 ? title : step2.querySelector('input:checked') ?? step2.querySelector('input'))?.focus();
   };
 
+  let goNext = () => {};
   const dialog = modal('Turn common ground into an action', ({ close, error, form }) => {
     const updatePreview = () => {
       const scope = picked(form, `${g}-scope`);
@@ -321,21 +334,33 @@ export function openActionDialog(ctx, roomId = 'work') {
     };
     form.addEventListener('change', updatePreview);
     queueMicrotask(updatePreview);
-    back.addEventListener('click', () => show(1));
-    next.addEventListener('click', () => {
+    back.addEventListener('click', () => {
+      error.textContent = '';
+      show(1);
+    });
+    goNext = () => {
       error.textContent = '';
       if (!title.value.trim() || !firstStep.value.trim() || !checkIn.value) {
         error.textContent = 'Add a title, a concrete first step and a check-in date.';
         return;
       }
       show(2);
-      step2.querySelector('input')?.focus();
-    });
+    };
+    next.addEventListener('click', goNext);
     return [step1, step2, error, h('div', { class: 'row end' }, h('button', { type: 'button', onClick: close }, 'Cancel'), back, next, submit)];
   }, {
-    onSubmit: async ({ close, form }) => {
-      if (step !== 2) return;
+    onSubmit: async ({ close, form, error }) => {
+      // Enter in a step 1 field submits the form; treat it as Next.
+      if (step !== 2) {
+        goNext();
+        return;
+      }
       const scope = picked(form, `${g}-scope`);
+      if (scope === 'institutional' && !institution.value.trim()) {
+        error.textContent = 'Name the institution that would need to adopt this proposal.';
+        institution.focus();
+        return;
+      }
       const body = {
         roomId: roomSelect.value,
         expectedVersion,
@@ -350,7 +375,18 @@ export function openActionDialog(ctx, roomId = 'work') {
       };
       if (scope === 'institutional') body.institution = institution.value;
       if (concernText.value.trim()) Object.assign(body, { concernKind: concernKind.value, concernText: concernText.value });
-      await post('/api/actions', body);
+      try {
+        await post('/api/actions', body);
+      } catch (err) {
+        if (err.status !== 409) throw err;
+        // The statement changed while the dialog was open. Show the current
+        // version as the basis and let the person decide again.
+        await ctx.refresh();
+        showBasis();
+        show(1);
+        error.textContent = `${err.message} The basis above now shows version ${expectedVersion}. Check it, then continue.`;
+        return;
+      }
       close();
       ctx.toast('Action proposed. It is on the board under Proposed.');
       await ctx.refresh();

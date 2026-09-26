@@ -62,7 +62,8 @@ const ctx = {
 
   rerender: () => render({ live: true }),
   toast,
-  announce: (message) => { document.getElementById('announcer').textContent = message; },
+  announce,
+  clearAnnouncements,
   refresh,
 
   // Runs a server mutation and reports failures in the given status element
@@ -164,12 +165,12 @@ function renderMe() {
   const box = document.getElementById('me');
   if (app.me) {
     box.replaceChildren(
-      h('p', null, h('span', { class: 'muted small' }, 'Posting as '), h('span', { class: 'who' }, app.me.name), ' ', h('span', { class: 'handle muted' }, `#${app.me.handle}`)),
+      h('p', null, h('span', { class: 'muted small me-label' }, 'Posting as '), h('span', { class: 'who' }, app.me.name), ' ', h('span', { class: 'handle muted' }, `#${app.me.handle}`)),
       h('button', { type: 'button', class: 'small', onClick: () => dialogs.openJoin(ctx, onJoined, app.me) }, 'Change name'),
     );
   } else {
     box.replaceChildren(
-      h('p', { class: 'small' }, 'Read freely. Join with a display name to post and respond.'),
+      h('p', { class: 'small me-hint' }, 'Read freely. Join with a display name to post and respond.'),
       h('button', { type: 'button', class: 'primary small', onClick: ctx.join }, 'Join'),
     );
   }
@@ -177,31 +178,48 @@ function renderMe() {
 
 // ---- data ------------------------------------------------------------------
 
+// One state fetch at a time. A refresh requested while one is in flight
+// (a live event, or a mutation that just finished) runs another fetch
+// afterwards, so a response that left the server before the change can
+// never be the last word.
 let inflight = null;
-async function refresh() {
-  if (inflight) return inflight;
+let again = false;
+function refresh() {
+  if (inflight) {
+    again = true;
+    return inflight;
+  }
   inflight = (async () => {
     try {
-      const next = await api('/api/state');
-      const restarted = app.data && next.bootId !== app.data.bootId;
-      if (!app.data || restarted || next.rev >= app.data.rev) {
-        const first = !app.data;
-        app.data = next;
-        if (first) renderRoomLinks();
-        if (restarted) {
-          await checkSession();
-          toast('The local server restarted, so public posts were reset to the samples.');
-        }
-        render({ live: !first });
-        if (first) scrollToRouteTarget();
-      }
-    } catch (error) {
-      if (!app.data) main.replaceChildren(h('p', { class: 'alert' }, error.message));
+      do {
+        again = false;
+        await load();
+      } while (again);
     } finally {
       inflight = null;
     }
   })();
   return inflight;
+}
+
+async function load() {
+  try {
+    const next = await api('/api/state');
+    const restarted = app.data && next.bootId !== app.data.bootId;
+    if (!app.data || restarted || next.rev >= app.data.rev) {
+      const first = !app.data;
+      app.data = next;
+      if (first) renderRoomLinks();
+      if (restarted) {
+        await checkSession();
+        toast('The local server restarted, so public posts were reset to the samples.');
+      }
+      render({ live: !first });
+      if (first) scrollToRouteTarget();
+    }
+  } catch (error) {
+    if (!app.data) main.replaceChildren(h('p', { class: 'alert' }, error.message));
+  }
 }
 
 async function checkSession() {
@@ -226,7 +244,33 @@ async function checkSession() {
 function setLive(state) {
   app.live = state;
   liveEl.dataset.state = state;
-  liveEl.textContent = { live: 'Live', reconnecting: 'Reconnecting…', offline: 'Server unreachable', connecting: 'Connecting…' }[state];
+  liveEl.textContent = {
+    live: 'Live',
+    connecting: 'Connecting…',
+    reconnecting: 'Reconnecting…',
+    offline: 'Server unreachable',
+    paused: 'Paused while hidden',
+    polling: 'Checking every few seconds',
+    limited: 'Many tabs open: checking every few seconds',
+  }[state];
+  liveEl.title = state === 'polling' || state === 'limited'
+    ? 'To leave browser connections free, only the window you are using keeps a live stream. Others check for changes every few seconds.'
+    : '';
+}
+
+// Screen-reader announcements. The live region is emptied shortly after
+// each message, so private text (such as an interview question) does not
+// stay in the page, and clearAnnouncements() cancels one that is pending.
+const announcer = document.getElementById('announcer');
+let announceTimer = null;
+function announce(message) {
+  clearTimeout(announceTimer);
+  announcer.textContent = message;
+  announceTimer = setTimeout(clearAnnouncements, 8000);
+}
+function clearAnnouncements() {
+  clearTimeout(announceTimer);
+  announcer.textContent = '';
 }
 
 let toastTimer = null;

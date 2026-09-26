@@ -30,7 +30,7 @@ export class EventHub {
     res.write(frame(rev, bootId, 'hello'));
     this.clients.add(res);
     const drop = () => this.clients.delete(res);
-    req.on('close', drop);
+    res.on('close', drop);
     res.on('error', drop);
     return true;
   }

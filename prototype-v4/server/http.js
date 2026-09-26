@@ -57,7 +57,11 @@ export function indexStatic(root) {
 }
 
 export function sendJson(res, status, value, extra = {}) {
-  const body = JSON.stringify(value);
+  sendJsonText(res, status, JSON.stringify(value), extra);
+}
+
+// For JSON that is already serialised (the cached public state).
+export function sendJsonText(res, status, body, extra = {}) {
   res.writeHead(status, {
     ...SECURITY_HEADERS,
     'Content-Type': 'application/json; charset=utf-8',

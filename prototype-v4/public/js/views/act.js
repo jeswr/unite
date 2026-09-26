@@ -1,17 +1,20 @@
 // Act next: proposals made from a room's common ground. Readiness (owner,
-// open concerns, stale context, adoption) is shown before any score. The
-// priority is computed by the server and explained; viewers pick the order.
+// open concerns, owner review of changed context, adoption) is shown before
+// any score. The priority is computed by the server and explained; viewers
+// pick the order. Statuses are the owner's report; for institutional
+// proposals they cover only the proposal work, never adoption.
 
 import { post as send } from '../api.js';
 import { formatDate, h, plural, timeEl, uid } from '../dom.js';
 import { personLabel } from '../ui.js';
 
 const LANES = [
-  ['proposed', 'Proposed', 'Suggested. Not yet ready to start.'],
-  ['ready', 'Ready', 'Has an owner and no open concerns.'],
-  ['doing', 'Doing', 'Someone is working on the next step.'],
-  ['done', 'Done', 'The first step or experiment finished.'],
+  ['proposed', 'Proposed', 'Suggested. Not started yet.'],
+  ['ready', 'Ready', 'The owner reports it can start (for a proposal: can be drafted).'],
+  ['doing', 'Doing', 'The owner reports work on the next step, or on preparing a proposal.'],
+  ['done', 'Done', 'The first step or experiment finished, or the proposal work was completed. Never means an institution adopted it.'],
 ];
+const HOLDS = ['open-concerns', 'context-review'];
 const STATUS_NAMES = Object.fromEntries(LANES.map(([key, name]) => [key, name]));
 const LEVEL = { 1: 'low', 2: 'medium', 3: 'high' };
 const KIND = { rights: 'Rights', access: 'Access', dependency: 'Dependency' };
@@ -25,7 +28,7 @@ const ORDERS = {
   checkin: ['Soonest check-in', (a, b) => a.checkIn.localeCompare(b.checkIn)],
   newest: ['Newest', () => 0],
 };
-const attention = (a) => a.openChecks * 2 + (a.stale.length ? 1 : 0) + (a.owner ? 0 : 1);
+const attention = (a) => a.openChecks * 2 + a.context.reviewNeeded.length * 2 + (a.stale.length ? 1 : 0) + (a.owner ? 0 : 1);
 
 export function renderAct(ctx) {
   const ui = (ctx.ui.act ??= { order: 'priority', room: '', scope: '' });
@@ -36,7 +39,7 @@ export function renderAct(ctx) {
     h('header', { class: 'view-head' },
       h('p', { class: 'eyebrow' }, 'Act next'),
       h('h1', { id: 'act-title' }, 'Turn common ground into next steps'),
-      h('p', { class: 'lede' }, 'Small, concrete proposals from people in this local demo. No money moves here and nothing on this board carries any authority: statuses describe volunteers\' own next steps.'),
+      h('p', { class: 'lede' }, 'Small, concrete proposals from people in this local demo. No money moves here and nothing on this board carries any authority: statuses are owners\' own reports, and institutional proposals are never marked as adopted.'),
     ),
     h('div', { class: 'row' },
       h('button', { type: 'button', class: 'primary', 'data-focus': 'new-action', onClick: () => ctx.openActionDialog(ui.room || 'work') }, 'New action from a room\'s statement')),
@@ -89,6 +92,7 @@ function actionCard(ctx, a) {
     h('p', { class: 'row small' },
       h('a', { class: 'chip', href: `#/room/${a.roomId}/ground` }, ctx.roomName(a.roomId)),
       h('span', { class: `badge ${a.scope === 'community' ? 'green' : 'violet'}` }, a.scope === 'community' ? 'Community experiment' : 'Institutional proposal')),
+    h('p', { class: 'small status-meaning' }, a.statusMeaning),
     readiness(a),
     h('dl', null,
       h('dt', null, 'Next step'), h('dd', null, a.nextStep),
@@ -110,12 +114,48 @@ function readiness(a) {
     notes.push(h('p', null, `${plural(a.openChecks, 'open concern')} (${kinds}). Someone must record how it is handled before this moves forward.`));
   }
   if (!a.owner) notes.push(h('p', null, 'Needs an owner before it can be ready.'));
-  if (a.snapshot.concerns.length) notes.push(h('p', null, `Created while ${plural(a.snapshot.concerns.length, 'concern')} on the statement remained.`));
-  for (const reason of a.stale) notes.push(h('p', { class: 'stale' }, `Context changed: ${reason}`));
+  for (const reason of a.context.reviewNeeded) {
+    notes.push(h('p', null, `Owner review needed: ${reason}`));
+  }
+  if (a.snapshot.concerns.length) notes.push(h('p', { class: 'stale' }, `Created while ${plural(a.snapshot.concerns.length, 'concern')} on the statement remained.`));
+  // Changes that need no review (for example new support) are information only.
+  if (!a.context.reviewNeeded.length) {
+    for (const reason of a.stale) notes.push(h('p', { class: 'stale' }, `Changed since creation: ${reason}`));
+  }
   if (a.scope === 'institutional') {
-    notes.push(h('p', { class: 'adoption' }, `Needs adoption by ${a.institution}. Not adopted: Unite cannot record adoption, and naming an institution gives no authority.`));
+    notes.push(h('p', { class: 'adoption' }, `Would need adoption by ${a.institution}. Adoption unconfirmed: Unite never records adoption, and naming an institution gives no authority.`));
   }
   return notes.length ? h('div', { class: 'readiness' }, notes) : null;
+}
+
+// The owner compares the room's current statement and concerns with the
+// action and records why it can still go ahead. The server accepts it only
+// for exactly the context shown here (`a.context.id`).
+function reviewSection(ctx, a) {
+  const ground = ctx.data.grounds[a.roomId];
+  const concerns = ground.stances.filter((s) => s.stance === 'concern');
+  const canReview = ctx.isMe(a.owner) && a.context.reviewNeeded.length > 0;
+  return h('section', { 'aria-label': 'Owner review of the room context' },
+    h('h4', null, 'Room context now'),
+    h('div', { class: 'snapshot' },
+      h('p', { class: 'eyebrow' }, `${ctx.roomName(a.roomId)} statement version ${ground.current.version}`),
+      h('p', { class: 'statement' }, ground.current.text),
+      concerns.length
+        ? h('ul', { class: 'differences small' }, concerns.map((c) => h('li', null, `${c.participant.name}: ${c.reason}`)))
+        : h('p', { class: 'small muted' }, 'No concerns on this version.'),
+      h('p', { class: 'small' }, h('a', { href: `#/room/${a.roomId}/ground` }, 'Open this common ground'))),
+    canReview ? inlineForm(ctx, {
+      key: `review:${a.id}`,
+      label: 'You own this action. Having read the statement and concerns above, why can it still go ahead? The concerns stay on record.',
+      button: 'Record my review',
+      submit: (text) => send(`/api/actions/${a.id}/review`, { contextId: a.context.id, text }),
+    }) : null,
+    a.reviews.length ? h('ul', { class: 'checks' }, a.reviews.slice().reverse().map((r) => h('li', null,
+      h('span', { class: 'small' }, 'Reviewed by ', personLabel(ctx, r.by), ' · ', timeEl(r.at),
+        ` · version ${r.version} with ${plural(r.concerns.length, 'concern')}`),
+      r.text,
+      r.concerns.length ? h('ul', { class: 'small' }, r.concerns.map((c) => h('li', null, `${c.name}: ${c.reason}`))) : null))) : null,
+  );
 }
 
 function details(ctx, a) {
@@ -123,6 +163,7 @@ function details(ctx, a) {
     h('summary', null, 'Concerns, context and updates'),
     h('div', null,
       checksSection(ctx, a),
+      reviewSection(ctx, a),
       snapshotSection(ctx, a),
       a.updates.length ? h('section', { 'aria-label': 'Next-step updates' },
         h('h4', null, 'Next-step updates'),
@@ -199,14 +240,18 @@ function participation(ctx, a) {
   if (isOwner) {
     for (const status of a.nextStatuses) {
       const forward = LANES.findIndex(([k]) => k === status) > LANES.findIndex(([k]) => k === a.status);
-      const blocked = forward && a.openChecks > 0;
+      const blocked = forward && a.blockers.some((b) => HOLDS.includes(b));
       controls.push(button(ctx, `status:${a.id}:${status}`, `Move to ${STATUS_NAMES[status]}`,
         () => send(`/api/actions/${a.id}/status`, { status }), `Moved to ${STATUS_NAMES[status]}.`, blocked));
     }
   }
+  const holds = [
+    a.openChecks ? 'each open concern has a recorded response' : null,
+    a.context.reviewNeeded.length ? 'you record a review of the room context above' : null,
+  ].filter(Boolean);
   return h('div', { class: 'field' },
     h('div', { class: 'row' }, controls),
-    isOwner && a.openChecks ? h('p', { class: 'hint' }, 'Moving forward is disabled until each open concern has a recorded response.') : null,
+    isOwner && holds.length ? h('p', { class: 'hint' }, `Moving forward is disabled until ${holds.join(' and ')}.`) : null,
     isOwner || isVolunteer ? inlineForm(ctx, {
       key: `next:${a.id}`,
       label: 'Update the next step',

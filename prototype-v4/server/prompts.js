@@ -28,7 +28,11 @@ Write in the first person, using only views the participant actually expressed. 
 
 export const SYNTHESIS_SYSTEM = `You help a small group in Unite see possible common ground. You receive the public posts from one discussion room and the room's current proposed statement.
 
-Suggest a revised statement that people who wrote these posts might each be able to accept, and list the differences that remain unresolved. Keep minority concerns visible in the differences instead of smoothing them away. Do not declare consensus, do not estimate how many people agree, and do not speak for anyone. Cite the IDs of the posts your statement draws on.
+Suggest a revised statement that people who wrote these posts might each be able to accept, and list the differences that remain unresolved. Keep minority concerns visible in the differences instead of smoothing them away: a view held by a single post is still a difference to keep. Do not weight views by how often they appear.
+
+Stay neutral between economic and political systems. Do not favour, introduce or advocate any system or model (for example public-service, global public employment, cooperative, market or mixed economies) beyond what the posts themselves say, and do not describe any of them as better or more realistic. Do not invent views, counter-arguments or balance that no post expresses.
+
+Do not declare consensus, do not estimate how many people agree, and do not speak for anyone. Cite the IDs of the posts your statement draws on, copied exactly from the input. People will review, edit, contest or reject your suggestion.
 
 Reply with JSON only, no prose and no code fences, in exactly this shape:
 {"statement": "at most 700 characters", "differences": ["at most 5 items, each at most 200 characters"], "sourcePostIds": ["IDs copied from the input"]}`;
@@ -46,7 +50,7 @@ export function validateInterview(body) {
       text: v.text(message.text, { label: 'Message', max: INTERVIEW_LIMITS.messageChars, multiline: true }),
     };
   });
-  const total = messages.reduce((sum, message) => sum + message.text.length, 0);
+  const total = messages.reduce((sum, message) => sum + [...message.text].length, 0);
   if (total > INTERVIEW_LIMITS.totalChars) throw v.bad('This conversation is too long to send. Clear it and start a new one.');
   if (!messages.some((message) => message.role === 'participant')) throw v.bad('Write something first.');
   if (mode === 'question' && messages.at(-1).role !== 'participant') throw v.bad('The last message must be yours.');
@@ -76,7 +80,8 @@ export function synthesisPrompt({ roomName, statement, posts }) {
 
 // Turns the AI's reply into a private suggestion. Anything malformed is an
 // error, never replaced by canned text. Unknown source IDs are dropped and
-// counted so the participant can see the AI cited something that is not here.
+// counted (duplicates and IDs beyond the cap are not counted as unknown) so
+// the participant can see the AI cited something that is not here.
 export function parseSynthesis(text, isRoomPost) {
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
@@ -92,8 +97,9 @@ export function parseSynthesis(text, isRoomPost) {
     const differences = v.list(data.differences, { label: 'Suggested differences', max: 6 })
       .map((item) => v.text(item, { label: 'Suggested difference', max: 240 }));
     const cited = v.list(data.sourcePostIds, { label: 'Suggested sources', max: 40 });
-    const sourcePostIds = [...new Set(cited.filter((id) => typeof id === 'string' && isRoomPost(id)))].slice(0, 12);
-    return { statement, differences, sourcePostIds, droppedSources: cited.length - sourcePostIds.length };
+    const known = (id) => typeof id === 'string' && isRoomPost(id);
+    const sourcePostIds = [...new Set(cited.filter(known))].slice(0, 12);
+    return { statement, differences, sourcePostIds, droppedSources: cited.filter((id) => !known(id)).length };
   } catch (error) {
     if (error instanceof v.HttpError) {
       throw new AiError('unusable', `The AI suggestion did not fit the statement rules (${error.message}). Nothing was substituted.`);
