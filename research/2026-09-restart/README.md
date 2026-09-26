@@ -8,6 +8,7 @@
 |---|---|
 | [Conversational Unite](CONVERSATIONAL-UNITE.md) | Current product proposal; Anthropic's 80,508-interview study; social psychology; consensus and action; possible public-service economies and a migration path |
 | [Social prototype implementation](../../prototype-v4/IMPLEMENTATION.md) | Actual v4 capabilities, run instructions, tests and limitations |
+| [Social prototype verification](V4-VERIFICATION.md) | Model provenance, automated checks and actual browser/AI acceptance |
 | [Earlier research and operating proposal](PROPOSAL.md) | Background on participation tools, political integration, experts, decentralization, funding and the lean $12,000 optional learning-cycle budget |
 | [Operating templates](OPERATING-TEMPLATES.md) | Background templates for a charter, delivery brief, expert commission and funder concept |
 | [Earlier prototype brief](IMPLEMENTATION-BRIEF.md) | Historical v3 acceptance criteria; superseded as the desired product experience |

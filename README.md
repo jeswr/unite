@@ -1,102 +1,37 @@
-<!-- AUTHORED-BY Claude Fable 5 (PSS design agent) -->
+# Unite
 
-# unite
+Unite explores how people around the world can discuss the future they want, find common ground and turn shared priorities into useful work. Participation begins with an open conversation or a personal AI interview. People review the resulting proposals, preserve disagreements, choose next steps and learn from what happens.
 
-> ⚠️ **Design + a Stage-1 seed client — under active development, not
-> production-ready.** This repository holds the founding *design proposal* for
-> **unite**, a decentralised participatory-democracy platform, plus an initial
-> **Stage-1 MVP seed client** in [`app/`](app/). It is AI-agent-authored (Claude
-> Fable 5, @jeswr's PSS agent) from the maintainer's brief in
-> [full-solid-ecosystem#15](https://github.com/jeswr/full-solid-ecosystem/issues/15),
-> and is intended to be criticised, forked, and superseded.
+The current experiment is **[prototype v4](prototype-v4/IMPLEMENTATION.md)**: a social feed with actual live updates between browser tabs, an opt-in Claude interviewer, versioned common-ground statements, an action queue and an interactive comparison of possible economic futures. The platform's long-term purpose is worldwide participatory design; no particular technical community or economic model is a prerequisite to participate.
 
-**unite** combines **participatory democracy** with **value-centric design**:
-everyone can describe their **ideal future**, their **current life**, and their
-**wants and needs**; see others' descriptions for inspiration; and take part in
-**psychology-informed convergence processes** that surface *shared* futures
-rather than amplifying divergent ones — designed so its outputs can credibly
-feed government and industry decision-making.
+## Try the local prototype
 
-Two properties are **non-negotiable** and drive everything in the design:
+Node 20 or later; no package dependencies or installation step. From `prototype-v4/`:
 
-1. **Decentralised with no single codebase and no single standards owner.**
-   Either one would concentrate too much control. unite is specified as a set
-   of data models and protocols over the Solid **data-model federation** stack
-   ([solid-federation-vocab](https://github.com/jeswr/solid-federation-vocab),
-   [federation-registry](https://github.com/jeswr/federation-registry),
-   [federation-trust](https://github.com/jeswr/federation-trust)), where the
-   data lives in participants' own pods and any conformant implementation can
-   participate.
-2. **Convergence over division, without manufacturing consensus.** The
-   mechanism design is grounded in the deliberative-democracy and
-   social-psychology literature (Pol.is opinion-space mapping, Fishkin's
-   deliberative polling, bridging-based ranking, the "Habermas Machine",
-   Max-Neef's needs/satisfiers distinction), and dissent is a first-class,
-   permanently-carried artifact — never smoothed away.
+```sh
+node server/main.js
+```
 
-## Roll-out stages
+Open [the local demo](http://127.0.0.1:8769/). Open another tab to try a second participant. AI is off by default. To enable the optional bridge through an installed and already authenticated Claude Code CLI:
 
-| Stage | Scope |
-|---|---|
-| **1** | Co-design the **Solid apps people want**: propose → articulate values/needs → converge on a shared spec → GenAI (the @jeswr agent suite) implements → the app ships into the ecosystem. unite bootstraps by building its own ecosystem. |
-| **2** | Broader **standards-based public technology** — fediverse-style systems beyond Solid. |
-| **3** | Participatory input into **governance** — government + industry decision-making. |
+```sh
+UNITE_AI=claude-cli node server/main.js
+```
 
-## The design
+Each participant must still opt in before sending text to Anthropic. Calls use the computer's existing Claude account and may consume credits or usage limits. The bridge requests and verifies `claude-opus-5-5`; it has no tools or MCP access. See [run options and limits](prototype-v4/IMPLEMENTATION.md), including how to set the CLI path and port.
 
-Read it in order — each part builds on the previous:
+This is a local English-interface prototype. Sample people are fictional. Public server data is held in memory and is lost on restart; a public-only export is available. A tab's private interview is excluded from the public feed, synthesis input and export unless its participant explicitly publishes reviewed text. There are no verified identities, real funding, institutional commitments or public decision-making powers.
 
-| Doc | Contents |
-|---|---|
-| [design/README.md](design/README.md) | Overview, design goals, and how the parts fit |
-| [design/01-data-model.md](design/01-data-model.md) | The RDF vocabulary: vision statements, needs/satisfiers, value statements, resonance, convergence artifacts |
-| [design/02-federation.md](design/02-federation.md) | Federation architecture: pods, communities, registries, trust — and why no component is a point of control |
-| [design/03-convergence.md](design/03-convergence.md) | The convergence mechanism, grounded in the cited literature |
-| [design/04-governance.md](design/04-governance.md) | How the spec itself is stewarded with no single owner |
-| [design/05-stage1-mvp.md](design/05-stage1-mvp.md) | The Stage-1 MVP: the app-co-design instance, screens, flows, and the packages it composes |
-| [design/06-critique.md](design/06-critique.md) | The adversarial self-critique this design was revised against — kept, not deleted |
+## Read the proposal and evidence
 
-**v2 (chat-first surface):** [design/v2/](design/v2/README.md) specifies the
-second-generation surface — the same engine and invariants underneath, with
-the ceremony replaced by warm, low-friction conversation (small circles, a
-role-framed notetaker, ambient-and-honest disclosure of the machinery). It
-is a design for a vision-selling prototype; v1's docs above remain normative
-for everything beneath the surface.
+- [Current research and societal transition proposal](research/2026-09-restart/CONVERSATIONAL-UNITE.md): Anthropic's interview study, social psychology, discourse, prioritization, alternative public-service economies and migration from existing institutions.
+- [Research index](research/2026-09-restart/README.md): political integration, expertise, governance, funding and the lean optional learning-cycle budget.
+- [Implementation report](prototype-v4/IMPLEMENTATION.md), [engineering review](prototype-v4/REVIEW.md) and [verification](research/2026-09-restart/V4-VERIFICATION.md): actual capabilities, checks and production gaps.
 
-## The Stage-1 seed client
+All current prototype application code and tests were produced by the founder's requested Claude Opus 5.5. Codex supplied research, product direction and browser acceptance. The cheap cost of AI-assisted development is reflected in the planning assumptions; ongoing inference, participation and real-world delivery require separate accounting.
 
-[`app/`](app/) is the first implementation: a vite + React + TypeScript SPA
-covering the Stage-1 MVP features — join a deliberation, submit a
-Max-Neef-classified need (with its ODRL consent policy) to your own pod, read
-the aggregated needs live, express tri-state resonance, and see needs ranked by
-cross-cluster (bridging) agreement on a Pol.is-style **opinion map** with the
-full per-group reception distribution. It opens on a **seeded demo
-deliberation** (an in-memory pod federation run through the real aggregation +
-ranking pipeline, sandboxed to a reserved origin) so every view works on first
-paint; pod mode points the same machinery at real participant pods. The data
-layer (`app/src/lib`) is exhaustively tested (hostile-input resilience + a
-deterministic bridging characterization fixture that seeds the design's
-conformance set). Implementation choices + the answers to the design's
-three open questions are recorded in
-[decisions/0001-stage1-implementation-choices.md](decisions/0001-stage1-implementation-choices.md).
-See [`app/README.md`](app/README.md) for run instructions, the EXPERT-REVIEW
-checklist, and the production-wiring follow-ups.
+The aspiration remains multiple independent clients/operators and portable participation records, without one developer, host or standards owner controlling the system. This single local implementation does not yet deliver that federation or confer democratic legitimacy.
 
-## Why this repo exists (and why that's not a contradiction)
+## Earlier work
 
-A platform whose constitution forbids a single home *starts* somewhere. This
-repository is the **founding proposal**, not the standard: the governance
-design ([design/04](design/04-governance.md)) specifies the concrete path by
-which stewardship *leaves* this repository (immutable spec versions,
-adoption-ratified change, a multi-steward circle with a hard cap on any one
-organisation, forkability as a constitutional right). The Stage-1 exit
-criteria explicitly require a **second, independent implementation** and a
-**second steward organisation** — until those exist, unite is by its own
-definition still bootstrapping.
-
-## License
-
-The design and any specification text in this repository are licensed
-[CC BY 4.0](LICENSE) so they can be forked, mirrored, and re-homed without
-permission — forkability is a design requirement, not an afterthought.
-Implementations are expected to carry their own (open-source) licenses.
+[Historical README](README-HISTORICAL.md), [`app/`](app/), [`design/`](design/README.md) and [`prototype-v3/`](prototype-v3/IMPLEMENTATION.md) are preserved as earlier experiments. Their old starting points and product journeys are not requirements for the current direction.

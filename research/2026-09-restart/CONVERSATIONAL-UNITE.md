@@ -89,6 +89,8 @@ Imagine a person whose essential care, education and basic security are guarante
 
 This could become a large share of the economy without requiring everyone to be on one government's payroll. Private economic activity, public ownership and cooperative ownership are questions participants can choose among. Unite should expose trade-offs and let people dispute the founder's direction.
 
+**An illustrative day in that future:** you open Unite and see what your community has chosen to improve, how much capacity is available, and which teams need help. You can join a paid neighborhood repair team, continue an existing job, train for a different role or contribute a few hours to a research project. A care responsibility affects the support you receive, not the worth of your voice. The people using a service report whether it is working; workers propose improvements; public decisions allocate resources through an accountable process. You can challenge both your employer and the public plan without losing access to basic necessities. That is the daily experience the technology should make possible, if communities choose and can sustain it.
+
 | Possible future | Everyday experience | Main attraction | Unresolved difficulty |
 |---|---|---|---|
 | Universal public-service economy with many democratic institutions | Livelihood guarantees and a broad choice of socially useful work; budgets set at appropriate local and wider levels | Connects collective priorities, security and contribution | Recurring fiscal capacity; poor management; labor shortages; coordination across institutions |
