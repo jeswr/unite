@@ -10,6 +10,7 @@
 | [Operating templates](OPERATING-TEMPLATES.md) | Pilot charter, proposal and expert briefs, funder concept, interview guide and founder actions |
 | [Product implementation brief](IMPLEMENTATION-BRIEF.md) | Prototype acceptance criteria and the route from demonstration to a real pilot |
 | [New prototype implementation report](../../prototype-v3/IMPLEMENTATION.md) | Claude's engineering decisions, run instructions, verification and remaining limits |
+| [Final verification and provenance](VERIFICATION.md) | Model confirmation, 41 passing tests, browser acceptance after the fixes and the boundary between demo and live service |
 
 The work uses Solid as the initial pilot assumption from the original brief. No community, funder, institution or expert has been contacted. The existing application is preserved. The prototype is an exploration of the proposed workflow, not a live participatory service.
 

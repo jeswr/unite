@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; form-action 'self'; base-uri 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Unite reader — read an exported demo record</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="module" src="js/reader.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header">
+    <p class="demo-strip">
+      <strong>Read-only reader.</strong> Opens a file on this device. Nothing is uploaded or stored.
+    </p>
+    <div class="wrap site-header__inner">
+      <a class="wordmark" href="index.html">Unite</a>
+      <nav aria-label="Main">
+        <ul class="nav-list">
+          <li><a href="index.html">Back to the demo</a></li>
+          <li><a href="index.html#export">Export a file</a></li>
+          <li><a href="#reader-output">Rendered record</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="section" aria-labelledby="reader-title">
+      <div class="wrap">
+        <p class="eyebrow">Portability</p>
+        <h1 id="reader-title" class="h1--page">Read a Unite export</h1>
+        <div class="two-col">
+          <div>
+            <p class="lede lede--small">
+              A second, read-only view that builds the whole record from an exported file alone: the proposal,
+              every concern, the evidence, who decided under what authority, and the delivery trail.
+            </p>
+            <p>
+              The reader shares code with the demo, so it shows that the record travels with the file. It is not an
+              independent implementation. The file is checked before anything is shown, and its text is displayed as
+              plain text, never run.
+            </p>
+          </div>
+          <form id="reader-form" class="panel" novalidate aria-labelledby="reader-form-title">
+            <h2 id="reader-form-title" class="h3">Open an export</h2>
+            <div class="error-summary" id="reader-errors" tabindex="-1" hidden></div>
+            <div class="field">
+              <label for="reader-file">Choose a JSON export file</label>
+              <input type="file" id="reader-file" name="file" accept=".json,application/json">
+            </div>
+            <div class="field">
+              <label for="reader-paste">Or paste the file’s contents</label>
+              <p class="hint" id="reader-paste-hint">If you also choose a file, the file is used.</p>
+              <textarea id="reader-paste" name="paste" rows="5" spellcheck="false" aria-describedby="reader-paste-hint"></textarea>
+            </div>
+            <div class="actions">
+              <button type="submit" class="button button--primary">Read the record</button>
+            </div>
+            <p class="status" id="reader-status" role="status"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <div id="reader-output" tabindex="-1"></div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        <strong>Unite, prototype v3.</strong> A local research demo. The reader does not implement Solid or
+        ActivityPub and does not verify who wrote a file.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

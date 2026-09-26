@@ -1,0 +1,9 @@
+{
+  "name": "unite-prototype-v3",
+  "private": true,
+  "description": "Local, dependency-free Unite demo. No install step.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

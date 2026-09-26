@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; form-action 'self'; base-uri 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Unite — a future we can make together (local demo)</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header">
+    <p class="demo-strip">
+      <strong>Local demo.</strong> Fictional people, support, budgets and commitments. Nothing you enter leaves this browser.
+      <a href="#about-demo">What this demo is and is not</a>
+    </p>
+    <div class="wrap site-header__inner">
+      <a class="wordmark" href="#top">Unite</a>
+      <nav aria-label="Main">
+        <ul class="nav-list">
+          <li><a href="#pilot">The pilot</a></li>
+          <li><a href="#describe">Describe</a></li>
+          <li><a href="#explore">Explore</a></li>
+          <li><a href="#proposal">Options</a></li>
+          <li><a href="#evidence">Evidence</a></li>
+          <li><a href="#decision">Decision</a></li>
+          <li><a href="#export">Export</a></li>
+          <li><a href="reader.html">Reader</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="wrap hero__inner">
+        <div class="hero__copy">
+          <h1 id="hero-title">A future we can make together.</h1>
+          <p class="lede">
+            Say what would make an ordinary day better. Find people with related needs. Work through real options with
+            expert help. Then follow what is actually decided, funded, delivered and learned.
+          </p>
+          <p class="hero__actions">
+            <a class="button button--primary" href="#pilot">Explore the pilot</a>
+            <a class="button" href="#describe">Describe a better day</a>
+          </p>
+        </div>
+        <aside class="hero__pilot" aria-labelledby="hero-pilot-title">
+          <p class="eyebrow">Fictional first pilot · Solid community</p>
+          <p class="hero__pilot-title" id="hero-pilot-title">Make community tools easier to use</p>
+          <dl class="facts facts--compact">
+            <div><dt>Who decides</dt><dd>Pilot stewarding group (fictional)</dd></div>
+            <div><dt>Authority</dt><dd>Community pilot budget, not a public mandate</dd></div>
+            <div><dt>Response due</dt><dd>30 November 2026</dd></div>
+          </dl>
+        </aside>
+      </div>
+    </section>
+
+    <p id="storage-status" class="wrap storage-status" role="status"></p>
+
+    <section class="section section--notice" id="about-demo" aria-labelledby="about-demo-title" tabindex="-1">
+      <div class="wrap">
+        <h2 id="about-demo-title" class="visually-hidden">About this demo</h2>
+        <details class="about-demo" id="about-demo-details">
+        <summary>What this demo is, and is not <span class="about-demo__hint">(fictional data, browser-only storage, no voting or AI)</span></summary>
+        <ul class="notice-list">
+          <li><strong>Everything seeded is fictional:</strong> people, expert roles, support, budgets, dates and commitments. No real institution is shown or endorses this.</li>
+          <li><strong>It runs only in this browser.</strong> Nothing is sent to a community, a server or an analytics service.</li>
+          <li><strong>What you type is kept in this browser’s local storage</strong> so it survives a reload. Local storage is not encrypted; anyone using this browser profile could read it. Avoid entering anything you would not want stored that way.</li>
+          <li><strong>There is no AI, no sign-in, no voting</strong> and no check that participants are real or unique people.</li>
+          <li><strong>Agreement is a clue, not a verdict.</strong> It can point to workable proposals. It does not prove something is true or representative, and it never overrides the needs of people who disagree.</li>
+        </ul>
+        </details>
+      </div>
+    </section>
+
+    <section class="section" id="pilot" aria-labelledby="pilot-title" tabindex="-1">
+      <div class="wrap">
+        <p class="eyebrow">Fictional pilot · Solid community</p>
+        <h2 id="pilot-title">The pilot: make community tools easier to use</h2>
+        <div class="two-col">
+          <div>
+            <p class="lede lede--small">
+              People who use Solid community apps describe what gets in their way, weigh three options for a small
+              budget, and follow what the stewarding group decides and delivers.
+            </p>
+            <p>
+              The long-term idea is a federation of accountable communities, each with its own remit and people who
+              answer for decisions. This pilot is one community with one small budget. Taking part is voluntary, and
+              an open website only hears from people who choose to join, so what it hears is not representative.
+            </p>
+          </div>
+          <div class="callout">
+            <h3>Why every proposal names who decides</h3>
+            <p>
+              Gathering hopes changes nothing on its own. Every commitment here names the responsible body, its
+              remit, the budget, a response date and a decision rule, and the body must publish its reasons.
+            </p>
+          </div>
+        </div>
+
+        <h3 class="section-subtitle">How it works</h3>
+        <ol class="steps">
+          <li class="step">
+            <p class="step__title"><a href="#describe">Describe a better day</a></p>
+            <p>In your own words, privately first. You choose whether to share.</p>
+          </li>
+          <li class="step">
+            <p class="step__title"><a href="#explore">Find related needs</a></p>
+            <p>Read what others described and note what inspired you.</p>
+          </li>
+          <li class="step">
+            <p class="step__title"><a href="#proposal">Weigh real options</a></p>
+            <p>Costs, trade-offs and who might lose out, including keeping things as they are.</p>
+          </li>
+          <li class="step">
+            <p class="step__title"><a href="#evidence">Ask the experts</a></p>
+            <p>Experts advise on what is feasible. People affected set the priorities.</p>
+          </li>
+          <li class="step">
+            <p class="step__title"><a href="#decision">Follow the decision</a></p>
+            <p>Who decided, why, with what money, and whether it was delivered and evaluated.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 1. Describe a better day -->
+    <section class="section section--tinted" id="describe" aria-labelledby="describe-title" tabindex="-1">
+      <div class="wrap">
+        <p class="eyebrow">Step 1</p>
+        <h2 id="describe-title">Describe a better day</h2>
+        <p class="lede lede--small">
+          Start with your own words. You can write before reading anyone else’s, which helps keep your view your own.
+        </p>
+
+        <div class="two-col two-col--form">
+          <form id="describe-form" class="panel" novalidate aria-labelledby="describe-form-title">
+            <h3 id="describe-form-title">Your private draft</h3>
+            <div class="error-summary" id="describe-errors" tabindex="-1" hidden></div>
+
+            <div id="inspiration-note" class="inspiration" hidden>
+              <p>Inspired by: <strong id="inspiration-title"></strong></p>
+              <button type="button" class="button button--small button--quiet" id="inspiration-clear">Remove inspiration link</button>
+            </div>
+
+            <p class="form-note">Fields marked <span aria-hidden="true">*</span><span class="visually-hidden">required</span> are required.</p>
+
+            <div class="field">
+              <label for="d-hard">What is hard now? <span aria-hidden="true">*</span></label>
+              <p class="hint" id="d-hard-hint">A moment in an ordinary day that is harder than it should be.</p>
+              <textarea id="d-hard" name="hard" rows="3" required aria-describedby="d-hard-hint"></textarea>
+            </div>
+            <div class="field">
+              <label for="d-different">What should be different? <span aria-hidden="true">*</span></label>
+              <textarea id="d-different" name="different" rows="3" required></textarea>
+            </div>
+            <div class="field">
+              <label for="d-protect">What must be protected? (optional)</label>
+              <p class="hint" id="d-protect-hint">Something that works today, or someone who must not lose out.</p>
+              <textarea id="d-protect" name="protect" rows="2" aria-describedby="d-protect-hint"></textarea>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="d-topic">Topic <span aria-hidden="true">*</span></label>
+                <select id="d-topic" name="topic" required>
+                  <option value="">Choose a topic</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="d-horizon">When should this be true? (optional)</label>
+                <select id="d-horizon" name="horizon"></select>
+              </div>
+            </div>
+
+            <p class="storage-note" id="describe-storage-note">
+              <strong>Saved privately in this browser only.</strong> Drafts are not shown in community views and are
+              never included in exports. Browser storage is not encrypted. You can edit or delete a draft at any time.
+            </p>
+
+            <div class="actions">
+              <button type="submit" class="button button--primary" id="describe-submit">Save private draft</button>
+              <button type="button" class="button button--quiet" id="describe-cancel" hidden>Cancel editing</button>
+            </div>
+            <p class="status" id="describe-status" role="status"></p>
+          </form>
+
+          <section class="drafts" aria-labelledby="drafts-title">
+            <h3 id="drafts-title" tabindex="-1">Your private drafts</h3>
+            <div id="drafts"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Explore and connect -->
+    <section class="section" id="explore" aria-labelledby="explore-title" tabindex="-1">
+      <div class="wrap">
+        <p class="eyebrow">Step 2</p>
+        <h2 id="explore-title">Explore and connect</h2>
+        <p class="lede lede--small">
+          Six fictional descriptions from the pilot, plus any you add to this demo community. Saving happens only in
+          this browser, and “sharing” means this local simulation only.
+        </p>
+
+        <search class="filters" aria-label="Filter descriptions">
+          <div class="field">
+            <label for="filter-topic">Topic</label>
+            <select id="filter-topic">
+              <option value="all">All topics</option>
+            </select>
+          </div>
+          <div class="field field--check">
+            <input type="checkbox" id="filter-saved">
+            <label for="filter-saved">Only show descriptions I saved</label>
+          </div>
+        </search>
+        <p class="status" id="explore-status" role="status"></p>
+        <ul class="card-grid" id="aspirations"></ul>
+      </div>
+    </section>
+
+    <!-- 3. Co-design a proposal -->
+    <section class="section section--tinted" id="proposal" aria-labelledby="proposal-title" tabindex="-1">
+      <div class="wrap">
+        <p class="eyebrow">Step 3</p>
+        <h2 id="proposal-title">Weigh the options</h2>
+        <p class="question" id="proposal-question"></p>
+        <p class="remit"><strong>What this pilot can decide:</strong> <span id="proposal-remit"></span></p>
+
+        <div class="callout callout--caution">
+          <h3>Responding is not voting</h3>
+          <p>
+            Responses here are local demo data from whoever uses this browser plus a few fictional examples. They are
+            not a sample of any population and are not added up into a score. Concerns stay listed beside every
+            option, however much support it seems to have.
+          </p>
+        </div>
+        <p class="status" id="proposal-status" role="status"></p>
+        <ul class="option-grid" id="options"></ul>
+      </div>
+    </section>
+
+    <!-- 4. Expert evidence -->
+    <section class="section" id="evidence" aria-labelledby="evidence-title" tabindex="-1">
+      <div class="wrap">
+        <p class="eyebrow">Step 4</p>
+        <h2 id="evidence-title">Expert evidence</h2>
+        <div class="callout">
+          <p>
+            <strong>Experts advise on what is feasible, what it costs and what could go wrong. People affected set the
+            priorities.</strong> Each claim is labelled as a factual claim, an estimate or a value choice, because
+            they call for different kinds of checking. This demo does not send questions to real experts.
+          </p>
+        </div>
+
+        <h3 class="section-subtitle">Claims in play</h3>
+        <ul class="claim-grid" id="claims"></ul>
+
+        <h3 class="section-subtitle">Expert roles</h3>
+        <div class="card-grid card-grid--two" id="experts"></div>
+
+        <div class="two-col two-col--form">
+          <form id="question-form" class="panel" novalidate aria-labelledby="question-form-title">
+            <h3 id="question-form-title">Ask a question</h3>
+            <div class="error-summary" id="question-errors" tabindex="-1" hidden></div>
+            <div class="field">
+              <label for="q-text">Your question <span aria-hidden="true">*</span></label>
+              <textarea id="q-text" name="text" rows="3" required></textarea>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="q-to">Addressed to</label>
+                <select id="q-to" name="to"></select>
+              </div>
+              <div class="field">
+                <label for="q-option">About option (optional)</label>
+                <select id="q-option" name="optionId"></select>
+              </div>
+            </div>
+            <p class="storage-note">
+              Your question joins this demo’s community record and the public export, attributed to “Participant in
+              this browser”. No one will answer it; there is no live expert routing.
+            </p>
+            <div class="actions">
+              <button type="submit" class="button button--primary">Add question</button>
+            </div>
+            <p class="status" id="question-status" role="status"></p>
+          </form>
+          <section aria-labelledby="questions-title">
+            <h3 id="questions-title">Open questions</h3>
+            <ul class="plain-list stack" id="questions"></ul>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Decision and delivery -->
+    <section class="section section--tinted" id="decision" aria-labelledby="decision-title" tabindex="-1">
+      <div class="wrap">
+        <p class="eyebrow">Step 5</p>
+        <h2 id="decision-title">Decision and delivery</h2>
+
+        <section class="panel" aria-labelledby="unresolved-title">
+          <h3 id="unresolved-title">Before deciding: what is still unresolved</h3>
+          <p class="muted">
+            Assembled directly from the records above. It is not an AI summary and not a finding of consensus.
+          </p>
+          <div id="unresolved"></div>
+        </section>
+
+        <div class="two-col">
+          <div id="main-commitment"></div>
+          <div>
+            <form id="decision-form" class="panel" novalidate aria-labelledby="decision-form-title">
+              <h3 id="decision-form-title">Record the decision (simulation)</h3>
+              <p>
+                In a real pilot only the named decision owner could record this. Here you can play that role to see
+                what a complete public decision has to contain.
+              </p>
+              <div class="error-summary" id="decision-errors" tabindex="-1" hidden></div>
+              <p class="form-note">All fields are required.</p>
+              <div class="field">
+                <label for="dec-outcome">Outcome</label>
+                <select id="dec-outcome" name="outcome"></select>
+              </div>
+              <div class="field">
+                <label for="dec-owner">Decision owner</label>
+                <p class="hint" id="dec-owner-hint">The body named on the commitment: Pilot stewarding group (fictional).</p>
+                <input type="text" id="dec-owner" name="owner" autocomplete="off" aria-describedby="dec-owner-hint">
+              </div>
+              <div class="field">
+                <label for="dec-reasons">Public reasons</label>
+                <p class="hint" id="dec-reasons-hint">At least 20 characters. Say how the concerns listed were weighed.</p>
+                <textarea id="dec-reasons" name="reasons" rows="4" aria-describedby="dec-reasons-hint"></textarea>
+              </div>
+              <div class="field">
+                <label for="dec-date">Decision date</label>
+                <input type="date" id="dec-date" name="decidedOn">
+              </div>
+              <fieldset class="field" id="dec-funding" aria-describedby="dec-funding-hint">
+                <legend>Funding</legend>
+                <p class="hint" id="dec-funding-hint">
+                  The decision allocates a budget. Confirming that the money will be released is a separate, later
+                  step on the delivery trail.
+                </p>
+                <div class="field--check">
+                  <input type="radio" id="dec-funding-budget" name="fundingKind" value="budget">
+                  <label for="dec-funding-budget">Allocate a budget</label>
+                </div>
+                <div class="field field--indent">
+                  <label for="dec-amount">Amount in euros (fictional)</label>
+                  <input type="text" id="dec-amount" name="amount" inputmode="numeric" autocomplete="off">
+                </div>
+                <div class="field--check">
+                  <input type="radio" id="dec-funding-none" name="fundingKind" value="none">
+                  <label for="dec-funding-none">No budget allocated</label>
+                </div>
+              </fieldset>
+              <p class="storage-note">Every concern recorded so far is attached to the decision, and responses close.</p>
+              <div class="actions">
+                <button type="submit" class="button button--primary">Record decision</button>
+              </div>
+            </form>
+            <div id="decision-record"></div>
+            <p class="status" id="decision-status" role="status"></p>
+          </div>
+        </div>
+
+        <h3 class="section-subtitle">Delivery trail</h3>
+        <p>
+          Selected is not the same as funded, and funded is not the same as delivered. Each step needs its own
+          evidence.
+        </p>
+        <div class="two-col">
+          <div id="trail"></div>
+          <div>
+            <form id="advance-form" class="panel" novalidate aria-labelledby="advance-title">
+              <h4 id="advance-title">Record the next step</h4>
+              <div class="error-summary" id="advance-errors" tabindex="-1" hidden></div>
+              <p id="advance-criteria"></p>
+              <div class="field">
+                <label for="adv-evidence">Acceptance evidence (simulated)</label>
+                <textarea id="adv-evidence" name="evidence" rows="3"></textarea>
+              </div>
+              <div class="actions">
+                <button type="submit" class="button button--primary" id="advance-submit">Record step</button>
+              </div>
+            </form>
+            <p class="panel muted" id="advance-blocked" tabindex="-1" hidden></p>
+            <p class="status" id="advance-status" role="status"></p>
+          </div>
+        </div>
+
+        <h3 class="section-subtitle">Another commitment: a missed response</h3>
+        <div id="other-commitments"></div>
+      </div>
+    </section>
+
+    <!-- 6. Portability -->
+    <section class="section" id="export" aria-labelledby="export-title" tabindex="-1">
+      <div class="wrap">
+        <p class="eyebrow">Take it with you</p>
+        <h2 id="export-title">Export the public record</h2>
+        <div class="two-col">
+          <div>
+            <p>
+              The export is a versioned JSON file with stable record identifiers. It includes the proposal and options,
+              every response and concern, the evidence and questions, commitments, any decision and the delivery
+              trail, plus descriptions you chose to add to the demo community.
+            </p>
+            <p><strong>It never includes your private drafts or saved bookmarks.</strong></p>
+            <p>
+              Open the file in the separate read-only reader to see the same record rendered from the file alone. The
+              reader shares this codebase, so it is a second view, not an independent implementation. This file format
+              is not Solid or ActivityPub.
+            </p>
+            <p class="actions">
+              <button type="button" class="button button--primary" id="export-download">Download public export (JSON)</button>
+              <a class="button" href="reader.html">Open the read-only reader</a>
+            </p>
+            <p class="status" id="export-status" role="status"></p>
+          </div>
+          <details class="panel" id="export-preview">
+            <summary>Preview the export</summary>
+            <pre class="json-preview" id="export-json" tabindex="0"></pre>
+          </details>
+        </div>
+
+        <section class="danger-zone" aria-labelledby="reset-title">
+          <h3 id="reset-title">Reset this demo</h3>
+          <p>
+            Deletes everything this demo stored in this browser: private drafts, shared demo records, bookmarks,
+            responses, questions, the decision and delivery progress. The fictional seed content comes back. Files you
+            already exported are not affected.
+          </p>
+          <button type="button" class="button button--danger" id="reset-button">Reset demo…</button>
+          <p class="status" id="reset-status" role="status"></p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        <strong>Unite, prototype v3.</strong> A local research demo of one possible process. It is not a production
+        service, not a working federation and not a democratic mandate.
+      </p>
+      <p><a href="IMPLEMENTATION.md">Implementation notes and known limits (plain text)</a></p>
+    </div>
+  </footer>
+
+  <dialog id="share-dialog" aria-labelledby="share-title">
+    <form id="share-form" novalidate>
+      <h2 id="share-title">Add to this demo community</h2>
+      <p>
+        This creates a <strong>separate copy</strong> that appears in Explore and in public exports. Your private draft
+        stays as it is. Review each field: only what is here will be shared.
+      </p>
+      <div class="error-summary" id="share-errors" tabindex="-1" hidden></div>
+      <div class="field">
+        <label for="s-title">Public title</label>
+        <input type="text" id="s-title" name="title" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="s-hard">What is hard now</label>
+        <textarea id="s-hard" name="hard" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label for="s-different">What should be different</label>
+        <textarea id="s-different" name="different" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label for="s-protect">What must be protected (optional)</label>
+        <p class="hint" id="s-protect-hint">Left empty on purpose: this is often the most personal part. Add only what you are comfortable sharing.</p>
+        <textarea id="s-protect" name="protect" rows="2" aria-describedby="s-protect-hint"></textarea>
+      </div>
+      <section class="share-copied" aria-labelledby="share-copied-title">
+        <h3 id="share-copied-title" class="h4">Also copied from your draft</h3>
+        <p class="hint">These are shared with the copy as shown. To change them, cancel and edit the draft first.</p>
+        <dl class="facts facts--compact" id="share-copied"></dl>
+      </section>
+      <div class="field field--check">
+        <input type="checkbox" id="s-confirm" name="confirm">
+        <label for="s-confirm">I understand this copy will be visible in this demo’s community view and included in public exports.</label>
+      </div>
+      <div class="actions">
+        <button type="submit" class="button button--primary">Add to this demo community</button>
+        <button type="button" class="button button--quiet" data-close-dialog>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-body"></p>
+      <div class="actions">
+        <button type="submit" value="cancel" class="button" autofocus>Cancel</button>
+        <button type="submit" value="confirm" class="button button--danger" id="confirm-ok"></button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
