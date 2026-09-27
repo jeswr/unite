@@ -1,0 +1,12 @@
+{
+  "name": "unite-prototype-v4",
+  "private": true,
+  "type": "module",
+  "description": "Unite: local multi-tab conversation, common ground and action prototype",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/main.js",
+    "start:ai": "UNITE_AI=claude-cli node server/main.js",
+    "test": "node --test \"tests/*.test.js\""
+  }
+}
