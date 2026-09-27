@@ -1,5 +1,13 @@
 # Unite prototype v4: implementation notes
 
+> **Later revision (27 September 2026):** room names, samples, the AI
+> interview opener and prompts, the futures view and action fields were
+> revised to start from everyday life. See
+> [LIFE-FIRST-IMPLEMENTATION.md](LIFE-FIRST-IMPLEMENTATION.md). The notes
+> below describe v4 as originally built and verified, and are kept as they
+> were; where they describe rooms, prompts or the three economic models,
+> the later revision supersedes them.
+
 Unite v4 is a conversational social app. People talk about humanity's
 shared future in topic rooms, can talk privately with an AI interviewer,
 find proposed common ground, and turn it into small next steps. It

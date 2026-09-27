@@ -129,8 +129,10 @@ export function openJoin(ctx, onJoined, existing = null) {
   input.focus();
 }
 
-// ---- publish (from the interview or a possible future) --------------------
+// ---- publish (from the interview or the fictional day) --------------------
 
+// Earlier versions compared three economic models, and posts could be tagged
+// with one. These names only label such older posts; nothing creates them now.
 export const MODEL_NAMES = {
   'public-service': 'Universal public-service economy',
   'global-employer': 'One global public employer',
@@ -138,16 +140,20 @@ export const MODEL_NAMES = {
 };
 export const MODEL_STANCE_NAMES = { agree: 'agrees', critique: 'critique', question: 'question' };
 
-export function openPublish(ctx, { text = '', roomId = 'future', modelRef, modelStance, title = 'Publish to a room', intro } = {}) {
+// With a `draftKey`, unsent text and the chosen room survive Cancel and
+// re-opening (the document-level draft listener records them) and are
+// cleared on publish.
+export function openPublish(ctx, { text = '', roomId = 'future', title = 'Publish to a room', intro, draftKey } = {}) {
   if (!ctx.me) {
-    ctx.join(() => openPublish(ctx, { text, roomId, modelRef, modelStance, title, intro }));
+    ctx.join(() => openPublish(ctx, { text, roomId, title, intro, draftKey }));
     return;
   }
-  const select = h('select', null, ctx.data.rooms.map((room) => h('option', { value: room.id, selected: room.id === roomId }, room.name)));
-  const textarea = h('textarea', { rows: 7, maxlength: 1200, required: true, value: text });
+  const roomKey = draftKey ? `${draftKey}:room` : null;
+  const chosenRoom = roomKey ? ctx.draft(roomKey, roomId) : roomId;
+  const select = h('select', { 'data-draft': roomKey }, ctx.data.rooms.map((room) => h('option', { value: room.id, selected: room.id === chosenRoom }, room.name)));
+  const textarea = h('textarea', { rows: 7, maxlength: 1200, required: true, 'data-draft': draftKey, value: draftKey ? ctx.draft(draftKey, text) : text });
   modal(title, ({ close, error }) => [
     intro ? h('p', { class: 'note' }, intro) : null,
-    modelRef ? h('p', { class: 'ref' }, `Responding to: ${MODEL_NAMES[modelRef]} · ${MODEL_STANCE_NAMES[modelStance]}`) : null,
     field('Room', select),
     field('Your post', textarea, 'Public: everyone using this local server can read it, and it is included in the public export. Edit it until it says what you mean.'),
     h('div', { class: 'row end' }, charCounter(textarea, 1200)),
@@ -156,8 +162,11 @@ export function openPublish(ctx, { text = '', roomId = 'future', modelRef, model
   ], {
     onSubmit: async ({ close }) => {
       const body = { roomId: select.value, text: textarea.value };
-      if (modelRef) Object.assign(body, { modelRef, modelStance });
       const result = await post('/api/posts', body);
+      if (draftKey) {
+        ctx.clearDraft(draftKey);
+        ctx.clearDraft(roomKey);
+      }
       close();
       ctx.toast(`Published in ${ctx.roomName(body.roomId)}.`);
       await ctx.refresh();
@@ -260,7 +269,9 @@ export function openActionDialog(ctx, roomId = 'work') {
     const ground = ctx.data.grounds[roomSelect.value];
     expectedVersion = ground.current.version;
     const concerns = ground.stances.filter((s) => s.stance === 'concern');
-    basis.replaceChildren(
+    // appendAll skips null children; native replaceChildren would render them as "null".
+    basis.replaceChildren();
+    appendAll(basis, [
       h('p', { class: 'eyebrow' }, `Based on common ground version ${expectedVersion}`),
       h('p', { class: 'statement' }, ground.current.text),
       h('p', null, `Local responses so far: ${ground.tally.support} support · ${ground.tally.concern} concern · ${ground.tally.abstain} abstain.`),
@@ -268,13 +279,15 @@ export function openActionDialog(ctx, roomId = 'work') {
         ? h('ul', { class: 'differences' }, concerns.map((c) => h('li', null, `${c.participant.name}: ${c.reason}`)))
         : null,
       concerns.length ? h('p', { class: 'hint' }, 'You can still propose an action. These concerns are saved with it and shown on the board.') : null,
-    );
+    ]);
   };
   roomSelect.addEventListener('change', showBasis);
   showBasis();
 
   const title = h('input', { type: 'text', maxlength: 100, required: true });
   const firstStep = h('textarea', { rows: 3, maxlength: 300, required: true });
+  const lifeChange = h('textarea', { rows: 2, maxlength: 500 });
+  const lifeSigns = h('textarea', { rows: 2, maxlength: 500 });
   const checkIn = h('input', { type: 'date', required: true, value: isoInDays(14), min: isoInDays(0), max: isoInDays(365) });
   const institution = h('input', { type: 'text', maxlength: 100 });
   const institutionField = field('Institution that would need to adopt it', institution, 'Naming an institution here does not give this proposal any authority. It shows who would have to agree.');
@@ -286,6 +299,11 @@ export function openActionDialog(ctx, roomId = 'work') {
     h('p', { class: 'steps' }, 'Step 1 of 2 · What and who'),
     field('Room', roomSelect), basis,
     field('Short title', title),
+    h('fieldset', { 'aria-describedby': `${g}-life-hint` },
+      h('legend', null, 'Back to everyday life (optional)'),
+      h('p', { class: 'hint', id: `${g}-life-hint` }, 'Your intention, in your own words. It is shown as intended, not as a measured result. Leave blank if you are not sure yet.'),
+      field('What would improve in everyday life?', lifeChange, 'For example: “Carers could see a friend without booking weeks ahead.” Up to 500 characters.'),
+      field('How will people know it helped?', lifeSigns, 'For example: “The carers involved say it made a difference, and nobody else was left with extra work.” Up to 500 characters.')),
     field('Concrete first step', firstStep, 'Something one person could start this week, e.g. “Ask the library for a room on Thursday evenings”.'),
     choiceGroup('Who owns the first step?', `${g}-owner`, [['me', 'I will'], ['volunteer', 'Needs a volunteer']], 'me'),
     field('Check-in date', checkIn),
@@ -373,6 +391,8 @@ export function openActionDialog(ctx, roomId = 'work') {
         effort: Number(picked(form, `${g}-effort`)),
         scope,
       };
+      if (lifeChange.value.trim()) body.lifeChange = lifeChange.value;
+      if (lifeSigns.value.trim()) body.lifeSigns = lifeSigns.value;
       if (scope === 'institutional') body.institution = institution.value;
       if (concernText.value.trim()) Object.assign(body, { concernKind: concernKind.value, concernText: concernText.value });
       try {

@@ -230,6 +230,40 @@ describe('actions', () => {
     assert.equal(store.publicState().actions[0].institution, 'City council');
   });
 
+  it('records optional intended everyday-life changes as the proposer wrote them', () => {
+    const { store, alice } = setup();
+    const markup = '<img src=x onerror="alert(1)"> Parents can eat breakfast together.\nNobody loses support.';
+    store.createAction(alice, actionBody({ lifeChange: `  ${markup}  `, lifeSigns: 'The parents say mornings changed.' }));
+    let [view] = store.publicState().actions;
+    // Kept verbatim (trimmed): the browser renders it as a text node, never as HTML.
+    assert.equal(view.lifeChange, markup);
+    assert.equal(view.lifeSigns, 'The parents say mornings changed.');
+    const exported = publicExport(store);
+    assert.equal(exported.actions[0].lifeChange, markup);
+    assert.match(exported.notice, /intentions for everyday life, not measured results/);
+
+    // Omitted, empty, whitespace-only and null all mean "not stated".
+    store.createAction(alice, actionBody());
+    store.createAction(alice, actionBody({ lifeChange: '', lifeSigns: '   ' }));
+    store.createAction(alice, actionBody({ lifeChange: null }));
+    for (view of store.publicState().actions.slice(1)) {
+      assert.equal(view.lifeChange, null);
+      assert.equal(view.lifeSigns, null);
+    }
+  });
+
+  it('bounds the intended-change fields and rejects unknown or non-text values', () => {
+    const { store, alice } = setup();
+    store.createAction(alice, actionBody({ lifeChange: '🌍'.repeat(LIMITS.intention), lifeSigns: 'x'.repeat(LIMITS.intention) }));
+    expectStatus(() => store.createAction(alice, actionBody({ lifeChange: 'x'.repeat(LIMITS.intention + 1) })), 400, /everyday life can be at most 500/);
+    expectStatus(() => store.createAction(alice, actionBody({ lifeSigns: 'x'.repeat(LIMITS.intention + 1) })), 400, /know it helped can be at most 500/);
+    expectStatus(() => store.createAction(alice, actionBody({ lifeChange: 5 })), 400, /must be text/);
+    expectStatus(() => store.createAction(alice, actionBody({ lifeSigns: ['a'] })), 400, /must be text/);
+    expectStatus(() => store.createAction(alice, actionBody({ lifeChange: 'Calmer ‮evenings' })), 400, /direction-override/);
+    expectStatus(() => store.createAction(alice, actionBody({ lifeOutcome: 'measured' })), 400, /Unknown field "lifeOutcome"/);
+    assert.equal(store.publicState().actions.length, 1);
+  });
+
   it('validates the check-in date', () => {
     const { store, alice } = setup();
     expectStatus(() => store.createAction(alice, actionBody({ checkIn: '2026-02-31' })), 400, /real calendar/);

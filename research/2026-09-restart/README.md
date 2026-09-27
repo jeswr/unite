@@ -8,9 +8,12 @@ Updated 27 September 2026. Research by Codex; all software engineering delegated
 |---|---|
 | [Begin with the lives people want](LIFE-FIRST-UNITE.md) | Current research: HCI, values, capabilities, co-design, everyday futures, distributed coordination, transition pathway and assessment of the prototype |
 | [A day we could make possible](A-DAY-WE-COULD-MAKE-POSSIBLE.md) | Optimistic fictional outcome and a sample record linking a person's wishes to a collective experiment |
+| [Everyday-life implementation](../../prototype-v4/LIFE-FIRST-IMPLEMENTATION.md) | Current prototype changes, capabilities and limitations |
+| [Everyday-life verification](LIFE-FIRST-VERIFICATION.md) | 91 passing tests, browser acceptance, two real synthetic AI calls and exact-model provenance |
+| [Separate implementation review](../../prototype-v4/REVIEW-LIFE-FIRST.md) | Findings, fixes and known remaining interface limitations |
 | [Conversational Unite](CONVERSATIONAL-UNITE.md) | Earlier research on Anthropic's interview study, social psychology and action; employment-centred scenarios superseded as the starting point |
 | [Social prototype implementation](../../prototype-v4/IMPLEMENTATION.md) | Actual v4 capabilities, run instructions, tests and limitations |
-| [Social prototype verification](V4-VERIFICATION.md) | Model provenance, automated checks and actual browser/AI acceptance |
+| [Earlier social prototype verification](V4-VERIFICATION.md) | Historical checks before the everyday-life revision |
 | [Earlier research and operating proposal](PROPOSAL.md) | Background on participation tools, political integration, experts, decentralization, funding and the lean $12,000 optional learning-cycle budget |
 | [Operating templates](OPERATING-TEMPLATES.md) | Background templates for a charter, delivery brief, expert commission and funder concept |
 | [Earlier prototype brief](IMPLEMENTATION-BRIEF.md) | Historical v3 acceptance criteria; superseded as the desired product experience |

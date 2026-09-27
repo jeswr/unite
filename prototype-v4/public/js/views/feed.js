@@ -19,10 +19,11 @@ export function renderFeed(ctx) {
   return h('section', { class: 'view', 'aria-labelledby': 'feed-title' },
     h('header', { class: 'view-head' },
       h('p', { class: 'eyebrow intro' }, room ? 'Room' : 'Conversations'),
-      h('h1', { id: 'feed-title' }, room ? room.name : 'Talk about the future we share'),
+      h('h1', { id: 'feed-title' }, room ? room.name : 'What would make an ordinary day good?'),
       room
         ? h('p', { class: 'lede' }, room.prompt)
-        : h('p', { class: 'lede intro' }, 'Short posts from people using this local demo, newest first. Say what you want, disagree well, and help shape what happens next.'),
+        : h('p', { class: 'lede intro' }, 'Short posts from people using this local demo, newest first. Start from a moment in your own life: something you would keep, something that gets in the way, something you would love to happen. Disagreement is welcome.'),
+      room ? null : h('p', { class: 'small muted' }, 'The four rooms are starting places, not a complete list of what matters. Post wherever feels closest.'),
       room ? roomTabs(ctx, room.id, 'feed') : null,
     ),
     room ? groundSummary(ctx, room) : null,
@@ -161,7 +162,7 @@ function postCard(ctx, ui, p, replies, { showRoom, highlightId }) {
   };
   return h('article', { class: `post${highlightId === p.id ? ' highlight' : ''}`, id: `post-${p.id}` },
     postHead(ctx, p, showRoom),
-    p.modelRef ? h('p', { class: 'ref' }, `On “${MODEL_NAMES[p.modelRef]}” · ${MODEL_STANCE_NAMES[p.modelStance]}`) : null,
+    p.modelRef ? h('p', { class: 'ref' }, `On an earlier economic model, “${MODEL_NAMES[p.modelRef] ?? p.modelRef}” (no longer shown) · ${MODEL_STANCE_NAMES[p.modelStance] ?? p.modelStance}`) : null,
     postBody(p),
     h('div', { class: 'post-actions' },
       p.withdrawn ? null : h('button', {

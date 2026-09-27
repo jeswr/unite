@@ -9,42 +9,51 @@ import { joinPrompt } from '../ui.js';
 
 const STORE_KEY = 'unite.v4.interview';
 const MAX_MESSAGES = 40;
-export const OPENER = "What is one thing about your everyday life right now that you would most like to be different in ten years' time, for you or for people around you?";
+export const OPENER = 'Imagine an ordinary day you would love to live, not a special occasion. What is happening in one moment of it? If that is hard to picture, a recent moment you would like more of, or one small thing that would make tomorrow gentler, is just as good.';
 
 const AIMS = [
-  'Your life now',
-  'The future you would want',
-  'The values underneath',
-  'Constraints you face',
-  'Trade-offs you would accept or refuse',
-  'What you might contribute (never required)',
-  'What would change your mind',
+  'One ordinary moment you would love to live',
+  'Why it matters to you',
+  'What is already good and worth keeping',
+  'What gets in the way now',
+  'What support you would want, if any, and from whom',
+  'Who else it involves, and whose agreement it needs',
+  'Later, if you like: ways it could come about',
 ];
+
+// A conversation keeps the opening question it was started with, so answers
+// saved in this tab before the opener changed are still shown (and sent to
+// the AI) under the question they actually answered.
+const EARLIER_OPENER = "What is one thing about your everyday life right now that you would most like to be different in ten years' time, for you or for people around you?";
 
 function load() {
   try {
     const saved = JSON.parse(tabStore.get(STORE_KEY) ?? 'null');
-    if (Array.isArray(saved?.messages)) return saved.messages.filter((m) => m && typeof m.text === 'string' && (m.role === 'interviewer' || m.role === 'participant'));
+    if (Array.isArray(saved?.messages)) {
+      const messages = saved.messages.filter((m) => m && typeof m.text === 'string' && (m.role === 'interviewer' || m.role === 'participant'));
+      const opener = [OPENER, EARLIER_OPENER].includes(saved.opener) ? saved.opener : messages.length ? EARLIER_OPENER : OPENER;
+      return { messages, opener };
+    }
   } catch {
     // start fresh
   }
-  return [];
+  return { messages: [], opener: OPENER };
 }
 
-function save(messages) {
-  tabStore.set(STORE_KEY, JSON.stringify({ messages }));
+function save(ui) {
+  tabStore.set(STORE_KEY, JSON.stringify({ messages: ui.messages, opener: ui.opener }));
 }
 
 export function renderTalk(ctx) {
-  const ui = (ctx.ui.talk ??= { messages: load(), busy: null, error: '', epoch: 0 });
+  const ui = (ctx.ui.talk ??= { ...load(), busy: null, error: '', epoch: 0 });
   const ai = ctx.data.ai;
   return h('section', { class: 'view', 'aria-labelledby': 'talk-title' },
     h('header', { class: 'view-head' },
       h('p', { class: 'eyebrow' }, 'Private interview'),
       h('h1', { id: 'talk-title' }, 'Talk with Unite'),
-      h('p', { class: 'lede intro' }, 'An AI interviewer asks about your life and the future you want, one question at a time. When you are ready, you can turn part of it into a public post. You review every word first.'),
+      h('p', { class: 'lede intro' }, 'An AI interviewer asks about a day you would love to live, what matters in it and what gets in the way, one question at a time. Money, work or government are fine to mention in your own words. When you are ready, you can turn part of it into a public post. You review every word first.'),
     ),
-    h('p', { class: 'scope-note' }, h('strong', null, 'Private to this tab. '), 'Stored only in this tab\'s session storage and cleared when the tab closes. Never added to the feed, to common-ground summaries or to the export.'),
+    h('p', { class: 'scope-note' }, h('strong', null, 'Private to this tab. '), 'Stored only in this tab\'s session storage and cleared when the tab closes. Never added to the feed, to common-ground summaries or to the export. Share only what you are comfortable sending to the AI: you never need to name a health condition, a person or a place. “I need a step-free route” is enough.'),
     body(ctx, ui, ai),
     h('details', { class: 'card quiet', 'data-open-key': 'aims' },
       h('summary', null, 'What Unite asks about'),
@@ -59,7 +68,7 @@ function body(ctx, ui, ai) {
       h('h2', null, 'AI conversation is off on this server'),
       h('p', null, ai.reason),
       h('p', { class: 'small' }, 'Unite does not simulate replies, so nothing will pretend to be the AI. You can still post your thoughts directly in any room.'),
-      h('p', null, h('a', { href: '#/room/future' }, 'Go to Our shared future')),
+      h('p', null, h('a', { href: '#/room/future' }, 'Go to Imagining together')),
     );
   }
   if (!ctx.me) return joinPrompt(ctx, 'Join with a display name to start. Your display name is not sent to the AI.');
@@ -89,7 +98,7 @@ function consentCard(ctx) {
 }
 
 function chat(ctx, ui) {
-  const messages = [{ role: 'interviewer', text: OPENER, opener: true }, ...ui.messages];
+  const messages = [{ role: 'interviewer', text: ui.opener, opener: true }, ...ui.messages];
   const answerId = uid('answer');
   const textarea = h('textarea', { id: answerId, rows: 3, maxlength: 2000, 'data-draft': 'talk:answer', value: ctx.draft('talk:answer'), disabled: Boolean(ui.busy) });
   const full = ui.messages.length >= MAX_MESSAGES - 1;
@@ -102,7 +111,7 @@ function chat(ctx, ui) {
     } else if (mode === 'question') {
       ui.messages.push({ role: 'participant', text });
       ctx.clearDraft('talk:answer');
-      save(ui.messages);
+      save(ui);
     }
     const controller = new AbortController();
     const epoch = ui.epoch;
@@ -110,19 +119,19 @@ function chat(ctx, ui) {
     ui.error = '';
     ctx.rerender();
     try {
-      const outgoing = [{ role: 'interviewer', text: OPENER }, ...ui.messages].map(({ role, text: t }) => ({ role, text: t }));
+      const outgoing = [{ role: 'interviewer', text: ui.opener }, ...ui.messages].map(({ role, text: t }) => ({ role, text: t }));
       const result = await aiRequest('/api/interview', { mode, messages: outgoing }, controller.signal);
       // The conversation was cleared or consent withdrawn meanwhile: drop it.
       if (epoch !== ui.epoch) return;
       if (mode === 'question') {
         ui.messages.push({ role: 'interviewer', text: result.text });
-        save(ui.messages);
+        save(ui);
         ctx.announce(`Unite asks: ${result.text}`);
       } else {
         ctx.openPublish({
           text: result.text,
           title: 'Review your post before publishing',
-          intro: 'The AI drafted this from your interview. Change anything, or cancel. Nothing is public until you press Publish.',
+          intro: 'The AI drafted this from your interview. It is asked to keep needs you described, such as a step-free route, and to leave out diagnoses, names and places. Check it says what you mean: change anything, or cancel. Nothing is public until you press Publish.',
         });
       }
     } catch (error) {
@@ -181,8 +190,9 @@ function chat(ctx, ui) {
           if (await ctx.confirm({ title: 'Clear this conversation?', body: 'It is deleted from this tab, including your unsent answer. Nothing public changes.', confirmLabel: 'Clear conversation' })) {
             forget(ctx, ui);
             ui.messages = [];
+            ui.opener = OPENER;
             ctx.clearDraft('talk:answer');
-            save([]);
+            save(ui);
             ctx.rerender();
           }
         },

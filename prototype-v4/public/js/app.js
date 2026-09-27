@@ -35,7 +35,7 @@ function parseRoute() {
   }
   if (first === 'talk') return { view: 'talk' };
   if (first === 'act') return { view: 'act' };
-  if (first === 'futures') return { view: 'futures', model: second ?? null };
+  if (first === 'futures') return { view: 'futures', moment: second ?? null };
   if (first === 'about') return { view: 'about' };
   return { view: 'feed', roomId: null };
 }

@@ -9,7 +9,8 @@ import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { connectLive } from '../public/js/api.js';
-import { excerpt, relTime } from '../public/js/dom.js';
+import { appendAll, excerpt, relTime } from '../public/js/dom.js';
+import { EARLIER_MODEL_IDS, MOMENTS } from '../public/js/views/futures.js';
 
 const root = fileURLToPath(new URL('../public', import.meta.url));
 const scripts = [];
@@ -54,11 +55,55 @@ describe('source guards (not a substitute for browser checks)', () => {
     assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
   });
 
-  it('presents the public-service model as one interpretation and local say as a design choice', () => {
+  it('offers a neutral, draft-keeping response to the fictional day, with no prefilled stance', () => {
     const source = readFileSync(join(root, 'js', 'views', 'futures.js'), 'utf8');
-    assert.doesNotMatch(source, /Founder's proposal|Weak: set centrally/);
-    assert.match(source, /one proposed interpretation/i);
-    assert.match(source, /constitutional devolution/);
+    const call = source.slice(source.indexOf('ctx.openPublish({'), source.indexOf('});', source.indexOf('ctx.openPublish({')));
+    assert.match(call, /draftKey:/);
+    assert.doesNotMatch(call, /\btext:|modelRef|modelStance/);
+    assert.doesNotMatch(source, /I agree|Post agreement|MODEL_NAMES/);
+    assert.match(source, /href: '#\/talk'/);
+    // The dialog keeps both the text and the chosen room under the draft key,
+    // and clears both only after a successful publish.
+    const ui = readFileSync(join(root, 'js', 'ui.js'), 'utf8');
+    const publish = ui.slice(ui.indexOf('export function openPublish'), ui.indexOf('export function openStatementEditor'));
+    assert.match(publish, /h\('select', \{ 'data-draft': roomKey \}/);
+    assert.match(publish, /'data-draft': draftKey/);
+    assert.ok(publish.indexOf("await post('/api/posts'") < publish.indexOf('ctx.clearDraft(roomKey)'));
+  });
+
+  // Native replaceChildren/append render null as the text "null" (seen as
+  // "nullnull" in the action dialog with no concerns); optional children must
+  // go through h() or appendAll, which skip them.
+  it('never passes optional (null) children to native replaceChildren', () => {
+    for (const file of scripts) {
+      const source = readFileSync(file, 'utf8');
+      for (const match of source.matchAll(/\.replaceChildren\(/g)) {
+        let depth = 1;
+        let i = match.index + match[0].length;
+        for (; i < source.length && depth > 0; i += 1) {
+          if (source[i] === '(') depth += 1;
+          else if (source[i] === ')') depth -= 1;
+        }
+        const call = source.slice(match.index, i).replace(/h\('[a-z0-9]+', null/g, ''); // null props are fine
+        assert.doesNotMatch(call, /\bnull\b|\?\?|&&/, `${file}: ${call.slice(0, 80)}`);
+      }
+    }
+  });
+});
+
+describe('a day we could make possible', () => {
+  it('traces every moment from experience to open questions, with IDs distinct from the earlier models', () => {
+    assert.ok(MOMENTS.length >= 3 && MOMENTS.length <= 4);
+    const ids = MOMENTS.map((m) => m.id);
+    assert.equal(new Set(ids).size, ids.length);
+    for (const m of MOMENTS) {
+      assert.match(m.id, /^[a-z-]+$/);
+      assert.ok(!EARLIER_MODEL_IDS.includes(m.id));
+      for (const key of ['time', 'title', 'scene', 'wants', 'barriers', 'future', 'enabled', 'experiment']) {
+        assert.ok(typeof m[key] === 'string' && m[key].length > 0, `${m.id}.${key}`);
+      }
+      assert.ok(Array.isArray(m.open) && m.open.length > 0, `${m.id}.open`);
+    }
   });
 });
 
@@ -201,5 +246,19 @@ describe('display helpers', () => {
   it('shortens long text on character boundaries', () => {
     assert.equal(excerpt('short', 10), 'short');
     assert.equal(excerpt('🌍'.repeat(20), 5), `${'🌍'.repeat(4)}…`);
+  });
+
+  it('skips null, undefined and false children instead of rendering them as text', () => {
+    const hadNode = 'Node' in globalThis;
+    const saved = globalThis.Node;
+    globalThis.Node = class {};
+    try {
+      const appended = [];
+      appendAll({ append: (child) => appended.push(child) }, ['a', null, [undefined, false, 'b'], null, 0]);
+      assert.deepEqual(appended, ['a', 'b', '0']);
+    } finally {
+      if (hadNode) globalThis.Node = saved;
+      else delete globalThis.Node;
+    }
   });
 });

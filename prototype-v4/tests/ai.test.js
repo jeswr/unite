@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { AI_MODEL, AiError, ClaudeBridge, childEnv, cliArgs, parseCliResult, spawnRunner } from '../server/ai.js';
-import { INTERVIEW_LIMITS, INTERVIEW_SYSTEM, SYNTHESIS_SYSTEM, interviewPrompt, parseSynthesis, validateInterview } from '../server/prompts.js';
+import { DRAFT_SYSTEM, INTERVIEW_LIMITS, INTERVIEW_SYSTEM, SYNTHESIS_SYSTEM, interviewPrompt, parseSynthesis, validateInterview } from '../server/prompts.js';
 import { startServer } from './helpers.js';
 
 const cliJson = (result, models = [AI_MODEL], extra = {}) => JSON.stringify({
@@ -168,6 +168,34 @@ describe('prompts and suggestion parsing', () => {
     assert.match(SYNTHESIS_SYSTEM, /Do not weight views by how often they appear/);
     assert.match(SYNTHESIS_SYSTEM, /Do not invent views, counter-arguments or balance/);
     assert.match(SYNTHESIS_SYSTEM, /Do not declare consensus/);
+  });
+
+  it('starts from lived experience and keeps participants\' own words, confirmed meaning and means distinct', () => {
+    assert.match(INTERVIEW_SYSTEM, /Ask exactly one question per turn/);
+    assert.match(INTERVIEW_SYSTEM, /one ordinary moment/);
+    assert.match(INTERVIEW_SYSTEM, /recent good moment/);
+    assert.match(INTERVIEW_SYSTEM, /money, income, a job, prices or government, treat it as real/);
+    assert.match(INTERVIEW_SYSTEM, /Never replace their words with another category/);
+    assert.match(INTERVIEW_SYSTEM, /Only what they confirm is their meaning/);
+    assert.match(INTERVIEW_SYSTEM, /one possible scenario, never as a fact/);
+    assert.match(INTERVIEW_SYSTEM, /Do not diagnose, suggest treatments, or promise cures/);
+    assert.match(INTERVIEW_SYSTEM, /never claim consensus/);
+    assert.match(DRAFT_SYSTEM, /distinct from the ways they suggested/);
+    assert.match(DRAFT_SYSTEM, /leave out the interviewer's interpretations unless the participant confirmed them/);
+    assert.match(SYNTHESIS_SYSTEM, /Do not invent needs, consent or agreement/);
+  });
+
+  it('keeps stated access and support needs expressible while not probing for or publishing clinical details', () => {
+    assert.match(INTERVIEW_SYSTEM, /Health, disability and support needs are welcome/);
+    assert.match(INTERVIEW_SYSTEM, /never treat such a need as something to leave out/);
+    assert.match(INTERVIEW_SYSTEM, /Do not ask about diagnoses, conditions, treatments, medication or medical history/);
+    assert.match(DRAFT_SYSTEM, /Keep any access, health or support need they stated/);
+    assert.match(DRAFT_SYSTEM, /must not be dropped or softened/);
+    assert.match(DRAFT_SYSTEM, /By default leave out diagnoses, conditions, treatments, medication, medical history, names, places/);
+    assert.match(SYNTHESIS_SYSTEM, /Keep access, health and support needs that posts state visible/);
+    // The earlier blanket rules erased access meaning along with clinical detail.
+    assert.doesNotMatch(DRAFT_SYSTEM, /Leave out health details/);
+    assert.doesNotMatch(INTERVIEW_SYSTEM, /ask for health details/);
   });
 
   it('counts interview length in characters, not UTF-16 units', () => {

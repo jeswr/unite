@@ -1,27 +1,31 @@
 // Fictional sample content. Every sample post is marked `sample: true` and
 // shown with a "Sample" label; none of these people exist. Samples never hold
 // stances: the starting statements begin with zero responses.
+//
+// Rooms are starting places, not a classification of human needs. Their IDs
+// are kept from earlier versions (work, care, places, future) so links and
+// exports stay stable; only the displayed names and prompts changed.
 
 export const ROOMS = [
   {
     id: 'work',
-    name: 'Work & time',
-    prompt: 'How should paid work, unpaid work and free time fit into a good life?',
+    name: 'Time & everyday life',
+    prompt: 'An ordinary day you would love to live: meals, rest, making things, the pace of it, time with people. What would you keep, and what would you change?',
   },
   {
     id: 'care',
-    name: 'Care',
-    prompt: 'Who looks after children, elders, sick and disabled people, and who looks after them?',
+    name: 'Care & support',
+    prompt: 'Looking after others and being looked after: what already helps, what gets in the way, and what you would rather decide for yourself.',
   },
   {
     id: 'places',
-    name: 'Climate & living places',
-    prompt: 'Homes, towns and landscapes we can live in for the long run.',
+    name: 'Places & nature',
+    prompt: 'Homes, streets, rivers and landscapes where you spend your days, and how they could stay good to live in.',
   },
   {
     id: 'future',
-    name: 'Our shared future',
-    prompt: 'The big picture: what kind of world are we building, and how could we get there?',
+    name: 'Imagining together',
+    prompt: 'A moment from a future you would like, a doubt about big visions, or how different good lives could fit side by side.',
   },
 ];
 
@@ -32,39 +36,39 @@ export const ROOM_IDS = ROOMS.map((room) => room.id);
 export const SAMPLE_POSTS = [
   {
     key: 'tomasz', room: 'work', author: 'Tomasz',
-    text: 'I work rotating warehouse shifts. More money would be nice, but what I actually want is to know my hours two weeks ahead so I can see my kids play football. Any plan that says "guaranteed job" makes me nervous, though. I have seen schemes where you lose benefits unless you take whatever is offered.',
+    text: 'The best part of my week is Sunday breakfast with my kids: no alarm, pancakes that take far too long. My shifts change every week, so I miss it more often than not. More money would honestly help, but what I really want is to know my hours ahead and have mornings like that more often.',
   },
   {
     key: 'ines', room: 'work', author: 'Inês',
-    text: 'I run a bakery with six staff. If the public sector starts offering everyone a job at a good wage, I cannot compete for workers and small places like mine close. I would rather see stronger unemployment insurance and cheaper childcare. Let people choose, and let small firms survive.',
+    text: 'I run a small bakery and I love the early mornings: the quiet, the smell, the regulars who come in half asleep. I would not want a future that "frees" me from that. What I would change is the paperwork that eats my evenings.',
   },
   {
     key: 'kwame', room: 'work', author: 'Kwame', replyTo: 'ines',
-    text: 'Retired teacher here. I understand the worry, but our school roof has leaked for three winters. There is real work nobody is paid to do. If public jobs only filled gaps like that, and people chose them freely, would that still crowd you out?',
+    text: 'Retired teacher here. Same for me with the allotment: I do not want a machine to dig it for me. I would happily hand over the forms, though. Maybe the question is which parts of a day people want to keep doing themselves.',
   },
   {
     key: 'hana', room: 'care', author: 'Hana',
-    text: 'I have looked after my mother full time for four years. It is work, and it is also love, and I do not want it turned into a timesheet. I would like it counted, with a pension and some respite, without someone checking whether I did enough hours.',
+    text: 'I look after my mother. Some of our best moments are just sitting in the garden while she tells the same stories again. I do not want that turned into a timesheet. What I need is a few reliable hours of cover so I can see a friend without arranging it three weeks ahead.',
   },
   {
     key: 'deepa', room: 'care', author: 'Deepa',
-    text: 'As a disabled person I get uneasy whenever people say "everybody contributes". It sounds kind until it becomes a test you can fail. Any future we design has to make rest, illness and simply being alive enough to deserve a decent life. No exceptions paperwork.',
+    text: 'My energy changes from day to day. A good day for me might be a slow one at home, and that should count as a good day. I am wary of any "helpful" system I cannot say no to. Support should be there when I ask and quiet when I do not.',
   },
   {
     key: 'luis', room: 'places', author: 'Luis',
-    text: 'Our valley flooded twice in five years. The repair money came from far away with rules written by people who had never seen the river. Pay local people to restore the wetlands and let us decide how. I do not trust big plans made somewhere else.',
+    text: 'There is a bend in the river near us where kids swim in summer. It has flooded twice in five years. I want it still to be there for my grandchildren, and I want the people who live here to have a real say in how it is repaired, not just funding rules written far away.',
   },
   {
     key: 'mei', room: 'places', author: 'Mei',
-    text: 'I rent a top-floor flat that reaches 34°C in summer. Climate talk is often about farms and forests; for millions of us it is about rent and heat. Insulation and shade for renters first, and without the landlord raising the rent afterwards.',
+    text: 'My top-floor flat reaches 34°C in summer and I cannot sleep. The rent is already too high to move. A good evening would be sitting somewhere shaded and cool with my neighbours. Mostly I would just like to sleep.',
   },
   {
     key: 'seun', room: 'future', author: 'Oluwaseun',
-    text: 'Pandemics and carbon do not respect borders, so some coordination has to be global. But I would never want one global employer. That is too much power in one place. Many democratic institutions that cooperate seems like the right shape to me.',
+    text: 'When I try to picture a good future I see ordinary things: long lunches, a workshop where anyone can learn to fix a bike, nobody panicking about bills. I find it hard to believe we get there without governments doing a lot, but I would want many places deciding things, not one centre.',
   },
   {
     key: 'anna', room: 'future', author: 'Anna',
-    text: 'Honestly, I think markets plus a strong safety net already work where they are allowed to. My worry with bigger public institutions is capture: whoever runs them decides what counts as useful work. Show me how dissenters stay free before I sign up to anything.',
+    text: 'I am sceptical of big visions. They often turn out to mean someone else\'s idea of a good life. I would rather start with small things that already work, like our street\'s tool library, and see what spreads. And people must be free to opt out.',
   },
 ];
 
@@ -72,28 +76,31 @@ export const SAMPLE_POSTS = [
 // posts above. It is labelled as a sample draft and carries no stances.
 export const SAMPLE_STATEMENTS = {
   work: {
-    text: 'People want predictable, fairly paid work and real time for life outside it. Any new public or community work should be chosen, never required to keep benefits, and should fill real local needs.',
+    text: 'Many people want more unhurried time for things they already enjoy, such as breakfast with family or early mornings at work they love. Predictable time matters. People want help with some parts of their day and to keep doing others themselves.',
     differences: [
-      'Whether public jobs help communities or crowd out small businesses.',
-      'Whether security should come mainly as jobs, as income, or both.',
+      'Whether more money or more predictable time would help most.',
+      'Which tasks people would hand over and which they would keep.',
     ],
     sources: ['tomasz', 'ines', 'kwame'],
   },
   care: {
-    text: 'Unpaid care is real work and deserves recognition, pensions and respite. A decent life must never depend on proving that you contribute enough.',
-    differences: ['How to count care without turning it into surveillance or paperwork.'],
+    text: 'Care includes moments worth protecting, not only tasks. People want reliable support they can ask for, and the freedom to decline it. A slow day at home can be a good day.',
+    differences: ['How to arrange dependable cover without turning care into paperwork or surveillance.'],
     sources: ['hana', 'deepa'],
   },
   places: {
-    text: 'Climate adaptation should be paid work decided close to the people affected, and renters should be protected from heat without being priced out.',
-    differences: ['How much should be decided locally versus by wider plans and funding rules.'],
+    text: 'People want the places they love, from a river bend to a cool street at night, to stay good to live in, with the people who live there having a real say in how they change.',
+    differences: [
+      'How much should be decided locally versus by wider plans and funding rules.',
+      'What comes first when heat and housing costs both press.',
+    ],
     sources: ['luis', 'mei'],
   },
   future: {
-    text: 'Some problems need coordination across borders, but no single institution should hold all economic power, and people must stay free to dissent and to choose their work.',
+    text: 'A good future may look like ordinary days lived well, with many places able to decide things and people free to opt out.',
     differences: [
-      'Whether stronger public institutions or stronger markets with safety nets are the better route.',
-      'Who decides what counts as useful work.',
+      'Whether governments or small local beginnings should do most of the work.',
+      'Whether big shared visions help, or risk imposing one idea of a good life.',
     ],
     sources: ['seun', 'anna'],
   },

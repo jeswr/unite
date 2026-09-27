@@ -133,6 +133,29 @@ describe('HTTP service', () => {
       assert.equal((await app.post(`/api/actions/${created.json.id}/status`, { status: 'ready' }, { token: owner.token })).status, 200);
     });
 
+    it('accepts optional intended everyday-life changes on actions over HTTP and serves them in state and export', async () => {
+      const { token } = await app.join('Tove');
+      const version = (await app.get('/api/state')).json.grounds.places.current.version;
+      const body = {
+        roomId: 'places', expectedVersion: version, title: 'Shade on Mill Street', firstStep: 'Ask neighbours where they sit on hot evenings',
+        ownership: 'me', checkIn: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10), effort: 2, impact: 2, urgency: 3, scope: 'community',
+      };
+      const tooLong = await app.post('/api/actions', { ...body, lifeSigns: 'x'.repeat(501) }, { token });
+      assert.equal(tooLong.status, 400);
+      assert.match(tooLong.json.error, /at most 500/);
+      const plain = await app.post('/api/actions', body, { token });
+      assert.equal(plain.status, 200, plain.text);
+      const created = await app.post('/api/actions', { ...body, lifeChange: 'Neighbours can sit outside somewhere cool.', lifeSigns: '<b>They</b> say evenings are easier.' }, { token });
+      assert.equal(created.status, 200, created.text);
+      const actions = (await app.get('/api/state')).json.actions;
+      const find = (id) => actions.find((a) => a.id === id);
+      assert.equal(find(plain.json.id).lifeChange, null);
+      assert.equal(find(created.json.id).lifeChange, 'Neighbours can sit outside somewhere cool.');
+      assert.equal(find(created.json.id).lifeSigns, '<b>They</b> say evenings are easier.');
+      const exported = (await app.get('/api/export')).json.actions.find((a) => a.id === created.json.id);
+      assert.equal(exported.lifeSigns, '<b>They</b> say evenings are easier.');
+    });
+
     it('serves cached public state with the current AI status, and a small revision endpoint', async () => {
       const state = await app.get('/api/state');
       assert.equal(state.json.ai.enabled, false);

@@ -306,6 +306,15 @@ details[open] > summary { margin-bottom: 0.6rem; }
 .model-grid ul, .model-grid ol, .path, .commitments { padding-left: 1.2rem; display: grid; gap: 0.3rem; }
 .day { font-family: var(--serif); font-size: 1.08rem; line-height: 1.55; background: var(--surface-2); padding: 0.8rem 1rem; border-radius: var(--radius-sm); }
 .path li::marker { font-weight: 750; color: var(--violet); }
+.moments a { display: inline-grid; gap: 0; line-height: 1.25; padding: 0.4rem 0.9rem; border-radius: var(--radius-sm); }
+.moment-time { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.8; }
+.moment { border-top: 4px solid var(--coral); }
+.moment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; }
+.moment-part { display: grid; gap: 0.3rem; align-content: start; padding: 0.7rem 0.85rem; border-radius: var(--radius-sm); background: var(--surface-2); }
+.moment-part h3 { font-size: 0.86rem; color: var(--ink-2); }
+.moment-part.future { background: var(--green-soft); }
+.moment-part.experiment { background: var(--violet-soft); }
+.moment-part.open ul { padding-left: 1.1rem; display: grid; gap: 0.2rem; }
 .table-wrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 0.92rem; background: var(--surface); }
 caption { text-align: left; font-weight: 650; padding-bottom: 0.4rem; }
@@ -349,7 +358,7 @@ dialog .steps { font-size: 0.8rem; color: var(--muted); font-weight: 650; }
   .me { margin-top: 0; grid-template-columns: 1fr auto; align-items: center; padding: 0.5rem 0.7rem; }
   .demo-notice { padding: 0.5rem 1rem; }
   main { padding: 1.3rem 1rem 4rem; }
-  .model-grid { grid-template-columns: 1fr; }
+  .model-grid, .moment-grid { grid-template-columns: 1fr; }
   search.filters, .filters { grid-template-columns: 1fr 1fr; }
   .filters > :first-child { grid-column: 1 / -1; }
 }

@@ -22,6 +22,7 @@ export const LIMITS = {
   step: 300,
   institution: 100,
   check: 400,
+  intention: 500,
   checkInDays: 365,
   maxParticipants: 500,
   maxPosts: 2000,
@@ -323,7 +324,7 @@ export class Store {
     v.fields(
       body,
       ['roomId', 'expectedVersion', 'title', 'firstStep', 'ownership', 'checkIn', 'effort', 'impact', 'urgency', 'scope'],
-      ['institution', 'concernKind', 'concernText'],
+      ['institution', 'concernKind', 'concernText', 'lifeChange', 'lifeSigns'],
     );
     const roomId = v.oneOf(body.roomId, ROOM_IDS, 'Room');
     const ground = this.#ground(roomId);
@@ -339,11 +340,16 @@ export class Store {
     if (!concernText && body.concernKind !== undefined && body.concernKind !== null && body.concernKind !== '') {
       throw bad('Describe the concern, or leave its type empty.');
     }
+    // Optional: the proposer's intended change in everyday life, and how
+    // people might recognise it. Intentions only; nothing here measures them.
+    const intention = (value, label) => v.optionalText(value, { label, max: LIMITS.intention, multiline: true }) || null;
     const action = {
       id: this.makeId('a'),
       roomId,
       title: v.text(body.title, { label: 'Title', min: 3, max: LIMITS.title }),
       firstStep: v.text(body.firstStep, { label: 'First step', min: 5, max: LIMITS.step, multiline: true }),
+      lifeChange: intention(body.lifeChange, 'What would improve in everyday life'),
+      lifeSigns: intention(body.lifeSigns, 'How people will know it helped'),
       nextStep: null,
       updates: [],
       ownerId: v.oneOf(body.ownership, ['me', 'volunteer'], 'Ownership') === 'me' ? actor.id : null,
@@ -685,6 +691,8 @@ export class Store {
       roomId: action.roomId,
       title: action.title,
       firstStep: action.firstStep,
+      lifeChange: action.lifeChange,
+      lifeSigns: action.lifeSigns,
       nextStep: action.nextStep,
       updates: action.updates.map((u) => ({ by: this.#person(u.by), text: u.text, at: u.at })),
       owner: this.#person(action.ownerId),
@@ -787,6 +795,8 @@ export const EXPORT_NOTICE = 'Public data from a local Unite demo server. Sample
   + 'Action statuses are reported by their owners. For institutional proposals they describe only the work of '
   + 'preparing and submitting the proposal: institutional adoption is never recorded and is always unconfirmed, '
   + 'and naming an institution gives no authority. No money or funding is modelled. '
+  + 'An action\'s "lifeChange" and "lifeSigns" are the proposer\'s stated intentions for everyday life, not measured results. '
+  + '"modelRef" on older posts refers to an earlier comparison of economic models that this version no longer shows. '
   + '"aiAssisted" on a statement version is declared by its proposer and is not verified. '
   + 'Private interview conversations are never stored on the server and are not included.';
 
