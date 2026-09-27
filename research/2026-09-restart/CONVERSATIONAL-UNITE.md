@@ -1,5 +1,7 @@
 # Unite: a conversation that becomes collective work
 
+**Status update — 27 September 2026:** The [life-first proposal](LIFE-FIRST-UNITE.md) is now the current direction. The discussion, psychology and reviewed AI facilitation below remain background; its employment-centred future scenarios and migration path are no longer the platform's starting point. [A day we could make possible](A-DAY-WE-COULD-MAKE-POSSIBLE.md) illustrates the revised, open-ended aspiration.
+
 26 September 2026. Revised product and societal proposal following the founder's rejection of the form-based prototype. Research and recommendations by Codex; all prototype engineering assigned to Claude Opus 5.5. This document supersedes the earlier proposal's **product experience**, while retaining its evidence, funding research and institutional-accountability work as background. Proposed mechanisms below are design hypotheses, not demonstrated outcomes.
 
 **The experience should start with people talking.** You arrive, see a conversation about a life you recognize, contribute a thought or speak privately with an AI interviewer. You meet people with overlapping hopes and different constraints. Together you draft something you could support, see what remains unresolved, and immediately identify useful work. A person can begin with “I want more time with my children,” without knowing how to write a policy proposal.
