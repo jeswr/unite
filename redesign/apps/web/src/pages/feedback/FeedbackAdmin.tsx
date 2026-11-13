@@ -6,7 +6,7 @@ import { Card } from '../../ui/Card';
 import { EmptyState } from '../../ui/EmptyState';
 import { Field, inputClass } from '../../ui/Field';
 import { Tag } from '../../ui/Tag';
-import type { FeedbackStatus, StewardFeedbackItem, StewardFeedbackList } from './types';
+import type { FeedbackStatus, StewardFeedbackItem, StewardFeedbackList } from '@unite/shared';
 
 /**
  * The steward's feedback view, to be placed in the steward page: counts, the answers grouped by
@@ -43,7 +43,7 @@ function StatusControl({ item, onSaved }: { item: StewardFeedbackItem; onSaved: 
     }
   };
   return (
-    <form onSubmit={(e) => void save(e)} className="mt-4 border-t border-line pt-4">
+    <form onSubmit={(e) => void save(e)} className="mt-4 border-t border-line pt-4" noValidate>
       <Field label="Status">
         <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as FeedbackStatus)}>
           {STATUS_CHOICES.map((s) => (

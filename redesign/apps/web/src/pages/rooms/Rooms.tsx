@@ -9,7 +9,7 @@ import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
 import { Tag } from '../../ui/Tag';
 import { answersInWords, EvidenceCardView, NotHeardOrError, OutcomeView } from './parts';
-import type { RoomsResponse } from './types';
+import type { RoomsResponse } from '@unite/shared';
 import { timeLeftWords } from './time';
 
 /** "Opens soon", "Running until 10:45 (31 minutes left)", or "Closed". */
@@ -22,7 +22,7 @@ function whenWords(r: { status: string; endsAt: string | null; minutes?: number 
 export default function Rooms() {
   const { slug = '' } = useParams();
   const version = useLive(slug);
-  const { data: view } = useAssembly(slug, version);
+  const { data: view, reload: reloadView } = useAssembly(slug, version);
   const rooms = useApi<RoomsResponse>(`/api/assemblies/${encodeURIComponent(slug)}/rooms`, version);
   const evidence = useApi<{ evidence: EvidenceCard[] }>(rooms.data ? `/api/assemblies/${encodeURIComponent(slug)}/evidence` : null, version);
   const a = view?.assembly;
@@ -35,7 +35,7 @@ export default function Rooms() {
         facilitator keeps time and turns and invites quieter people in; it never takes a side, gives facts, or sums up what the room thinks.
       </p>
 
-      {rooms.error && !rooms.data && <NotHeardOrError error={rooms.error} slug={slug} what="The rooms page" />}
+      {rooms.error && !rooms.data && <NotHeardOrError error={rooms.error} slug={slug} what="the rooms and what they found" isExample={a?.isExample} onLookedAround={() => (reloadView(), rooms.reload())} />}
       {!rooms.data && !rooms.error && <p aria-live="polite">Loading the rooms…</p>}
 
       {rooms.data && (

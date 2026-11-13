@@ -5,7 +5,7 @@ import Changes from '../pages/feedback/Changes';
 import Feedback from '../pages/feedback/Feedback';
 import { FeedbackAdmin } from '../pages/feedback/FeedbackAdmin';
 import FeedbackStatus from '../pages/feedback/FeedbackStatus';
-import type { FeedbackView, StewardFeedbackList } from '../pages/feedback/types';
+import type { FeedbackView, StewardFeedbackList } from '@unite/shared';
 
 const TOKEN = 'tok_abcdefghijklmnopqrstuvwxyz012345';
 

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ApiErrorBody } from '@unite/shared';
+import { useMe } from './me';
 
 /** An error from the API, with its plain-English message. */
 export class ApiError extends Error {
@@ -69,6 +70,15 @@ export function useApi<T>(path: string | null, refreshKey?: unknown): ApiState<T
   const [loading, setLoading] = useState(path !== null);
   const [tick, setTick] = useState(0);
   const reload = useCallback(() => setTick((t) => t + 1), []);
+  // What a page shows depends on who is looking, so read it again when the role or the person changes.
+  const { me } = useMe();
+  const viewer = me ? `${me.role}|${me.person?.id ?? ''}` : undefined;
+  const lastViewer = useRef(viewer);
+  useEffect(() => {
+    if (viewer === undefined) return;
+    if (lastViewer.current !== undefined && lastViewer.current !== viewer) reload();
+    lastViewer.current = viewer;
+  }, [viewer, reload]);
   useEffect(() => {
     if (path === null) return;
     let live = true;

@@ -24,7 +24,7 @@ import {
   updatePoint,
   type TurnBody,
 } from '../services/conversation/service.js';
-import type { ApproveLinkView, ConsentInfo, HostConversationCreated, MyConversation } from '../services/conversation/views.js';
+import type { ApproveLinkView, ConsentInfo, HostConversationCreated, MyConversation } from '@unite/shared';
 import type { Store } from '../store/types.js';
 import { parseBody } from '../validate.js';
 

@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AssemblyView } from '@unite/shared';
 import { MeProvider } from '../lib/me';
@@ -78,6 +78,56 @@ describe('assembly page', () => {
     expect(screen.getByRole('link', { name: 'Start my conversation' }).getAttribute('href')).toBe('/a/earning-and-learning/talk');
     expect(screen.getByRole('button', { name: 'Look around the example first' })).toBeTruthy();
     expect(screen.getByText('The top priorities have been written up as decisions')).toBeTruthy();
+  });
+});
+
+describe('an invitation link', () => {
+  function Where() {
+    const { pathname, search } = useLocation();
+    return <p data-testid="where">{pathname + search}</p>;
+  }
+  const renderAt = (url: string) =>
+    render(
+      <MemoryRouter initialEntries={[url]}>
+        <MeProvider initial={{ person: null, memberships: [], role: 'participant', demo: false }}>
+          <Routes>
+            <Route path="/a/:slug" element={<><AssemblyPage /><Where /></>} />
+          </Routes>
+        </MeProvider>
+      </MemoryRouter>,
+    );
+
+  it('joins with the code once, says so, and takes the code out of the address', async () => {
+    const joins: unknown[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (String(url).endsWith('/join')) {
+          joins.push(JSON.parse(String(init?.body)));
+          return new Response(JSON.stringify({ membership: {} }), { status: 200 });
+        }
+        return new Response(JSON.stringify(String(url).endsWith('/version') ? { version: 1 } : view()), { status: 200 });
+      }),
+    );
+    renderAt('/a/earning-and-learning?invite=RIVERBEND-2026');
+    expect(await screen.findByText('Your invitation has been accepted. What you say here will be counted.')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/a/earning-and-learning'));
+    expect(joins).toEqual([{ inviteCode: 'RIVERBEND-2026' }]);
+  });
+
+  it('explains a code that does not work, and still takes it out of the address', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).endsWith('/join'))
+          return new Response(JSON.stringify({ error: { code: 'bad_invite', message: 'That invitation code is not right for this assembly.' } }), { status: 400 });
+        return new Response(JSON.stringify(String(url).endsWith('/version') ? { version: 1 } : view()), { status: 200 });
+      }),
+    );
+    renderAt('/a/earning-and-learning?invite=WRONG');
+    expect(await screen.findByText('That invitation code is not right for this assembly.')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/a/earning-and-learning'));
+    expect(screen.queryByText(/Your invitation has been accepted/)).toBeNull();
   });
 });
 

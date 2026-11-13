@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type { Point, Turn } from '@unite/shared';
-import type { ConversationView } from '../pages/talk/types';
+import type { ConversationView } from '@unite/shared';
 
 export const CID = 'con_AAAAAAAAAAAA';
 

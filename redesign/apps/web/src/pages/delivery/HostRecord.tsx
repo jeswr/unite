@@ -3,7 +3,7 @@ import { stageInfo } from '@unite/shared';
 import { useApi } from '../../lib/api';
 import { Card } from '../../ui/Card';
 import { Layout } from '../../ui/Layout';
-import type { HostRecordResponse } from './types';
+import type { HostRecordResponse } from '@unite/shared';
 
 const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 

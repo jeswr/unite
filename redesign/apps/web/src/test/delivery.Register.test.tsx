@@ -5,7 +5,7 @@ import { registerSummary, type DecisionStatus } from '@unite/shared';
 import { MeProvider } from '../lib/me';
 import HostRecord, { recordSentences } from '../pages/delivery/HostRecord';
 import Register from '../pages/delivery/Register';
-import type { RegisterEntry, RegisterResponse } from '../pages/delivery/types';
+import type { RegisterEntry, RegisterResponse } from '@unite/shared';
 import { summarySentence } from '../pages/delivery/words';
 
 const of = (statuses: DecisionStatus[]) => registerSummary(statuses.map((status) => ({ status })));

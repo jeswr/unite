@@ -5,7 +5,7 @@ import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Field, inputClass } from '../../ui/Field';
 import { messageOf } from '../delivery/useAction';
-import type { IntakeDraft } from './Intake';
+import type { IntakeDraft, LeadingCheck } from '@unite/shared';
 
 /** The about question that new affected groups are counted from. */
 const GROUP_KEY = 'group';
@@ -157,11 +157,7 @@ export function bodyFrom(v: EditorValues, existingAbout: AboutQuestion[] = []) {
   };
 }
 
-interface LeadingResult {
-  leading: boolean;
-  why: string;
-  suggestion: string;
-}
+type LeadingResult = LeadingCheck;
 
 /** The leading-wording check under the question and each probe: runs when the field is left. */
 export function LeadingNote({ result, onUse }: { result: LeadingResult | undefined; onUse: (s: string) => void }) {

@@ -8,7 +8,7 @@ import { scriptedQuestion, scriptedStageQuestions } from '../../ai/scripted.js';
 import type { Store } from '../../store/types.js';
 import { bumpVersion } from '../../version.js';
 import { FIRST_STAGE, isAiStage, mayAdvance, mustAdvance, nextStage, probeForNextQuestion, REVIEW_STAGE } from './machine.js';
-import type { ConversationAssembly, ConversationView } from './views.js';
+import type { ConversationAssembly, ConversationView } from '@unite/shared';
 
 /**
  * The conversation service: starting, consent, turns on each route, the move to review, points,

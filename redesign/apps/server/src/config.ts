@@ -42,6 +42,8 @@ export interface Config {
   webDist: string;
   /** Off only in tests that make many writes. */
   rateLimits: boolean;
+  /** Test-only routes (signing in as a seeded person): on only when NODE_ENV is "test". */
+  testRoutes: boolean;
 }
 
 /** All configuration comes from the environment (section 2). Production refuses to start without its secrets. */
@@ -72,5 +74,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     now,
     webDist: path.join(rootDir, 'apps/web/dist'),
     rateLimits: bool(env.UNITE_RATE_LIMITS, true),
+    testRoutes: env.NODE_ENV === 'test',
   };
 }

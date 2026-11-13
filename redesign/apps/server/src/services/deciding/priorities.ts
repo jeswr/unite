@@ -1,4 +1,4 @@
-import { addDays, newId, rankPriorities, type Assembly, type Decision, type PriorityChoice, type Statement } from '@unite/shared';
+import { addDays, type Assembly, type Decision, type DecisionInput, newId, type PrioritiesResponse, type PriorityChoice, type RankedItem, rankPriorities, type Statement } from '@unite/shared';
 import type { Deps } from '../../deps.js';
 import { HttpError } from '../../errors.js';
 import type { Store } from '../../store/types.js';
@@ -7,32 +7,6 @@ import { bumpVersion } from '../../version.js';
 /** Statuses a person may choose as a priority. */
 export const CHOOSABLE: readonly Statement['status'][] = ['common_ground', 'decided'];
 export const MAX_CHOICES = 3;
-
-export interface RankedItem {
-  statementId: string;
-  text: string;
-  status: Statement['status'];
-  round: number;
-  /** The statement's score in the round it was placed. Shown as a bar, never as a number. */
-  score: number;
-}
-
-export interface PrioritiesView {
-  statements: { id: string; text: string; status: Statement['status'] }[];
-  ranked: RankedItem[];
-  myChoices: string[];
-  /** Whether my choices count in the ranking (my membership is invited). */
-  myChoicesCount: boolean;
-  /** Invited people who have chosen at least one statement. */
-  chosen: number;
-  invited: number;
-  /** People who are not invited but have chosen: stored, reported, not counted. */
-  uninvitedChosen: number;
-  capacity: number | null;
-  replyBy: string | null;
-  /** True once decisions have been made from the list. */
-  closed: boolean;
-}
 
 /** Choosable statements in creation order, earliest first (rankPriorities breaks ties by it). */
 async function choosable(store: Store, assemblyId: string): Promise<Statement[]> {
@@ -72,7 +46,7 @@ export function rankStatements(statements: Statement[], counted: Pick<PriorityCh
   });
 }
 
-export async function prioritiesView(store: Store, assembly: Assembly, personId: string | undefined): Promise<PrioritiesView> {
+export async function prioritiesView(store: Store, assembly: Assembly, personId: string | undefined): Promise<PrioritiesResponse> {
   const [statements, split, decisions] = await Promise.all([
     choosable(store, assembly.id),
     splitChoices(store, assembly.id),
@@ -115,15 +89,6 @@ export async function setChoices(deps: Pick<Deps, 'store' | 'clock'>, assembly: 
   });
   await bumpVersion(deps, assembly.id);
   return choice;
-}
-
-export interface DecisionInput {
-  title: string;
-  why: string;
-  options: string[];
-  dissent: string;
-  tests: string[];
-  delivery: ('technology' | 'social')[];
 }
 
 /**

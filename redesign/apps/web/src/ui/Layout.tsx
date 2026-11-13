@@ -5,12 +5,13 @@ import { ExampleBanner } from './ExampleBanner';
 import { FeedbackButton } from './FeedbackButton';
 import { RoleSwitcher } from './RoleSwitcher';
 
+/** On phones the nav fits on one line: `more` is left off the label and `phone: false` items are left out (the name links home). */
 const NAV = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/assemblies', label: 'Assemblies', end: false },
-  { to: '/register', label: 'Register', end: false },
-  { to: '/how', label: 'How it works', end: false },
-  { to: '/me', label: 'Me', end: false },
+  { to: '/', label: 'Home', end: true, phone: false },
+  { to: '/assemblies', label: 'Assemblies', end: false, phone: true },
+  { to: '/register', label: 'Register', end: false, phone: true },
+  { to: '/how', label: 'How', more: ' it works', end: false, phone: true },
+  { to: '/me', label: 'Me', end: false, phone: true },
 ];
 
 /** The last path a page was shown for, so focus moves to the heading on navigation but not on first load. */
@@ -42,20 +43,21 @@ export function Layout({ title, children, assembly, kicker }: Props) {
       </a>
       <RoleSwitcher />
       <header className="border-b border-line">
-        <div className="mx-auto flex max-w-read flex-wrap items-baseline gap-x-6 gap-y-1 px-4 py-3">
-          <NavLink to="/" className="text-2xl font-bold text-ink no-underline" aria-label="Unite, home">
+        <div className="mx-auto flex max-w-read items-baseline gap-x-4 px-4 py-1.5 sm:flex-wrap sm:gap-x-6 sm:gap-y-1 sm:py-3">
+          <NavLink to="/" className="text-xl font-bold text-ink no-underline sm:text-2xl" aria-label="Unite, home">
             Unite
           </NavLink>
-          <nav aria-label="Main">
-            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+          <nav aria-label="Main" className="min-w-0 text-sm sm:text-base">
+            <ul className="flex gap-x-3 sm:flex-wrap sm:gap-x-4 sm:gap-y-1">
               {NAV.map((n) => (
-                <li key={n.to}>
+                <li key={n.to} className={n.phone ? undefined : 'hidden sm:list-item'}>
                   <NavLink
                     to={n.to}
                     end={n.end}
-                    className={({ isActive }) => (isActive ? 'font-bold text-ink no-underline' : 'text-accent')}
+                    className={({ isActive }) => `inline-block py-1 ${isActive ? 'font-bold text-ink no-underline' : 'text-accent'}`}
                   >
                     {n.label}
+                    {n.more && <span className="hidden sm:inline">{n.more}</span>}
                   </NavLink>
                 </li>
               ))}
@@ -64,7 +66,7 @@ export function Layout({ title, children, assembly, kicker }: Props) {
         </div>
       </header>
       {assembly?.isExample && <ExampleBanner />}
-      <main id="main" className="mx-auto w-full max-w-read flex-1 px-4 pt-6 pb-12">
+      <main id="main" className="mx-auto w-full max-w-read flex-1 px-4 pt-4 pb-12 sm:pt-6">
         {kicker && <p className="mb-1 text-muted">{kicker}</p>}
         <h1 ref={h1} tabIndex={-1} className="mb-5">
           {title}

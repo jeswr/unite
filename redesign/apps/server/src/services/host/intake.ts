@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { newId, type AssemblyKind, type Intake, type Pledge } from '@unite/shared';
+import { type Intake, type IntakeDraft, type IntakeView, newId, type Pledge } from '@unite/shared';
 import { intakeTurn } from '../../ai/hostIntake.js';
 import { HOST_INTAKE_TOPICS } from '../../ai/prompts.js';
 import type { Deps } from '../../deps.js';
@@ -10,30 +10,6 @@ import { parseBody } from '../../validate.js';
  * The host intake interview (section 6.5): seven fixed topics, each with at most one follow-up,
  * then a draft pledge and question filled from the host's own words, for the pledge editor.
  */
-
-/** The draft the intake ends with. Text fields are the host's answers, word for word. */
-export interface IntakeDraft {
-  question: string;
-  /** Who is affected, as the host said it. */
-  affected: string;
-  /** The same, split into groups at commas, semicolons and new lines, for the editor to start from. */
-  groups: string[];
-  /** How the host wants it decided, as they said it. */
-  rule: string;
-  kind: Extract<AssemblyKind, 'advisory' | 'codecided'>;
-  /** The pledge so far. Numbers are starting values the host is asked to confirm or change. */
-  pledge: Partial<Pledge>;
-}
-
-export interface IntakeView {
-  intake: Pick<Intake, 'id' | 'messages' | 'answers' | 'status'>;
-  /** The question to answer next; null when the interview is over. */
-  question: string | null;
-  topic: { n: number; of: number };
-  done: boolean;
-  draft: IntakeDraft | null;
-  source: 'ai' | 'fallback';
-}
 
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 const pad = (n: number) => String(n).padStart(2, '0');

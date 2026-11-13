@@ -6,7 +6,7 @@ import { EmptyState } from '../../ui/EmptyState';
 import { inputClass } from '../../ui/Field';
 import { Layout } from '../../ui/Layout';
 import { DueLine, StatusTag } from './StatusTag';
-import type { RegisterEntry, RegisterResponse } from './types';
+import type { RegisterEntry, RegisterResponse } from '@unite/shared';
 import { statusWords, summarySentence } from './words';
 
 const FILTERS = ['assembly', 'host', 'status'] as const;

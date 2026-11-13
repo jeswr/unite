@@ -1,28 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { Pledge } from '@unite/shared';
+import type { IntakeDraft, IntakeView } from '@unite/shared';
 import { api } from '../../lib/api';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { inputClass } from '../../ui/Field';
 import { useAction } from '../delivery/useAction';
-
-/** The draft the intake interview ends with (POST /api/host/intake/:id/turns when done). */
-export interface IntakeDraft {
-  question: string;
-  affected: string;
-  groups: string[];
-  rule: string;
-  kind: 'advisory' | 'codecided';
-  pledge: Partial<Pledge>;
-}
-
-export interface IntakeView {
-  intake: { id: string; messages: { role: 'interviewer' | 'person'; text: string }[]; status: 'active' | 'complete' };
-  question: string | null;
-  topic: { n: number; of: number };
-  done: boolean;
-  draft: IntakeDraft | null;
-}
 
 /** "Open a new assembly": a short conversation of seven questions that fills a draft pledge. */
 export function Intake({ onDone, onSkip }: { onDone: (draft: IntakeDraft, intakeId: string) => void; onSkip: () => void }) {

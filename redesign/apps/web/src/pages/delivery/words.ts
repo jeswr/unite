@@ -1,6 +1,6 @@
 import { DECISION_STATUS_WORDS, formatDate, type Decision, type DecisionStatus, type RegisterSummary } from '@unite/shared';
 import type { TagTone } from '../../ui/Tag';
-import type { DecisionCard } from './types';
+import type { DecisionCard } from '@unite/shared';
 
 /** A decision's status in words, for participants. */
 export const statusWords = (s: DecisionStatus) => DECISION_STATUS_WORDS[s];

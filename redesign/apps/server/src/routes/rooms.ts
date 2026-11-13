@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 import { z } from 'zod';
-import { newId, type Assembly, type Room, type RoomAnswer } from '@unite/shared';
+import { newId, type Assembly, type MessagesResponse, type Room, type RoomAnswer, type RoomCreatedResponse, type RoomResponse, type RoomsResponse } from '@unite/shared';
 import { requireHeard, requirePerson, requireRole } from '../auth.js';
 import type { Deps } from '../deps.js';
 import { HttpError, notFound } from '../errors.js';
@@ -109,14 +109,16 @@ export function roomsRouter(deps: Deps): Router {
           answers: answerTotals(await store.list('roomAnswers', { roomId: x.id })),
         })),
     );
-    res.json({ myRoom, others, closed, canManage: isManager(req), now: clock.iso() });
+    const body: RoomsResponse = { myRoom, others, closed, canManage: isManager(req), now: clock.iso() };
+    res.json(body);
   });
 
   r.post('/assemblies/:slug/rooms', requireRole('host', 'steward'), async (req, res) => {
     const body = parseBody(CreateBody, req.body);
     const assembly = await getAssemblyBySlug(store, String(req.params.slug));
     const room = await createRoom(deps, assembly, body);
-    res.status(201).json({ room });
+    const out: RoomCreatedResponse = { room };
+    res.status(201).json(out);
   });
 
   r.get('/rooms/:id', async (req, res) => {
@@ -129,7 +131,7 @@ export function roomsRouter(deps: Deps): Router {
     const names = isMember ? await memberNames(store, room) : undefined;
     const mine = answers.find((a) => a.personId === req.personId);
     const closed = room.status === 'closed';
-    res.json({
+    const body: RoomResponse = {
       room: {
         id: room.id,
         topic: room.topic,
@@ -152,7 +154,8 @@ export function roomsRouter(deps: Deps): Router {
       // Private final answers: only totals, and only after the room is closed.
       answerTotals: closed ? answerTotals(answers) : null,
       now: clock.iso(),
-    });
+    };
+    res.json(body);
   });
 
   r.post('/rooms/:id/open', requireRole('host', 'steward'), async (req, res) => {
@@ -180,12 +183,13 @@ export function roomsRouter(deps: Deps): Router {
     const from = after ? all.findIndex((m) => m.id === after) + 1 : 0;
     const names = await memberNames(store, room);
     const fresh = await store.get('rooms', room.id);
-    res.set('Cache-Control', 'no-store').json({
+    const body: MessagesResponse = {
       messages: all.slice(from).map((m) => messageView(m, names, req.personId)),
       status: fresh?.status ?? room.status,
       endsAt: fresh?.endsAt ?? null,
       now: clock.iso(),
-    });
+    };
+    res.set('Cache-Control', 'no-store').json(body);
   });
 
   r.post('/rooms/:id/messages', requirePerson(deps), async (req, res) => {

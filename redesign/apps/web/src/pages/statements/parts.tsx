@@ -4,7 +4,7 @@ import { api, ApiError } from '../../lib/api';
 import { Button } from '../../ui/Button';
 import { Field, inputClass } from '../../ui/Field';
 import { Bar } from '../picture/parts';
-import type { GroupResult, StatementResults, StatementSummary } from './types';
+import type { GroupResult, StatementResults, StatementSummary } from '@unite/shared';
 
 /** Pieces shared by the statements list and the statement page. */
 
