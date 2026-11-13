@@ -1,5 +1,5 @@
-import type { Room } from '@unite/shared';
-import { asRole, checkPhoneWidth, expect, INVITE, noSidewaysScroll, signInAs, test, viewAs } from './helpers';
+import type { Room } from '../../packages/shared/src/index.js';
+import { asRole, checkPhoneWidth, expect, INVITE, noSidewaysScroll, signInAs, test, viewAs } from './helpers.js';
 
 /**
  * A steward draws a room on a statement where people differ, opens it, a member talks and answers

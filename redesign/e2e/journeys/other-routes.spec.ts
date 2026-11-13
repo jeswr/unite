@@ -1,4 +1,4 @@
-import { ANSWERS, checkPhoneWidth, expect, noSidewaysScroll, test } from './helpers';
+import { ANSWERS, checkPhoneWidth, expect, noSidewaysScroll, test } from './helpers.js';
 
 async function start(page: import('@playwright/test').Page, route: RegExp) {
   await page.goto('/a/earning-and-learning/talk');

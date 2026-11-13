@@ -1,4 +1,4 @@
-import { checkPhoneWidth, expect, test, viewAs } from './helpers';
+import { checkPhoneWidth, expect, test, viewAs } from './helpers.js';
 
 const INTAKE = [
   'Don’t you think the library in Millbrook should open on Sundays?',

@@ -1,4 +1,4 @@
-import { ANSWERS, asRole, checkPhoneWidth, expect, INVITE, noSidewaysScroll, settle, test } from './helpers';
+import { ANSWERS, asRole, checkPhoneWidth, expect, INVITE, noSidewaysScroll, settle, test } from './helpers.js';
 
 /**
  * A new participant: joins with an invitation, has the conversation with the interviewer (fixed

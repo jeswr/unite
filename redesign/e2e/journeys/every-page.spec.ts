@@ -1,6 +1,6 @@
-import type { DecisionsResponse, RegisterResponse, RoomsResponse, StatementsResponse } from '@unite/shared';
-import { stableId } from '../../packages/shared/src/ids';
-import { asRole, expect, noSidewaysScroll, RAW_ID, settle, signInAs, test } from './helpers';
+import type { DecisionsResponse, RegisterResponse, RoomsResponse, StatementsResponse } from '../../packages/shared/src/index.js';
+import { stableId } from '../../packages/shared/src/ids.js';
+import { asRole, expect, noSidewaysScroll, RAW_ID, settle, signInAs, test } from './helpers.js';
 
 /** Liam took part in the earning example, so he may see its group pages. */
 const LIAM = stableId('per', 'earning/liam');

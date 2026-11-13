@@ -1,4 +1,4 @@
-import { expect, noSidewaysScroll, test } from './helpers';
+import { expect, noSidewaysScroll, test } from './helpers.js';
 
 /** Rule 1 for a fresh visitor: refused plainly, offered a conversation, and let in only on an example after choosing to look around. */
 test('a fresh visitor is refused the group’s work until heard, except by looking around an example', async ({ page }) => {

@@ -1,4 +1,4 @@
-import { asRole, checkPhoneWidth, expect, test } from './helpers';
+import { asRole, checkPhoneWidth, expect, test } from './helpers.js';
 
 /** Two feedback records in all: a guided one sent half way, and a short free one. */
 test('feedback: half a guided conversation is sent, followed on its own page, and answered by a steward', async ({ page }) => {

@@ -1,6 +1,6 @@
-import type { DecisionsResponse, StatementsResponse } from '@unite/shared';
-import { stableId } from '../../packages/shared/src/ids';
-import { asRole, checkPhoneWidth, expect, signInAs, test, viewAs } from './helpers';
+import type { DecisionsResponse, StatementsResponse } from '../../packages/shared/src/index.js';
+import { stableId } from '../../packages/shared/src/ids.js';
+import { asRole, checkPhoneWidth, expect, signInAs, test, viewAs } from './helpers.js';
 
 /** Liam took part in the earning example (apps/server/src/seed/content/earningDebate.ts). */
 const LIAM = stableId('per', 'earning/liam');

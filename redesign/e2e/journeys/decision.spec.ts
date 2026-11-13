@@ -1,5 +1,5 @@
-import type { DecisionsResponse } from '@unite/shared';
-import { asRole, checkPhoneWidth, expect, test, viewAs } from './helpers';
+import type { DecisionsResponse } from '../../packages/shared/src/index.js';
+import { asRole, checkPhoneWidth, expect, test, viewAs } from './helpers.js';
 
 /** Decisions are public: anyone can read what was decided and what happened. Only a check, never the host, says it was delivered. */
 test('decisions, a decision record, a check by a steward and the register', async ({ page }) => {
