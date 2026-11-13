@@ -11,7 +11,9 @@
     "preview": "vite preview --port 4318 --strictPort",
     "test": "vitest run",
     "e2e": "node e2e/journey.cjs",
-    "test:api": "node e2e/feedback-fn.mjs"
+    "test:api": "node e2e/feedback-fn.mjs",
+    "walkthrough": "node --experimental-transform-types --no-warnings=ExperimentalWarning walkthrough/record.ts",
+    "walkthrough:strict": "node --experimental-transform-types --no-warnings=ExperimentalWarning walkthrough/record.ts --draft --strict"
   },
   "dependencies": {
     "@fontsource/noto-sans-bengali": "^5.3.0",
