@@ -1,0 +1,10 @@
+node_modules
+dist
+.data
+e2e/shots
+e2e/results
+.env
+.vercel
+*.tsbuildinfo
+walkthrough/out
+walkthrough/.cache
