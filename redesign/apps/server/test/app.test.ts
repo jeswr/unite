@@ -28,14 +28,11 @@ describe('app', () => {
   });
 
   it.each([
-    ['post', '/api/conversations'],
     ['get', '/api/decisions/x'],
     ['get', '/api/register'],
     ['post', '/api/host/intake'],
     ['get', '/api/steward/feedback'],
     ['post', '/api/feedback'],
-    ['get', '/api/me/export'],
-    ['delete', '/api/me'],
     ['get', '/api/assemblies/x/export'],
   ] as const)('%s %s is mounted and not built yet', async (method, path) => {
     const res = await request(env.app)[method](path);

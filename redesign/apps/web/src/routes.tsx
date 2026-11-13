@@ -24,6 +24,7 @@ import Rooms from './pages/rooms/Rooms';
 import Statement from './pages/statements/Statement';
 import Statements from './pages/statements/Statements';
 import StewardConsole from './pages/steward/StewardConsole';
+import ApproveByLink from './pages/talk/ApproveByLink';
 import Conversation from './pages/talk/Conversation';
 import Review from './pages/talk/Review';
 import TalkStart from './pages/talk/TalkStart';
@@ -43,6 +44,7 @@ export function AppRoutes() {
       <Route path="/a/:slug/talk" element={<TalkStart />} />
       <Route path="/talk/:id" element={<Conversation />} />
       <Route path="/talk/:id/review" element={<Review />} />
+      <Route path="/approve/:token" element={<ApproveByLink />} />
       <Route path="/a/:slug/picture" element={<Picture />} />
       <Route path="/listening" element={<Listening />} />
       <Route path="/a/:slug/statements" element={<Statements />} />
