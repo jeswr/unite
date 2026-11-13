@@ -175,7 +175,7 @@ export default function Statements() {
           </ul>
         </section>
       )}
-      {GROUPS.map((g) => {
+      {answered.length > 0 && GROUPS.map((g) => {
         const items = answered.filter((s) => s.status && groupOf(s.status) === g.key);
         return (
           <section key={g.key} aria-labelledby={`group-${g.key}`} className="mt-8">

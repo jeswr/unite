@@ -4,7 +4,6 @@ import { useApi } from '../../lib/api';
 import { useLive } from '../../lib/useLive';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
-import { Card } from '../../ui/Card';
 import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
 import { personCount } from '../../ui/PersonCount';
@@ -62,12 +61,12 @@ export default function Listening() {
   return (
     <Layout title={title} assembly={assembly} kicker={assembly.question}>
       <p className="mb-2 text-xl" aria-live="polite">
-        {data.totals.people === 0
-          ? 'Nobody has spoken yet.'
-          : `${capitalise(peopleInWords(data.totals.people))} ${data.totals.people === 1 ? 'has' : 'have'} said what a good ordinary life looks like for them.`}
+        {data.totals.people === 0 ? 'Nobody has spoken yet.' : data.reach.people > 0 ? reachLine(data.reach) : `${capitalise(peopleInWords(data.totals.people))} so far.`}
       </p>
-      {data.reach.people > 0 && <p className="mb-2">{reachLine(data.reach)}</p>}
-      <p className="mb-6 text-muted">Anyone can take part, with no host and no deadline. Every count is of people.</p>
+      <p className="mb-6 text-muted">
+        {data.totals.people > 0 && `${data.totals.people === 1 ? 'They have' : 'Each has'} said what a good ordinary life looks like for them. `}
+        Anyone can take part, with no host and no deadline. Every count is of people.
+      </p>
       <Contents items={contents} />
 
       {!data.heard && (
@@ -87,14 +86,17 @@ export default function Listening() {
         {data.noHost.length === 0 ? (
           <p className="text-muted">Every theme has an assembly answering it.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="divide-y divide-line border-y border-line">
             {data.noHost.map((t) => (
-              <Card as="li" key={t.id} className="list-none">
-                <p className="text-sm text-muted">{KIND_WORDS[t.kind]}</p>
-                <p className="font-bold">{capitalise(t.name)}</p>
-                <p className="mb-2 text-muted">{personCount(t.people)}</p>
-                <Link to={`/host?fromTheme=${encodeURIComponent(t.id)}`}>Host an assembly on this</Link>
-              </Card>
+              <li key={t.id} className="py-2">
+                <p>
+                  <span className="font-bold">{capitalise(t.name)}</span> <span className="text-muted">({personCount(t.people)})</span>
+                </p>
+                <p className="flex flex-wrap justify-between gap-x-3 text-sm">
+                  <span className="text-muted">{KIND_WORDS[t.kind]}</span>
+                  <Link to={`/host?fromTheme=${encodeURIComponent(t.id)}`}>Host an assembly on this</Link>
+                </p>
+              </li>
             ))}
           </ul>
         )}
