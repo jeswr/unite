@@ -57,7 +57,9 @@ test('a room is drawn, talked in, kept private and closed with totals only', asy
   const errors: string[] = [];
   other.on('pageerror', (e) => errors.push(e.message));
   await other.goto(`/a/earning-and-learning?invite=${INVITE.earning}`);
-  await other.request.post('/api/assemblies/earning-and-learning/join', { data: { lookAroundFirst: true } });
+  await expect(other.getByText('Your invitation has been accepted. What you say here will be counted.')).toBeVisible();
+  await other.getByRole('button', { name: 'Look around the example first' }).click();
+  await expect(other.getByText('You chose to look around the example first.')).toBeVisible();
   await other.goto(`/a/earning-and-learning/rooms/${room.id}`);
   await expect(other.getByRole('heading', { name: 'You are not in this room' })).toBeVisible();
   await expect(other.getByText(said)).toHaveCount(0);

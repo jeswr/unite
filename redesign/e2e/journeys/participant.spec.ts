@@ -30,7 +30,16 @@ test('a participant is heard, then takes part in everything after', async ({ pag
   const box = page.getByRole('textbox', { name: 'Your answer' });
   for (let i = 0; i < 40 && !/\/review$/.test(page.url()); i++) {
     const interviewerTurns = await page.getByText('Interviewer', { exact: true }).count();
-    await box.fill(ANSWERS[i % ANSWERS.length]!);
+    // The box is emptied when the last answer is taken in, so fill it again until it holds the answer.
+    const answer = ANSWERS[i % ANSWERS.length]!;
+    await expect(async () => {
+      // The last answer may have ended the conversation: the review then opens by itself.
+      if (/\/review$/.test(page.url())) return;
+      await box.fill(answer, { timeout: 500 });
+      await expect(box).toHaveValue(answer, { timeout: 500 });
+      await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 500 });
+    }).toPass();
+    if (/\/review$/.test(page.url())) break;
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(async () => {
       const moved = /\/review$/.test(page.url()) || (await page.getByText('Interviewer', { exact: true }).count()) > interviewerTurns;
