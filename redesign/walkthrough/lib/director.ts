@@ -187,7 +187,14 @@ export class Director {
     await l.scrollIntoViewIfNeeded().catch(() => {});
     const box = await l.boundingBox();
     if (!box) return undefined;
-    await this.moveTo(box.x + Math.min(box.width / 2, 60), box.y + box.height / 2);
+    // A link that wraps onto two lines has a gap between its lines in the middle of its box, so
+    // aim at its first line (its first client rectangle) instead.
+    const first = await l.evaluate((el) => {
+      const r = el.getClientRects()[0];
+      return r && el.getClientRects().length > 1 ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+    }).catch(() => null);
+    const aim = first ?? box;
+    await this.moveTo(aim.x + Math.min(aim.width / 2, 60), aim.y + aim.height / 2);
     return l;
   }
 
