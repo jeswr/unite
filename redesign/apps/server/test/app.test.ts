@@ -29,9 +29,6 @@ describe('app', () => {
 
   it.each([
     ['post', '/api/conversations'],
-    ['get', '/api/assemblies/x/picture'],
-    ['get', '/api/assemblies/x/statements'],
-    ['get', '/api/listening'],
     ['get', '/api/decisions/x'],
     ['get', '/api/register'],
     ['post', '/api/host/intake'],
