@@ -93,7 +93,12 @@ describe('the real script, narration.md', () => {
   it('keeps the pending list and the real actions apart', () => {
     for (const name of Object.keys(implemented)) expect(isPending(name), name).toBe(false);
     expect(new Set(PENDING_ACTIONS).size).toBe(PENDING_ACTIONS.length);
-    expect(isPending('start-conversation')).toBe(true);
+    expect(isPending('start-conversation')).toBe(false);
+  });
+
+  it('has no pending actions left: every scene records from the running app', () => {
+    expect(PENDING_ACTIONS).toEqual([]);
+    expect(used.filter((a) => isPending(a))).toEqual([]);
   });
 
   it('ends on the end card, after the last paragraph is spoken', () => {
@@ -109,6 +114,15 @@ describe('the real script, narration.md', () => {
     const say = (features: string[]) => selectScenes(n, new Set(features), ['listen']).kept[0].steps.map((st) => st.text).join(' ');
     expect(say([])).toMatch(/using fixed questions/);
     expect(say(['ai'])).not.toMatch(/using fixed questions/);
+  });
+
+  it('gives every line about what the AI interviewer does a fixed-question twin, so each runs the same action either way', () => {
+    const steps = (features: string[]) => selectScenes(n, new Set(features), ['listen']).kept[0].steps;
+    const names = (features: string[]) => steps(features).flatMap((st) => st.actions.map((a) => a.name));
+    expect(names([])).toEqual(names(['ai']));
+    const fixed = steps([]).map((st) => st.text).join(' ');
+    expect(fixed).toMatch(/ordinary weekday/);
+    expect(fixed).not.toMatch(/picks up something she said|Tuesday|when that last got in her way/);
   });
 
   it('never speaks or captions a timing mark', () => {

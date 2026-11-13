@@ -133,7 +133,7 @@ async function main() {
     for (const p of ['/', '/a/earning-and-learning', '/a/earning-and-learning/pledge', '/how']) await page.goto(`${url}${p}`, { waitUntil: 'networkidle' }).catch(() => {});
 
     const d = new Director(page, opts.strict);
-    const ctx: Ctx = { d, url, features, strict: opts.strict };
+    const ctx: Ctx = { d, url, features, strict: opts.strict, app: { secret: unite.secret, fixtureToken: unite.fixtureToken }, memo: {} };
     const run = async (scene: Scene, list: Action[]) => {
       for (const a of list) {
         try {
