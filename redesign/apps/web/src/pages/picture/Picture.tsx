@@ -116,6 +116,26 @@ export default function Picture() {
       )}
       {data.canConfirm && <StewardPanel slug={slug} data={data} onDone={reload} />}
 
+      {data.myUnthemed.length > 0 && (
+        <Card as="section" aria-labelledby="mine-waiting" className="mb-8">
+          <h2 id="mine-waiting" className="mb-2">
+            What you said
+          </h2>
+          <p className="mb-3 text-muted">
+            {data.myUnthemed.length === 1 ? 'This point joins' : 'These points join'} a theme the next time the picture is updated. Until then they are counted
+            in the totals above.
+          </p>
+          <ul className="space-y-2">
+            {data.myUnthemed.map((m) => (
+              <li key={m.id} className="border-l-2 border-accent pl-3">
+                <q>{m.text}</q>
+                <span className="block text-sm font-bold text-accent">You said this</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {themeCount === 0 ? (
         <EmptyState title="No themes yet">
           <p>

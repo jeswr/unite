@@ -43,7 +43,8 @@ export function pictureRouter(deps: Deps): Router {
     const assembly = await getAssemblyBySlug(store, String(req.params.slug));
     await requireHeard(deps, req, assembly);
     const data = await loadPictureData(store, assembly.id);
-    const unthemed = unthemedPoints(data.points, data.themes).length;
+    const waiting = unthemedPoints(data.points, data.themes);
+    const unthemed = waiting.length;
     // Updates by itself when enough points are waiting; the page refreshes when the version moves.
     if (unthemed >= LAZY_UPDATE_THRESHOLD && !isUpdating(assembly.id))
       updatePicture(deps, assembly.id).catch((err) => console.warn(`[picture] update failed: ${(err as Error)?.message ?? err}`));
@@ -55,6 +56,7 @@ export function pictureRouter(deps: Deps): Router {
       missing: await whoIsMissing(deps, assembly),
       confirmed: assembly.pictureConfirmedAt ? { at: assembly.pictureConfirmedAt, by: assembly.pictureConfirmedBy ?? 'A steward' } : null,
       unthemed,
+      myUnthemed: req.personId ? waiting.filter((p) => p.personId === req.personId).map((p) => ({ id: p.id, text: p.text })) : [],
       updating: isUpdating(assembly.id),
       canUpdate: req.role === 'steward' || req.role === 'host',
       canConfirm: req.role === 'steward',

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Role } from '@unite/shared';
@@ -36,6 +36,7 @@ const picture = (over: Partial<PictureResponse> = {}): PictureResponse => ({
   missing: [{ key: 'young', label: 'Under 25', heard: 1, target: 10, underHeard: true }],
   confirmed: null,
   unthemed: 0,
+  myUnthemed: [],
   updating: false,
   canUpdate: false,
   canConfirm: false,
@@ -91,6 +92,27 @@ describe('picture page', () => {
     expect(screen.getByText('1 of 10 hoped for')).toBeTruthy();
     expect(screen.getByText('Under-heard')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Update the picture' })).toBeNull();
+  });
+
+  it('keeps the page short: a contents list, the first quote, and the rest behind a disclosure', async () => {
+    mockApi(picture());
+    renderPage();
+    const contents = await screen.findByRole('navigation', { name: 'On this page' });
+    expect(within(contents).getByRole('link', { name: 'What gets in the way' }).getAttribute('href')).toBe('#kind-barrier');
+    expect(within(contents).getByRole('link', { name: 'Who we have not heard from' }).getAttribute('href')).toBe('#missing');
+    const more = screen.getByText('Show 1 more quote');
+    expect(more.tagName).toBe('SUMMARY');
+    expect(more.closest('details')!.textContent).toContain('Missed the class again');
+    expect(more.closest('details')!.textContent).not.toContain('I work nights');
+    expect(screen.getByRole('button', { name: 'This is not what was said' })).toBeTruthy();
+  });
+
+  it('shows my points that are not in a theme yet as mine', async () => {
+    mockApi(picture({ myUnthemed: [{ id: 'pt_new', text: 'Evening classes near the depot' }] }));
+    renderPage();
+    const section = (await screen.findByRole('heading', { name: 'What you said' })).closest('section')!;
+    expect(within(section).getByText('Evening classes near the depot')).toBeTruthy();
+    expect(within(section).getByText('You said this')).toBeTruthy();
   });
 
   it('shows the steward controls only to a steward', async () => {

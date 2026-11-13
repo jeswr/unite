@@ -123,6 +123,15 @@ describe('what the picture shows', () => {
     expect(night.people).toBe(4);
   });
 
+  it('lists my own points that are not in a theme yet, and nobody else’s', async () => {
+    await themedTown();
+    const me = await heardPerson(env, [{ key: 'me2', type: 'idea', text: 'Evening classes near the depot', visibility: 'count' }]);
+    const mine = await getPicture(me.cookie);
+    expect(mine.myUnthemed).toEqual([{ id: pid('me2'), text: 'Evening classes near the depot' }]);
+    const other = await heardPerson(env);
+    expect((await getPicture(other.cookie)).myUnthemed).toEqual([]);
+  });
+
   it('shows who we have not heard from, against each group target', async () => {
     await themedTown();
     const me = await heardPerson(env);

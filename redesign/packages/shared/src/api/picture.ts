@@ -84,6 +84,8 @@ export interface PictureResponse {
   confirmed: { at: string; by: string } | null;
   /** Approved points that are not in a theme yet. */
   unthemed: number;
+  /** My own approved points that are not in a theme yet: shown as "you said this" until the next update. */
+  myUnthemed: { id: string; text: string }[];
   /** An update is running; the page refreshes when it ends. */
   updating: boolean;
   canUpdate: boolean;
