@@ -1,5 +1,6 @@
 import type { GroupKey, Tally } from '../counting.js';
 import type { Objection, Reaction, Reason, Statement } from '../schemas.js';
+import type { StatementMediation } from './mediation.js';
 import type { Quote, ReportView } from './picture.js';
 
 /** Response shapes of the statements endpoints. */
@@ -78,6 +79,8 @@ export interface StatementDetail {
   objections: ObjectionView[];
   reports: ReportView[];
   canSteward: boolean;
+  /** Talk it through (section 12.1): mine, if I have one, and how many people have finished one. */
+  mediation: StatementMediation;
 }
 
 /** POST /api/assemblies/:slug/statements/draft */

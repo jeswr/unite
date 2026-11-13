@@ -12,6 +12,7 @@ import { StillNeeded } from '../../ui/StillNeeded';
 import { Tag } from '../../ui/Tag';
 import { NotHeard, ReportForm, ReportList } from '../picture/parts';
 import { ANSWER_WORDS, AnswerBars, AnswerButtons, GroupBars, SETTLED, STATUS_TONE, STATUS_WORDS } from './parts';
+import { TalkCard } from './TalkCard';
 import type { ObjectionView, ReasonView, StatementDetail } from '@unite/shared';
 
 const OBJECTION_STATUS: Record<ObjectionView['status'], string> = {
@@ -246,6 +247,8 @@ export default function Statement() {
         <Sources people={data.sources.people} quotes={data.sources.quotes} />
       </section>
 
+      {s.status === 'differ' && <TalkCard slug={slug} detail={data} />}
+
       <section aria-labelledby="reasons" className="mb-8">
         <h2 id="reasons" className="mb-1">
           Reasons
@@ -262,6 +265,8 @@ export default function Statement() {
         )}
         <AddReason statementId={s.id} onAdded={reload} />
       </section>
+
+      {s.status !== 'differ' && <TalkCard slug={slug} detail={data} />}
 
       <section aria-labelledby="objections" className="mb-8">
         <h2 id="objections" className="mb-2">

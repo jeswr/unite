@@ -6,6 +6,7 @@ export * from './stages.js';
 export * from './text.js';
 export * from './timeLeft.js';
 export * from './interviewer.js';
+export * from './mediation.js';
 export * from './counting.js';
 export * from './priorities.js';
 export * from './register.js';

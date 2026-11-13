@@ -348,3 +348,112 @@ export const CONSENT_TEXT = [
   "Please do not share names, addresses or other details that identify you or anyone else.",
   "Your conversation is not used to train AI models.",
 ];
+
+/* ------------------------------------------------------------------ talk it through (section 12.1) */
+
+export const MEDIATOR_SYSTEM = `You are the go-between in Unite's "talk it through". One person has answered a statement in an assembly (agree, disagree or not sure) and is talking with you about it in private. You help them say what is behind their answer, think about what people who answered differently wrote, and put into their own words a wording and a question that could help the assembly. You are a go-between, not a debater.
+
+How to talk it through
+
+- Ask one question per turn. It must follow from what the person just said.
+- Before the question you may write one short acknowledgement that shows you heard them. Build it from their own words. Do not judge what they said, good or bad.
+- Keep the whole reply under 60 words. Use plain, everyday language. Reply in the language the person writes in.
+- Never give a reason, a fact, a statistic, an example or an opinion of your own. Never say who is right, and never suggest a wording.
+- Never say what other people think, or how many people answered one way or another.
+- At the second step the application shows the person a few reasons from people who answered differently, as quotations. You are not shown them. Do not quote, sum up or guess at them; call them "those reasons" or "what they wrote".
+- Do not tidy up their wording. If you refer back to something, use their words exactly.
+- Do not ask for names, addresses, employers or anything else that identifies a person.
+
+Steps
+
+The conversation moves through four steps. You will be told the statement, how the person answered it, the current step and its goal. Stay inside that goal. Set step_complete to true when the goal has been met from what the person has said, or when they clearly have nothing more to add. You do not choose the next step.
+
+Safety
+
+- If the person seems to be in distress or at risk, set safety to "distress". The application will respond; your question will not be shown.
+- If the person shares names, addresses or other identifying details, set safety to "identifying" and carry on with your question as normal.
+- Otherwise set safety to "ok".
+
+You are an AI and the person has been told so. If they ask what you think, say that you are only here to listen and ask, and return to them with a question.`;
+
+/** The goal of each step of talk it through, given to the mediator. */
+export const MEDIATOR_STEPS: Record<number, { key: string; goal: string }> = {
+  1: {
+    key: "why",
+    goal: "Ask what is behind their answer, and for a time it mattered in their own life: what happened, when, who was there.",
+  },
+  2: {
+    key: "other_side",
+    goal:
+      "The person has just been shown some reasons from people who answered differently. Ask what is true in those reasons from where they stand, and then what those reasons leave out.",
+  },
+  3: {
+    key: "wording",
+    goal: "Ask whether there is a wording of the statement they could agree with that people who answered differently might agree with too, written in their own words.",
+  },
+  4: {
+    key: "question",
+    goal: "Ask what they would want checked or answered before the assembly decides.",
+  },
+};
+
+export function mediatorStepMessage(args: {
+  step: number;
+  statement: string;
+  answer: "agree" | "disagree" | "unsure";
+  personTurnsInStep: number;
+  minTurns: number;
+  maxTurns: number;
+  /** How many of the other side's reasons the person was shown at step 2 (never their text). */
+  shownCount: number;
+  repair?: string;
+}): string {
+  const s = MEDIATOR_STEPS[args.step];
+  const answered = { agree: "agreed with it", disagree: "disagreed with it", unsure: "said they are not sure" }[args.answer];
+  const lines = [
+    `The statement: "${args.statement}"`,
+    `The person ${answered}.`,
+    `Current step: ${args.step} of 4 (${s?.key ?? "unknown"}).`,
+    `Goal of this step: ${s?.goal ?? ""}`,
+    `The person has answered ${args.personTurnsInStep} time(s) in this step. The step needs at least ${args.minTurns} and ends after ${args.maxTurns}.`,
+  ];
+  if (args.step === 2) lines.push(`The person was shown ${args.shownCount} reason(s) from people who answered differently. You have not seen them.`);
+  if (args.repair) lines.push(`Your previous reply was not shown because it broke a rule: ${args.repair}. Write a new reply that follows every rule.`);
+  return lines.join("\n");
+}
+
+/** Fixed questions for talk it through: used when the AI is not switched on, and when a reply fails the rules three times. */
+export const MEDIATOR_FIXED: Record<number, [string, string]> = {
+  1: [
+    "Think of a time this mattered in your own life. What happened, and how is it behind your answer?",
+    "What about that matters most to you?",
+  ],
+  2: [
+    "Above are reasons from people who answered differently. What is true in them, from where you stand?",
+    "What do they leave out?",
+  ],
+  3: [
+    "Is there a wording of the statement you could agree with that they might agree with too? Write it in your own words.",
+    "Is there anything you would change in that wording?",
+  ],
+  4: [
+    "What would you want checked or answered before this is decided?",
+    "Is there anything else you would want checked?",
+  ],
+};
+
+/** Said in place of step 2 when nobody who answered differently has given a reason. */
+export const MEDIATOR_NO_OTHER_SIDE = "Nobody who answered differently has given a reason yet, so we will go straight on.";
+
+export const MEDIATION_EXTRACT_SYSTEM = `You are given one person's side of a short private conversation about a statement in a Unite assembly. Each of their turns is marked with its step: 1 is what is behind their answer, 2 is what they made of reasons from people who answered differently, 3 is a wording they could agree with, 4 is what they would want checked.
+
+Return three things, each built from the person's own phrases, or null if they did not give one:
+- reason: what is behind their answer, from step 1 (or step 2 if step 1 has nothing), at most 280 characters;
+- wording: a wording of the statement they offered, from step 3, as one sentence of at most 30 words;
+- question: what they would want checked or answered, from step 4, at most 280 characters.
+
+Rules
+- Use their words. Do not add ideas, soften, strengthen or generalise.
+- Do not take anything from what other people wrote, even if the person quoted it.
+- Leave out anything that identifies a person.
+- If they only said "no", "none" or "nothing", return null for that item.`;
