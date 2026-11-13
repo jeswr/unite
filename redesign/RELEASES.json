@@ -1,1 +1,51 @@
-[]
+[
+  {
+    "version": "0.1.0",
+    "date": "2026-11-13",
+    "changes": [
+      {
+        "text": "You can have a private conversation about your own life. An interviewer asks one question at a time and never argues. You can type, speak, answer written questions, or write freely.",
+        "affects": ["participants"],
+        "question": "Did the conversation let you say what you meant, in your own words?"
+      },
+      {
+        "text": "At the end of a conversation you see the points we heard, in your words. You can change them, scrap them, or add your own. Only the points you approve leave the conversation.",
+        "affects": ["participants"]
+      },
+      {
+        "text": "The picture shows the themes in what everyone said, how many people said each, and who we have not heard from yet. Every sentence links to the points it came from.",
+        "affects": ["participants", "hosts", "stewards"],
+        "question": "Did the picture match what you would expect from what people said?"
+      },
+      {
+        "text": "Statements are written from the picture for people to agree, disagree or be unsure about. You only see how others answered after you have answered. You can give reasons for and against.",
+        "affects": ["participants"]
+      },
+      {
+        "text": "Live rooms bring a few people who see a statement differently together for a set time, with a facilitator that keeps time and turns and takes no side.",
+        "affects": ["participants", "hosts"]
+      },
+      {
+        "text": "You can choose up to three statements you most want the host to answer. The order is worked out so that no single group can fill the whole list.",
+        "affects": ["participants", "hosts"]
+      },
+      {
+        "text": "Decisions are written up with tests, the host answers each one by a set date, and the public register shows every decision across all assemblies, including late ones.",
+        "affects": ["participants", "hosts", "stewards"]
+      },
+      {
+        "text": "Hosts have a console to open an assembly, write the pledge and answer decisions. Stewards have a console to confirm the picture, answer reports and record checks.",
+        "affects": ["hosts", "stewards"]
+      },
+      {
+        "text": "You can give feedback on Unite from any page, as a few questions, as anything you want to say, or about what has changed. You get a private link to see what happened to it.",
+        "affects": ["participants", "hosts", "stewards"],
+        "question": "Was it easy to tell us what you think?"
+      },
+      {
+        "text": "Every instruction given to the AI is published on the How it works page, with the version in use.",
+        "affects": ["participants", "hosts", "stewards"]
+      }
+    ]
+  }
+]
