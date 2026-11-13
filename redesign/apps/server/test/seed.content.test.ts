@@ -410,8 +410,7 @@ describe('seed: the volunteering tool', () => {
     expect(all.some((i) => i.updates.some((u) => /governed in Concord/.test(u.text)))).toBe(true);
     const check = (await store.get('checks', VOLUNTEERING_IDS.checkD1))!;
     expect(check.panel).toHaveLength(5);
-    const members = new Set((await store.list('memberships', { assemblyId: ASSEMBLY_IDS.volunteering })).map((m) => m.personId));
-    for (const id of check.panel) expect(members.has(id)).toBe(true);
+    expect(check.panel).toEqual(['Oliver', 'Farah', 'Delroy', 'Ceri', 'Tariq']);
     expect(check.results.map((r) => [r.n, r.met])).toEqual([
       [1, true],
       [2, false],

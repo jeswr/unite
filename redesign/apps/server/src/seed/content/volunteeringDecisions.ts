@@ -124,7 +124,7 @@ export const DECISIONS: DecisionContent[] = [
     answer: {
       kind: 'accepted',
       reasons:
-        'We accept this as written. It was the change volunteers asked for most, it is within the build budget, and it is what the tool is for. Groups that must run their own checks by law or for a funder can still do so: the tool will show them that a check was done elsewhere and when, and leave the choice to them.',
+        'It was the change volunteers asked for most, it is within the build budget, and it is what the tool is for. Groups that must run their own checks by law or for a funder can still do so: the tool will show them that a check was done elsewhere and when, and leave the choice to them.',
     },
   },
   {
@@ -143,7 +143,7 @@ export const DECISIONS: DecisionContent[] = [
     updatedAt: '2026-11-10T12:00:00.000Z',
     answer: {
       kind: 'accepted',
-      reasons: 'We accept this as written. It costs little to build alongside Decision 1, and it gives volunteers something of their own to take away.',
+      reasons: 'It costs little to build alongside Decision 1, and it gives volunteers something of their own to take away.',
     },
   },
   {
@@ -202,7 +202,7 @@ export const DECISIONS: DecisionContent[] = [
     answer: {
       kind: 'refused',
       reasons:
-        'We refuse this. The network has no budget line for travel costs: our funding covers the tool and the centres, not volunteers’ expenses. Whether to pay expenses is each member group’s own decision, and the pledge left that outside what this assembly could decide. Promising payments through the tool would mean promising money we do not have. What we will do instead: from the first release, each group’s page will show its travel policy, what it pays and what it does not, before a volunteer signs up, so nobody finds out after their first shift that they will be out of pocket. We will also publish how many groups pay travel, so funders can see the gap.',
+        'The network has no budget line for travel costs: our funding covers the tool and the centres, not volunteers’ expenses. Whether to pay expenses is each member group’s own decision, and the pledge left that outside what this assembly could decide. Promising payments through the tool would mean promising money we do not have. What we will do instead: from the first release, each group’s page will show its travel policy, what it pays and what it does not, before a volunteer signs up, so nobody finds out after their first shift that they will be out of pocket. We will also publish how many groups pay travel, so funders can see the gap.',
     },
   },
 ];
@@ -378,5 +378,5 @@ export const CHECK_D1 = {
   ],
   classification: 'minor_changes' as const,
   summary:
-    'Delivered with minor changes. Tests 1 and 3 are met. Test 2 is met for groups but not yet for individual staff. The panel asks the network to show which member of staff looked once groups have individual logins, and to report on it at the review.',
+    'Delivered with small changes. Tests 1 and 3 are met. Test 2 is met for groups but not yet for individual staff. The panel asks the network to show which member of staff looked once groups have individual logins, and to report on it at the review.',
 };

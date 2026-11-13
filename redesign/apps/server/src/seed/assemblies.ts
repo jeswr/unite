@@ -192,7 +192,7 @@ export async function seedAssemblies(ctx: SeedCtx): Promise<void> {
     affectedGroups: EARNING_GROUPS,
     pledge: EARNING_PLEDGE,
     pictureConfirmedAt: '2026-10-20T09:00:00.000Z',
-    pictureConfirmedBy: 'steward',
+    pictureConfirmedBy: 'A steward',
   });
   await makeInvite(ctx, { id: stableId('inv', 'earning'), assemblyId: ASSEMBLY_IDS.earning, code: INVITE_CODES.earning, label: 'Riverbend residents and employers' });
 
@@ -219,7 +219,7 @@ export async function seedAssemblies(ctx: SeedCtx): Promise<void> {
     affectedGroups: VOLUNTEERING_GROUPS,
     pledge: VOLUNTEERING_PLEDGE,
     pictureConfirmedAt: '2026-04-10T09:00:00.000Z',
-    pictureConfirmedBy: 'steward',
+    pictureConfirmedBy: 'A steward',
   });
   await makeInvite(ctx, { id: stableId('inv', 'volunteering'), assemblyId: ASSEMBLY_IDS.volunteering, code: INVITE_CODES.volunteering, label: 'Member groups and their volunteers' });
 

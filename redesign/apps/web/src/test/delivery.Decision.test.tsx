@@ -91,7 +91,7 @@ describe('the decision record', () => {
     mockApi({ [`/api/decisions/${D}`]: record() });
     renderAt(`/a/tool/decisions/${D}`, <Decision />, '/a/:slug/decisions/:id');
     expect(await screen.findByRole('heading', { level: 1, name: 'A volunteer proves who they are once.' })).toBeTruthy();
-    expect(screen.getByText('Delivered with minor changes')).toBeTruthy();
+    expect(screen.getAllByText('Delivered with small changes').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       'Why',
       'The options that were considered',

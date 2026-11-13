@@ -136,7 +136,8 @@ export async function seedVolunteering(ctx: SeedCtx): Promise<void> {
     decisionId: VOLUNTEERING_IDS.decision(1),
     assemblyId: A,
     checkBody: CHECK_D1.checkBody,
-    panel: CHECK_D1.panel.map((k) => ids.person(k)),
+    // First names only, as the page shows them: these are invented participants of this assembly.
+    panel: CHECK_D1.panel.map((k) => k[0]!.toUpperCase() + k.slice(1)),
     results: CHECK_D1.results,
     classification: CHECK_D1.classification,
     summary: CHECK_D1.summary,

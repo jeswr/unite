@@ -114,7 +114,7 @@ export const DECISION_STATUS_WORDS: Record<DecisionStatus, string> = {
   refused: 'Refused',
   in_progress: 'In progress',
   delivered_as_decided: 'Delivered as decided',
-  delivered_minor_changes: 'Delivered with minor changes',
+  delivered_minor_changes: 'Delivered with small changes',
   delivered_substantial_changes: 'Delivered with substantial changes',
   not_delivered: 'Not delivered',
   replaced: 'Replaced',
