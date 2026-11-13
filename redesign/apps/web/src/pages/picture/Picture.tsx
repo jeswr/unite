@@ -9,8 +9,8 @@ import { Card } from '../../ui/Card';
 import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
 import { personCount } from '../../ui/PersonCount';
-import { capitalise, ConfirmedLine, MissingBars, NotHeard, peopleInWords, QuoteList, ThemeSections } from './parts';
-import type { PictureResponse } from './types';
+import { capitalise, ConfirmedLine, Contents, MissingBars, NotHeard, peopleInWords, QuoteList, sectionLinks, ThemeSections } from './parts';
+import type { PictureResponse } from '@unite/shared';
 
 /** The steward's two controls: update the picture, and confirm it is faithful. */
 function StewardPanel({ slug, data, onDone }: { slug: string; data: PictureResponse; onDone: () => void }) {
@@ -94,6 +94,11 @@ export default function Picture() {
   if (!data) return layout(<p aria-live="polite">Loading the picture…</p>);
 
   const themeCount = data.sections.reduce((n, s) => n + s.themes.length, 0);
+  const contents = [
+    ...(themeCount > 0 ? sectionLinks(data.sections) : []),
+    ...(data.hardChoices.people > 0 ? [{ id: 'hard', label: 'Hard choices and doubts' }] : []),
+    ...(data.missing.length > 0 ? [{ id: 'missing', label: 'Who we have not heard from' }] : []),
+  ];
   return layout(
     <>
       <p className="mb-2 text-xl" aria-live="polite">
@@ -103,6 +108,7 @@ export default function Picture() {
         Every count is of people, worked out from the points they approved. Open “Sources” under any sentence to see what it rests on.
       </p>
       <ConfirmedLine confirmed={data.confirmed} />
+      <Contents items={contents} />
       {data.updating && (
         <Banner className="mb-6">
           <p aria-live="polite">The picture is being updated with new points. It will refresh by itself.</p>
@@ -130,7 +136,17 @@ export default function Picture() {
             What {personCount(data.hardChoices.people)} said they would have to choose between, or are unsure of. These are not summarised.
           </p>
           {data.hardChoices.quotes.length > 0 ? (
-            <QuoteList quotes={data.hardChoices.quotes} label="Hard choices and doubts" />
+            <>
+              <QuoteList quotes={data.hardChoices.quotes.slice(0, 1)} label="Hard choices and doubts" />
+              {data.hardChoices.quotes.length > 1 && (
+                <details className="mt-2">
+                  <summary className="min-h-11 cursor-pointer py-2 text-accent underline underline-offset-2">
+                    {data.hardChoices.quotes.length === 2 ? 'Show 1 more quote' : `Show ${data.hardChoices.quotes.length - 1} more quotes`}
+                  </summary>
+                  <QuoteList quotes={data.hardChoices.quotes.slice(1)} label="More hard choices and doubts" />
+                </details>
+              )}
+            </>
           ) : (
             <p className="text-muted">The people behind these chose to be counted without their words shown.</p>
           )}
