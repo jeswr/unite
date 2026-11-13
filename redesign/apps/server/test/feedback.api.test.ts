@@ -26,7 +26,7 @@ async function start(body: Record<string, unknown> = { path: '/register', mode: 
   return res.body.token as string;
 }
 const say = (token: string, text: string, ip = '10.0.0.1') => request(env.app).post(`/api/feedback/${token}/turns`).set(from(ip)).send({ text });
-const patch = (token: string, body: unknown) => request(env.app).patch(`/api/feedback/${token}`).send(body);
+const patch = (token: string, body: object) => request(env.app).patch(`/api/feedback/${token}`).send(body);
 const get = (token: string) => request(env.app).get(`/api/feedback/${token}`);
 
 async function asSteward() {

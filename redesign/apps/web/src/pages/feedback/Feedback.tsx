@@ -141,7 +141,7 @@ export default function Feedback() {
   return (
     <Layout title={TITLES[view.mode]}>
       {about}
-      <div className="lg:relative lg:left-1/2 lg:grid lg:w-[min(68rem,calc(100vw-2rem))] lg:-translate-x-1/2 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+      <div className="lg:relative lg:left-1/2 lg:grid lg:w-[min(60rem,calc(100vw-2rem))] lg:-translate-x-1/2 lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-8">
         <FeedbackChat feedback={view} pending={pending} error={turnError} onSend={(t) => void send(t)} />
         <aside className="mt-10 lg:mt-0" aria-label="Your answers">
           <div className="rounded-ui border border-line p-4 lg:sticky lg:top-4">
