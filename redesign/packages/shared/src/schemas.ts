@@ -335,6 +335,8 @@ export const RoomSchema = z.strictObject({
   }),
   status: z.enum(['scheduled', 'open', 'closed']),
   memberIds: z.array(idOf('per')),
+  /** Absent means live. A slow room is open for days; its length is still held in minutes. */
+  pace: z.enum(['live', 'slow']).optional(),
   minutes: z.number().int().min(1),
   startedAt: IsoDateTime.optional(),
   endsAt: IsoDateTime.optional(),

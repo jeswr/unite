@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoomMessage } from '@unite/shared';
-import { dominantSpeaker, dueTrigger, firedTriggers, phaseAt } from '../src/services/rooms/triggers.js';
+import { dominantSpeaker, dueTrigger, firedTriggers, invitesOpen, makeRoomGapMs, phaseAt, wordingLeadMs } from '../src/services/rooms/triggers.js';
 
 const START = Date.parse('2026-11-13T09:00:00.000Z');
 const MIN = 60_000;
@@ -87,5 +87,70 @@ describe('facilitator triggers', () => {
     expect(phaseAt(room(8), START + 4 * MIN)).toBe('wording');
     const msgs = [...welcomed, ...members.map((p) => say(p))];
     expect(dueTrigger(room(40), msgs, START + 36 * MIN)).toEqual({ kind: 'wording' });
+  });
+});
+
+describe('facilitator triggers in a slow room', () => {
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+  const slow = (days = 5) => ({ ...room(days * 1440), pace: 'slow' as const });
+  const atH = (h: number) => new Date(START + h * HOUR).toISOString();
+  const sayH = (personId: string, h: number): Msg => ({ authorType: 'person', personId, createdAt: atH(h) });
+  const facH = (h: number, personId?: string): Msg => ({ authorType: 'facilitator', ...(personId ? { personId } : {}), createdAt: atH(h) });
+
+  it('welcomes when the room opens, as a live room does', () => {
+    expect(dueTrigger(slow(), [], START)).toEqual({ kind: 'welcome' });
+    expect(dueTrigger(slow(), [facH(0)], START)).toBeUndefined();
+  });
+
+  it('starts the wording phase when a fifth of the time is left, not five minutes before the end', () => {
+    // Five days: the last fifth is the last day.
+    expect(wordingLeadMs({ pace: 'slow' }, 5 * DAY)).toBe(DAY);
+    expect(phaseAt(slow(5), START + 4 * DAY - MIN)).toBe('half_time');
+    expect(phaseAt(slow(5), START + 4 * DAY)).toBe('wording');
+    expect(phaseAt(slow(5), START + 5 * DAY - 6 * MIN)).toBe('wording');
+    // Two days: the last 9.6 hours.
+    expect(phaseAt(slow(2), START + 2 * DAY - 10 * HOUR)).toBe('half_time');
+    expect(phaseAt(slow(2), START + 2 * DAY - 9 * HOUR)).toBe('wording');
+    const msgs = [facH(0), ...members.map((p) => sayH(p, 1)), facH(60)];
+    expect(dueTrigger(slow(5), msgs, START + 4 * DAY)).toEqual({ kind: 'wording' });
+    expect(dueTrigger(slow(5), [...msgs, facH(96)], START + 4 * DAY + HOUR)).toBeUndefined();
+  });
+
+  it('marks half time half way through the days, and time up at the end', () => {
+    const msgs = [facH(0), ...members.map((p) => sayH(p, 1))];
+    expect(dueTrigger(slow(4), msgs, START + 2 * DAY)).toEqual({ kind: 'half_time' });
+    expect(dueTrigger(slow(4), [...msgs, facH(48)], START + 4 * DAY)).toEqual({ kind: 'final' });
+  });
+
+  it('invites a silent member only once a day has passed since the room opened', () => {
+    const msgs = [facH(0), sayH('per_A', 1), sayH('per_B', 2)];
+    expect(invitesOpen(slow(), START + DAY - MIN)).toBe(false);
+    expect(dueTrigger(slow(), msgs, START + 23 * HOUR)).toBeUndefined();
+    expect(dueTrigger(slow(), msgs, START + DAY - MIN)).toBeUndefined();
+    expect(invitesOpen(slow(), START + DAY)).toBe(true);
+    expect(dueTrigger(slow(), msgs, START + DAY)).toEqual({ kind: 'invite', personId: 'per_C' });
+    expect(dueTrigger(slow(), [...msgs, facH(24, 'per_C')], START + DAY + HOUR)).toBeUndefined();
+  });
+
+  it('makes room at most once every six hours', () => {
+    const base = [facH(0), ...members.map((p) => sayH(p, 1))];
+    const burst = [...base, sayH('per_A', 2), sayH('per_A', 2), sayH('per_B', 2), sayH('per_A', 2), sayH('per_A', 2)];
+    expect(makeRoomGapMs({ pace: 'slow' })).toBe(6 * HOUR);
+    expect(dueTrigger(slow(), burst, START + 3 * HOUR)).toEqual({ kind: 'make_room', personId: 'per_A' });
+    const thanked = [...burst, facH(3, 'per_A'), sayH('per_A', 4)];
+    // Five minutes is enough in a live room, but not here.
+    expect(dueTrigger(slow(), thanked, START + 3 * HOUR + 10 * MIN)).toBeUndefined();
+    expect(dueTrigger(slow(), thanked, START + 9 * HOUR - MIN)).toBeUndefined();
+    expect(dueTrigger(slow(), thanked, START + 9 * HOUR)).toEqual({ kind: 'make_room', personId: 'per_A' });
+  });
+
+  it('leaves live rooms on their own timings', () => {
+    expect(wordingLeadMs({}, 40 * MIN)).toBe(5 * MIN);
+    expect(wordingLeadMs({ pace: 'live' }, 40 * MIN)).toBe(5 * MIN);
+    expect(makeRoomGapMs({})).toBe(5 * MIN);
+    expect(invitesOpen(room(), START)).toBe(true);
+    expect(phaseAt({ ...room(40), pace: 'live' }, START + 35 * MIN)).toBe('wording');
+    expect(phaseAt({ ...room(40), pace: 'live' }, START + 34 * MIN)).toBe('half_time');
   });
 });
