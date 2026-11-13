@@ -11,7 +11,7 @@ import { Field, inputClass } from '../../ui/Field';
 import { StageTracker } from '../../ui/StageTracker';
 import { AnswerForm } from '../delivery/AnswerForm';
 import { DueLine } from '../delivery/StatusTag';
-import type { DecisionsResponse } from '../delivery/types';
+import type { DecisionsResponse } from '@unite/shared';
 import { useAction } from '../delivery/useAction';
 import { PledgeEditor, valuesFromAssembly } from './PledgeEditor';
 

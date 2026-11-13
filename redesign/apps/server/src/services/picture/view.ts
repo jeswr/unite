@@ -2,7 +2,7 @@ import { countPeople, type Assembly, type Person, type Point, type Report, type 
 import type { Deps } from '../../deps.js';
 import type { Store } from '../../store/types.js';
 import { heardPersonIds } from '../assemblies.js';
-import type { MissingGroup, Quote, ReportView, SentenceView, ThemeSection, ThemeView } from './types.js';
+import type { MissingGroup, Quote, ReportView, SentenceView, ThemeSection, ThemeView } from '@unite/shared';
 
 /**
  * Builds what the picture shows from stored records. Every count is of people and is computed

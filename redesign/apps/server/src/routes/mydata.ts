@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DECISION_STATUS_WORDS, type Point, type StatementStatus } from '@unite/shared';
+import { DECISION_STATUS_WORDS, type Point, type StatementStatus, type TraceEntry } from '@unite/shared';
 import { currentPerson, requirePerson, SID_COOKIE } from '../auth.js';
 import type { Deps } from '../deps.js';
 import { HttpError } from '../errors.js';
@@ -16,15 +16,6 @@ export const STATEMENT_STATUS_WORDS: Record<StatementStatus, string> = {
   no_agreement: 'No agreement',
   retired: 'No longer in use',
 };
-
-/** GET /api/me/trace: one entry per approved point. */
-export interface TraceEntry {
-  point: Pick<Point, 'id' | 'type' | 'text' | 'visibility' | 'approvedAt'>;
-  assembly: { slug: string; title: string; isOpenListening: boolean } | null;
-  theme: { id: string; name: string } | null;
-  statements: { id: string; text: string; status: StatementStatus; statusWords: string }[];
-  decisions: { id: string; number: number; title: string; status: string; statusWords: string }[];
-}
 
 async function exportFor(store: Store, personId: string) {
   const person = await store.get('persons', personId);
@@ -143,18 +134,24 @@ export async function traceFor(store: Store, personId: string): Promise<TraceEnt
     ]);
     return { assembly, themes, statements, decisions };
   }
+  // Rule 5: a statement's status says how others answered, so it is shown only once I have answered (or it is decided).
+  const answered = new Set((await store.list('reactions', { personId })).map((r) => r.statementId));
   const out: TraceEntry[] = [];
   for (const p of points) {
     if (!assemblies.has(p.assemblyId)) assemblies.set(p.assemblyId, await loadAssembly(p.assemblyId));
     const { assembly, themes, statements, decisions } = assemblies.get(p.assemblyId)!;
     const theme = themes.find((t) => t.id === p.themeId) ?? themes.find((t) => t.pointIds.includes(p.id));
-    const mine = statements.filter((s) => s.pointIds.includes(p.id) || (theme && s.themeIds.includes(theme.id)));
+    const mine = statements.filter((s) => s.status !== 'retired' && (s.pointIds.includes(p.id) || (theme && s.themeIds.includes(theme.id))));
     const ids = new Set(mine.map((s) => s.id));
     out.push({
       point: { id: p.id, type: p.type, text: p.text, visibility: p.visibility, ...(p.approvedAt ? { approvedAt: p.approvedAt } : {}) },
       assembly: assembly ? { slug: assembly.slug, title: assembly.title, isOpenListening: assembly.isOpenListening } : null,
       theme: theme ? { id: theme.id, name: theme.name } : null,
-      statements: mine.map((s) => ({ id: s.id, text: s.text, status: s.status, statusWords: STATEMENT_STATUS_WORDS[s.status] })),
+      statements: mine.map((s) =>
+        s.status === 'decided' || answered.has(s.id)
+          ? { id: s.id, text: s.text, status: s.status, statusWords: STATEMENT_STATUS_WORDS[s.status] }
+          : { id: s.id, text: s.text },
+      ),
       decisions: decisions
         .filter((d) => ids.has(d.statementId))
         .sort((a, b) => a.number - b.number)

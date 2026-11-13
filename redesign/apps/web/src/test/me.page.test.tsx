@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeResponse } from '@unite/shared';
 import { MeProvider } from '../lib/me';
 import Me from '../pages/me/Me';
-import type { MyConversation, TraceEntry } from '../pages/talk/types';
+import type { MyConversation, TraceEntry } from '@unite/shared';
 import { mockApi } from './talk.fixtures';
 
 const me: MeResponse = {

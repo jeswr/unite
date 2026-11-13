@@ -9,7 +9,7 @@ import { Field, inputClass } from '../../ui/Field';
 import { Layout } from '../../ui/Layout';
 import { MicButton } from './MicButton';
 import { StageSteps } from './StageSteps';
-import type { ConversationView } from './types';
+import type { ConversationView } from '@unite/shared';
 
 type TurnBody = { text: string } | { skip: true } | { stop: true } | { resume: true } | { answers: string[] };
 

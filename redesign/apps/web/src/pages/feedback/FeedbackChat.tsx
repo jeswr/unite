@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { speechSupported, startDictation } from '../../lib/speech';
 import { Button } from '../../ui/Button';
 import { inputClass } from '../../ui/Field';
-import type { FeedbackView } from './types';
+import type { FeedbackView } from '@unite/shared';
 
 interface Props {
   feedback: FeedbackView;

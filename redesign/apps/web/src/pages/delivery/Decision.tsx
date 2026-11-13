@@ -14,7 +14,7 @@ import { CheckForm } from './CheckForm';
 import { AddDeliveryItem, UpdateDeliveryItem } from './DeliveryForms';
 import { ProposalForm } from './ProposalForm';
 import { DueLine, StatusTag } from './StatusTag';
-import type { DecisionRecord } from './types';
+import type { DecisionRecord } from '@unite/shared';
 import { useAction } from './useAction';
 import { ANSWER_KIND_WORDS, CLASSIFICATION_WORDS, ITEM_STATUS_WORDS, KIND_WORDS } from './words';
 

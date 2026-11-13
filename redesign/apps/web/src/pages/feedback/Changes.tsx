@@ -3,7 +3,8 @@ import { formatDate } from '@unite/shared';
 import { useApi } from '../../lib/api';
 import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
-import { listInWords, type Release } from './types';
+import type { Release } from '@unite/shared';
+import { listInWords } from './words';
 
 /** The link to feedback on one release: the changes after the release before it, or all of them for the first. */
 export function changesFeedbackLink(previous?: Release): string {

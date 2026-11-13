@@ -84,7 +84,10 @@ describe('my data', () => {
       statements: [{ id: S1, statusWords: 'Common ground' }],
       decisions: [{ id: DEC, number: 3, title: 'Courses at any time', statusWords: 'In progress' }],
     });
-    expect(second).toMatchObject({ theme: null, statements: [{ id: S2, statusWords: 'Where we differ' }], decisions: [] });
+    // Rule 5: I wrote S2 and objected to it but have not answered it, so where it stands stays hidden.
+    expect(second).toMatchObject({ theme: null, statements: [{ id: S2 }], decisions: [] });
+    expect(second.statements[0]).not.toHaveProperty('status');
+    expect(second.statements[0]).not.toHaveProperty('statusWords');
     expect(third).toMatchObject({ theme: { name: 'I am tired' }, statements: [], decisions: [] });
     // Nobody yet: an empty trace, not an error.
     expect((await request(env.app).get('/api/me/trace')).body).toEqual({ points: [] });

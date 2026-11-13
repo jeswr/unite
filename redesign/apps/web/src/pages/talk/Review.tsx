@@ -8,7 +8,7 @@ import { Button } from '../../ui/Button';
 import { Field, inputClass } from '../../ui/Field';
 import { Layout } from '../../ui/Layout';
 import { AddPointForm, PointCard, type PointDraft } from './PointCard';
-import type { ConversationView } from './types';
+import type { ConversationView } from '@unite/shared';
 import { picturePath, PUSHED, SOUNDS_LIKE_ME } from './words';
 
 const errorText = (e: unknown) => (e instanceof ApiError ? e.message : 'That did not go through. Please try again.');

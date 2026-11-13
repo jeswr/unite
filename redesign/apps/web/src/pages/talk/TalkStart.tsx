@@ -7,8 +7,8 @@ import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Field, inputClass } from '../../ui/Field';
 import { Layout } from '../../ui/Layout';
-import type { ConsentInfo, ConversationView } from './types';
-import { ROUTE_CHOICES } from './words';
+import type { ConsentInfo, ConversationView } from '@unite/shared';
+import { LANGUAGE_CHOICES, languageFromBrowser, localeFor, OTHER_LANGUAGE, ROUTE_CHOICES } from './words';
 
 function browserLanguage(): string {
   return (typeof navigator !== 'undefined' && navigator.language) || 'en-GB';
@@ -22,7 +22,9 @@ export default function TalkStart() {
   const { data: view, error: assemblyError } = useAssembly(slug);
   const { data: consent } = useApi<ConsentInfo>('/api/talk/consent');
   const [route, setRoute] = useState<(typeof ROUTE_CHOICES)[number]['value']>('ai');
-  const [language, setLanguage] = useState(browserLanguage);
+  const [browser] = useState(browserLanguage);
+  const [choice, setChoice] = useState(() => languageFromBrowser(browser).choice);
+  const [otherLanguage, setOtherLanguage] = useState(() => (languageFromBrowser(browser).choice === OTHER_LANGUAGE ? browser : ''));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -34,7 +36,7 @@ export default function TalkStart() {
       const started = await api.post<ConversationView>('/api/conversations', {
         ...(slug ? { assemblySlug: slug } : {}),
         route,
-        language: language.trim() || 'en-GB',
+        language: localeFor(choice, browser, otherLanguage),
       });
       const id = started.conversation.id;
       await api.post(`/api/conversations/${id}/consent`);
@@ -90,8 +92,20 @@ export default function TalkStart() {
         </fieldset>
 
         <Field label="Language" hint="The interviewer replies in the language you write in.">
-          <input className={`${inputClass} max-w-xs`} value={language} onChange={(e) => setLanguage(e.target.value)} autoComplete="language" maxLength={35} />
+          <select className={`${inputClass} max-w-xs`} value={choice} onChange={(e) => setChoice(e.target.value)}>
+            {LANGUAGE_CHOICES.map((l) => (
+              <option key={l.code} value={l.code} lang={l.code}>
+                {l.name}
+              </option>
+            ))}
+            <option value={OTHER_LANGUAGE}>Another language</option>
+          </select>
         </Field>
+        {choice === OTHER_LANGUAGE && (
+          <Field label="Which language?" hint="Its name, or a code such as “ta” or “pt-BR”.">
+            <input className={`${inputClass} max-w-xs`} value={otherLanguage} onChange={(e) => setOtherLanguage(e.target.value)} autoComplete="language" maxLength={35} />
+          </Field>
+        )}
 
         <h2 className="mb-2">Before you start</h2>
         <ul className="mb-6 list-disc space-y-2 pl-6">

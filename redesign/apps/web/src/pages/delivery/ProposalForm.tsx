@@ -11,6 +11,7 @@ export function ProposalForm({ decision, onDone }: { decision: Pick<Decision, 'i
   const [f, setF] = useState({ proposerName: '', proposerRole: '', summary: '', plan: '', cost: '' });
   const [how, setHow] = useState<Record<number, string>>({});
   const [tried, setTried] = useState(false);
+  const [sent, setSent] = useState(false);
   const { busy, error, run } = useAction();
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
@@ -30,7 +31,14 @@ export function ProposalForm({ decision, onDone }: { decision: Pick<Decision, 'i
       ...(f.cost.trim() ? { cost: f.cost.trim() } : {}),
       testCoverage: decision.tests.map((t) => ({ n: t.n, how: how[t.n]!.trim() })),
     };
-    if (await run(() => api.post(`/api/decisions/${decision.id}/proposals`, body))) onDone();
+    if (await run(() => api.post(`/api/decisions/${decision.id}/proposals`, body))) {
+      // Empty the form, so the plan just sent is not sent twice.
+      setF({ proposerName: '', proposerRole: '', summary: '', plan: '', cost: '' });
+      setHow({});
+      setTried(false);
+      setSent(true);
+      onDone();
+    }
   };
 
   return (
@@ -60,6 +68,11 @@ export function ProposalForm({ decision, onDone }: { decision: Pick<Decision, 'i
         <Banner tone="warn" className="mb-4">
           {error}
         </Banner>
+      )}
+      {sent && !error && (
+        <p role="status" className="mb-4 font-bold text-agree">
+          Your proposal is sent. It is listed above for the host to consider.
+        </p>
       )}
       <Button type="submit" variant="secondary" disabled={busy}>
         {busy ? 'Sending…' : 'Send the proposal'}

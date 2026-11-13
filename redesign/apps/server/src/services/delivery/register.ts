@@ -1,29 +1,13 @@
-import { DecisionStatus, registerSummary, type Assembly, type RegisterSummary } from '@unite/shared';
+import { type Assembly, DecisionStatus, type HostRecordResponse, type RegisterEntry, type RegisterResponse, registerSummary } from '@unite/shared';
 import type { Deps } from '../../deps.js';
 import { HttpError, notFound } from '../../errors.js';
-import { cardOf, type DecisionCard } from './decisions.js';
+import { cardOf } from './decisions.js';
 import { onOrBefore } from './dates.js';
 
 /**
  * The public register (section 7, Register): every decision in every assembly, ordered by
  * assembly (alphabetically by title) and then by decision number. Never by attention (rule 8).
  */
-
-export interface RegisterEntry extends DecisionCard {
-  assembly: { slug: string; title: string; isExample: boolean };
-  host: { name: string; slug: string };
-}
-
-export interface RegisterResponse {
-  entries: RegisterEntry[];
-  summary: RegisterSummary;
-  /** What the three filters can be set to. */
-  filters: {
-    assemblies: { slug: string; title: string }[];
-    hosts: { slug: string; name: string }[];
-    statuses: DecisionStatus[];
-  };
-}
 
 export interface RegisterQuery {
   assembly?: string;
@@ -67,31 +51,7 @@ export async function register(deps: Pick<Deps, 'store' | 'clock'>, q: RegisterQ
   };
 }
 
-/** A host's public record (GET /api/hosts/:hostSlug). In progress is shown on its own, never as done. */
-export interface HostRecord {
-  host: { name: string; slug: string; description: string };
-  assemblies: { slug: string; title: string; stage: Assembly['stage']; isExample: boolean; decisions: number }[];
-  record: {
-    decisions: number;
-    answeredOnTime: number;
-    answeredLate: number;
-    awaitingAnswer: number;
-    /** Awaiting an answer and past the due date. */
-    awaitingLate: number;
-    accepted: number;
-    changed: number;
-    delayed: number;
-    refused: number;
-    inProgress: number;
-    deliveredAsDecided: number;
-    deliveredWithChanges: number;
-    notDelivered: number;
-    replaced: number;
-  };
-  entries: RegisterEntry[];
-}
-
-export async function hostRecord(deps: Pick<Deps, 'store' | 'clock'>, hostSlug: string): Promise<HostRecord> {
+export async function hostRecord(deps: Pick<Deps, 'store' | 'clock'>, hostSlug: string): Promise<HostRecordResponse> {
   const { store } = deps;
   const assemblies = (await store.list('assemblies', { hostSlug })).filter((a) => !a.isOpenListening).sort(byTitle);
   if (!hostSlug || assemblies.length === 0) throw notFound('That host');

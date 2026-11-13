@@ -8,7 +8,8 @@ import { Card } from '../../ui/Card';
 import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
 import { AssemblyPanel } from './AssemblyPanel';
-import { Intake, type IntakeDraft } from './Intake';
+import type { IntakeDraft } from '@unite/shared';
+import { Intake } from './Intake';
 import { PasscodeGate } from './PasscodeGate';
 import { PledgeEditor, valuesFromDraft } from './PledgeEditor';
 

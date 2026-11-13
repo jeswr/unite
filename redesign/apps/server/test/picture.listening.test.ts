@@ -2,7 +2,8 @@ import request from 'supertest';
 import { stableId } from '@unite/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { makeAssembly, makeTheme } from '../src/seed/builders.js';
-import type { ListeningResponse } from '../src/services/picture/types.js';
+import type { ListeningResponse } from '@unite/shared';
+import { reachOf } from '../src/routes/listening.js';
 import { testEnv, type TestEnv } from './helpers.js';
 import { ctxOf, heardPerson, newPerson, pid, speaker } from './picture.fixtures.js';
 
@@ -89,5 +90,22 @@ describe('open listening', () => {
     expect(body.heard).toBe(true);
     expect(body.sections.flatMap((s) => s.themes).find((t) => t.id === CARE)?.quotes.map((q) => q.text)).toEqual(['Caring for my mother while I work full time']);
     expect(body.days).toEqual([{ id: DAY, name: 'breakfast outside', people: 2, quotes: [{ id: pid('lu2'), text: 'Breakfast outside with my daughter before school' }] }]);
+  });
+});
+
+describe('where people come from', () => {
+  it('counts countries and languages from each person’s locale', () => {
+    expect(reachOf(['es-MX', 'es-MX', 'en-US', 'fr-SN', 'wo-SN', 'en', 'pt-BR', 'zh-Hant-TW'])).toEqual({ people: 8, countries: 5, languages: 6 });
+    expect(reachOf([])).toEqual({ people: 0, countries: 0, languages: 0 });
+  });
+
+  it('puts the counts in the listening response, from the people who have approved points', async () => {
+    const lu = await env.deps.store.get('persons', stableId('per', 'test/lu'));
+    await env.deps.store.put('persons', { ...lu!, locale: 'es-MX' });
+    const mo = await env.deps.store.get('persons', stableId('per', 'test/mo'));
+    await env.deps.store.put('persons', { ...mo!, locale: 'fr-SN' });
+    // Someone with no approved points is not counted.
+    await newPerson(env);
+    expect((await get()).reach).toEqual({ people: 2, countries: 2, languages: 2 });
   });
 });

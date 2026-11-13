@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MeProvider } from '../lib/me';
 import Statements from '../pages/statements/Statements';
-import type { StatementResults, StatementSummary } from '../pages/statements/types';
+import type { StatementResults, StatementSummary } from '@unite/shared';
 
 const results = (agree: number, disagree: number, unsure: number): StatementResults => {
   const total = agree + disagree + unsure;
@@ -19,7 +19,6 @@ const st = (id: string, text: string, over: Partial<StatementSummary> = {}): Sta
   id,
   text,
   version: 1,
-  status: 'not_enough',
   origin: 'ai',
   mine: false,
   createdAt: '2026-11-13T09:00:00.000Z',
@@ -95,8 +94,8 @@ describe('statements: one at a time', () => {
   });
 });
 
-describe('statements: totals hidden until answered (rule 5)', () => {
-  it('shows totals only on statements I have answered', async () => {
+describe('statements: totals and status hidden until answered (rule 5)', () => {
+  it('shows totals only on statements I have answered, and lists the rest plainly with no tags', async () => {
     mockApi([
       st('st_one', 'Classes should run at night.'),
       st('st_two', 'Childcare during any funded class.', { status: 'common_ground', myReaction: 'agree', results: results(9, 1, 0) }),
@@ -106,9 +105,15 @@ describe('statements: totals hidden until answered (rule 5)', () => {
     const commonSection = common.closest('section')!;
     expect(within(commonSection).getByText('10 people have answered')).toBeTruthy();
     expect(within(commonSection).getByText('You answered: Agree')).toBeTruthy();
-    const notEnough = screen.getByRole('heading', { name: 'Not enough voices yet' }).closest('section')!;
-    expect(within(notEnough).getByText('Answer to see how others answered.')).toBeTruthy();
-    expect(within(notEnough).queryByText(/people have answered/)).toBeNull();
-    expect(within(notEnough).queryByText('Agree')).toBeNull();
+    expect(within(commonSection).queryByText('Classes should run at night.')).toBeNull();
+
+    const toAnswer = screen.getByRole('heading', { name: 'Still to answer' }).closest('section')!;
+    expect(within(toAnswer).getByRole('link', { name: 'Classes should run at night.' })).toBeTruthy();
+    expect(within(toAnswer).queryByText(/Common ground|Where we differ|Not enough voices|people have answered/)).toBeNull();
+
+    for (const name of ['Where we differ', 'Not enough voices yet']) {
+      const section = screen.getByRole('heading', { name }).closest('section')!;
+      expect(within(section).queryByText('Classes should run at night.')).toBeNull();
+    }
   });
 });

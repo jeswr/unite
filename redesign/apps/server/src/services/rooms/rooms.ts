@@ -1,13 +1,4 @@
-import {
-  newId,
-  opinionGroups,
-  type Assembly,
-  type EvidenceCard,
-  type Room,
-  type RoomAnswer,
-  type RoomMessage,
-  type Statement,
-} from '@unite/shared';
+import { type AnswerTotals, type Assembly, type EvidenceCard, newId, opinionGroups, type Room, type RoomAnswer, type RoomMessage, type RoomMessageView, type Statement } from '@unite/shared';
 import { wordFacilitator } from '../../ai/facilitator.js';
 import type { Deps } from '../../deps.js';
 import { HttpError } from '../../errors.js';
@@ -23,13 +14,6 @@ export const MESSAGE_MAX = 600;
 export async function memberNames(store: Store, room: Pick<Room, 'memberIds'>): Promise<Map<string, string>> {
   const people = await Promise.all(room.memberIds.map((id) => store.get('persons', id)));
   return new Map(room.memberIds.map((id, i) => [id, people[i]?.displayName?.trim() || `Member ${i + 1}`]));
-}
-
-export interface AnswerTotals {
-  agree: number;
-  disagree: number;
-  unsure: number;
-  total: number;
 }
 
 /** Only totals are ever shown, and only once the room is closed. */
@@ -162,15 +146,6 @@ export function resetFacilitatorTimers(): void {
 }
 
 /* ------------------------------------------------------------- views */
-
-export interface RoomMessageView {
-  id: string;
-  authorType: RoomMessage['authorType'];
-  author: string;
-  mine: boolean;
-  text: string;
-  createdAt: string;
-}
 
 export function messageView(m: RoomMessage, names: Map<string, string>, me: string | undefined): RoomMessageView {
   return {

@@ -1,10 +1,8 @@
-import type { GroupKey, Objection, Reaction, Reason, Statement, Tally } from '@unite/shared';
-import type { Quote, ReportView } from '../picture/types';
+import type { GroupKey, Tally } from '../counting.js';
+import type { Objection, Reaction, Reason, Statement } from '../schemas.js';
+import type { Quote, ReportView } from './picture.js';
 
-/**
- * Response shapes of the statements endpoints. The server keeps an identical copy in
- * apps/server/src/services/statements/types.ts until these move to packages/shared.
- */
+/** Response shapes of the statements endpoints. */
 
 export interface GroupResult extends Tally {
   key: GroupKey;
@@ -28,7 +26,11 @@ export interface StatementSummary {
   text: string;
   version: number;
   previousId?: string;
-  status: Statement['status'];
+  /**
+   * Rule 5: left out for a participant who has not answered the statement, unless it is decided,
+   * because the status says how others answered.
+   */
+  status?: Statement['status'];
   origin: Statement['origin'];
   /** I wrote this wording. */
   mine: boolean;
@@ -76,4 +78,13 @@ export interface StatementDetail {
   objections: ObjectionView[];
   reports: ReportView[];
   canSteward: boolean;
+}
+
+/** POST /api/assemblies/:slug/statements/draft */
+export interface DraftStatementsResponse {
+  created: StatementSummary[];
+  /** True when the AI is not switched on, so nothing was drafted. */
+  fallback: boolean;
+  /** What happened, in plain words. */
+  message: string;
 }

@@ -9,7 +9,7 @@ import { Card } from '../../ui/Card';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
-import type { MyConversation, TraceEntry } from '../talk/types';
+import type { MyConversation, TraceEntry } from '@unite/shared';
 import { CONVERSATION_STATUS_WORDS, POINT_TYPE_LABELS, VISIBILITY_CHOICES } from '../talk/words';
 
 const visibilityWords = (v: TraceEntry['point']['visibility']) => VISIBILITY_CHOICES.find((c) => c.value === v)?.label ?? '';
@@ -170,7 +170,8 @@ function TraceCard({ t }: { t: TraceEntry }) {
               <ul className="space-y-1">
                 {t.statements.map((s) => (
                   <li key={s.id}>
-                    {slug ? <Link to={`/a/${slug}/statements/${s.id}`}>{s.text}</Link> : s.text} <span className="text-muted">({s.statusWords})</span>
+                    {slug ? <Link to={`/a/${slug}/statements/${s.id}`}>{s.text}</Link> : s.text}
+                    {s.statusWords ? <span className="text-muted"> ({s.statusWords})</span> : <span className="text-muted"> (answer it to see where it stands)</span>}
                   </li>
                 ))}
               </ul>

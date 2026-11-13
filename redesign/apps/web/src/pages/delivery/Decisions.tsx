@@ -5,7 +5,7 @@ import { Card } from '../../ui/Card';
 import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
 import { DueLine, StatusTag } from './StatusTag';
-import type { DecisionsResponse } from './types';
+import type { DecisionsResponse } from '@unite/shared';
 import { answerLine } from './words';
 
 /** /a/:slug/decisions: the decision cards in number order. */

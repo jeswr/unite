@@ -1,9 +1,6 @@
-import type { Conversation, Point, Turn } from '@unite/shared';
+import type { Conversation, Point, Statement, Turn } from '../schemas.js';
 
-/**
- * Response shapes of the conversation endpoints. The web app keeps a copy in
- * apps/web/src/pages/talk/types.ts until these move to packages/shared.
- */
+/** Response shapes of the conversation and my-data endpoints. */
 
 export interface ConversationAssembly {
   slug: string;
@@ -58,4 +55,14 @@ export interface ConsentInfo {
   lines: string[];
   /** False when the AI interviewer is not switched on: the conversation will use fixed questions. */
   aiEnabled: boolean;
+}
+
+/** GET /api/me/trace: one entry per approved point. */
+export interface TraceEntry {
+  point: Pick<Point, 'id' | 'type' | 'text' | 'visibility' | 'approvedAt'>;
+  assembly: { slug: string; title: string; isOpenListening: boolean } | null;
+  theme: { id: string; name: string } | null;
+  /** A statement's status is left out when I have not answered it and it is not decided (rule 5). */
+  statements: { id: string; text: string; status?: Statement['status']; statusWords?: string }[];
+  decisions: { id: string; number: number; title: string; status: string; statusWords: string }[];
 }

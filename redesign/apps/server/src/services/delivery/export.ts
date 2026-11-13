@@ -1,9 +1,9 @@
-import { countPeople, opinionGroups, statementSupport, type Assembly, type Check, type Decision, type Pledge, type RegisterSummary, type Role } from '@unite/shared';
+import { type Assembly, type Check, countPeople, type Decision, opinionGroups, type Pledge, type RegisterEntry, type RegisterSummary, type Role, statementSupport } from '@unite/shared';
 import { isHeard } from '../../auth.js';
 import type { Deps } from '../../deps.js';
 import { getAssemblyBySlug } from '../assemblies.js';
 import { checkBodyName } from './decisions.js';
-import { register, type RegisterEntry } from './register.js';
+import { register } from './register.js';
 
 /**
  * GET /api/assemblies/:slug/export: an assembly's public record in an open format. The pledge,

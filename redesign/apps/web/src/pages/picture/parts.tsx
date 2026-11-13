@@ -8,7 +8,7 @@ import { Field, inputClass } from '../../ui/Field';
 import { personCount } from '../../ui/PersonCount';
 import { Sources } from '../../ui/Sources';
 import { Tag } from '../../ui/Tag';
-import type { MissingGroup, Quote, ReportView, ThemeSection, ThemeView } from './types';
+import type { MissingGroup, Quote, ReportView, ThemeSection, ThemeView } from '@unite/shared';
 
 /** Pieces shared by the picture, open listening and statement pages. */
 
@@ -247,7 +247,7 @@ export function ThemeCard({ theme, canReport = true, onChange }: { theme: ThemeV
       <p className="mb-3 text-muted">{personCount(theme.people)}</p>
       {theme.hostedBy && theme.hostedBy.length > 0 && (
         <p className="mb-3">
-          An assembly is answering this:{' '}
+          An assembly has opened on this:{' '}
           {theme.hostedBy.map((h, i) => (
             <span key={h.slug}>
               {i > 0 && ', '}
@@ -266,7 +266,15 @@ export function ThemeCard({ theme, canReport = true, onChange }: { theme: ThemeV
           ))}
         </ul>
       )}
-      <QuoteList quotes={theme.quotes} label={`What people said about ${theme.name}`} />
+      <QuoteList quotes={theme.quotes.slice(0, 1)} label={`What people said about ${theme.name}`} />
+      {theme.quotes.length > 1 && (
+        <details className="mt-2">
+          <summary className="min-h-11 cursor-pointer py-2 text-accent underline underline-offset-2">
+            {theme.quotes.length === 2 ? 'Show 1 more quote' : `Show ${theme.quotes.length - 1} more quotes`}
+          </summary>
+          <QuoteList quotes={theme.quotes.slice(1)} label={`More of what people said about ${theme.name}`} />
+        </details>
+      )}
       {theme.mine.filter((m) => !theme.quotes.some((q) => q.id === m.id)).length > 0 && (
         <ul className="mt-2 space-y-2">
           {theme.mine
@@ -296,13 +304,35 @@ export function ConfirmedLine({ confirmed }: { confirmed: { at: string; by: stri
   );
 }
 
+/** A short list of jump links to the page's section headings, so a long page is quick to move around. */
+export function Contents({ items }: { items: { id: string; label: string }[] }) {
+  if (items.length < 2) return null;
+  return (
+    <nav aria-labelledby="contents" className="mb-6 rounded-ui border border-line p-3">
+      <h2 id="contents" className="mb-1 text-base">
+        On this page
+      </h2>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1">
+        {items.map((i) => (
+          <li key={i.id}>
+            <a href={`#${i.id}`}>{i.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** The contents entries for theme sections, using the same ids as `ThemeSections`. */
+export const sectionLinks = (sections: ThemeSection[]) => sections.map((s) => ({ id: `kind-${s.kind}`, label: s.title }));
+
 /** The four kinds of theme, in order, each a list of theme cards. */
 export function ThemeSections({ sections, canReport, onChange }: { sections: ThemeSection[]; canReport: boolean; onChange?: () => void }) {
   return (
     <>
       {sections.map((s) => (
         <section key={s.kind} aria-labelledby={`kind-${s.kind}`} className="mt-8">
-          <h2 id={`kind-${s.kind}`} className="mb-3">
+          <h2 id={`kind-${s.kind}`} tabIndex={-1} className="mb-3 scroll-mt-4">
             {s.title}
           </h2>
           {s.themes.length === 0 ? (

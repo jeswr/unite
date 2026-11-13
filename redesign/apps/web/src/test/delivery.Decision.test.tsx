@@ -5,7 +5,7 @@ import type { Role } from '@unite/shared';
 import { MeProvider } from '../lib/me';
 import Decision from '../pages/delivery/Decision';
 import Decisions from '../pages/delivery/Decisions';
-import type { DecisionRecord, DecisionsResponse } from '../pages/delivery/types';
+import type { DecisionRecord, DecisionsResponse } from '@unite/shared';
 import { answerLine, dueLine } from '../pages/delivery/words';
 
 const D = 'dec_AAAAAAAAAAAA';

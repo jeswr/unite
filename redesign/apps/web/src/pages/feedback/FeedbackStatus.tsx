@@ -6,7 +6,7 @@ import { Button } from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { Layout } from '../../ui/Layout';
 import { Tag, type TagTone } from '../../ui/Tag';
-import type { FeedbackStatus as Status, FeedbackView } from './types';
+import type { FeedbackStatus as Status, FeedbackView } from '@unite/shared';
 
 const TONE: Record<Status, TagTone> = { draft: 'neutral', received: 'accent', planned: 'accent', done: 'agree', declined: 'neutral' };
 
