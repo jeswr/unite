@@ -28,17 +28,17 @@ export function RoleSwitcher() {
     }
   };
   return (
-    <div className="border-b border-line bg-soft text-sm">
-      <div className="mx-auto flex max-w-read flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1">
+    <div className="border-b border-line bg-soft text-xs sm:text-sm">
+      <div className="mx-auto flex max-w-read flex-wrap items-center gap-x-2 gap-y-1 px-4 py-0.5 sm:gap-x-3 sm:py-1">
         <span id="role-switcher-label">Demo. View as:</span>
-        <div role="group" aria-labelledby="role-switcher-label" className="flex flex-wrap gap-1">
+        <div role="group" aria-labelledby="role-switcher-label" className="flex gap-1">
           {ROLES.map(({ role, label }) => (
             <button
               key={role}
               type="button"
               aria-pressed={me.role === role}
               onClick={() => void choose(role)}
-              className={`rounded-ui border px-2 py-1 min-h-9 ${me.role === role ? 'border-ink bg-ink font-bold text-white' : 'border-muted bg-white text-ink'}`}
+              className={`min-h-7 rounded-ui border px-1.5 py-0.5 sm:min-h-9 sm:px-2 sm:py-1 ${me.role === role ? 'border-ink bg-ink font-bold text-white' : 'border-muted bg-white text-ink'}`}
             >
               {label}
             </button>

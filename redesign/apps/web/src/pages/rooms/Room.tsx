@@ -11,7 +11,7 @@ import { Layout } from '../../ui/Layout';
 import { Tag } from '../../ui/Tag';
 import { answersInWords, EvidenceCardView, NotHeardOrError, OutcomeView } from './parts';
 import { timeLeftWords } from './time';
-import type { AnswerValue, MessagesResponse, RoomMessageView, RoomResponse, RoomStatus } from './types';
+import type { AnswerValue, MessagesResponse, RoomMessageView, RoomResponse, RoomStatus } from '@unite/shared';
 
 /** Rooms poll their own messages every 1.5 seconds (section 7). */
 export const MESSAGE_POLL_MS = 1500;
@@ -110,15 +110,17 @@ export default function Room() {
 
   return (
     <Layout title={room.topic} assembly={a} kicker="A room">
-      <p className="mb-4 flex flex-wrap items-center gap-2">
-        <Tag tone={status === 'open' ? 'accent' : 'neutral'}>{STATUS_WORDS[status]}</Tag>
-        {status === 'open' && left !== null && <span className={left < 5 * 60_000 ? 'font-bold text-warn' : 'font-bold'}>{timeLeftWords(left)}</span>}
-        {status === 'scheduled' && <span>It will run for {room.minutes} minutes once it opens.</span>}
-      </p>
-
       {data.canManage && <ManagerControls roomId={room.id} status={status} onDone={reload} />}
 
-      <Briefing data={data} />
+      {/* On phones the timer and the folded briefing share one row, so the messages start near the top. */}
+      <div className="mb-4 flex flex-wrap items-start gap-x-3 gap-y-2 md:mb-6">
+        <p className="flex min-h-10 flex-wrap items-center gap-2">
+          <Tag tone={status === 'open' ? 'accent' : 'neutral'}>{STATUS_WORDS[status]}</Tag>
+          {status === 'open' && left !== null && <span className={left < 5 * 60_000 ? 'font-bold text-warn' : 'font-bold'}>{timeLeftWords(left)}</span>}
+          {status === 'scheduled' && <span>It will run for {room.minutes} minutes once it opens.</span>}
+        </p>
+        <Briefing data={data} />
+      </div>
 
       {!data.isMember && (
         <section aria-labelledby="not-member" className="mb-8">
@@ -214,8 +216,8 @@ function Briefing({ data }: { data: RoomResponse }) {
   // Open on wider screens; folded on phones so the conversation is near the top.
   const [open, setOpen] = useState(() => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)').matches : true));
   return (
-    <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="mb-6 rounded-ui border border-line">
-      <summary className="cursor-pointer px-4 py-3 font-bold">The briefing</summary>
+    <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="min-w-0 grow basis-40 rounded-ui border border-line md:basis-full">
+      <summary className="flex min-h-10 cursor-pointer items-center px-3 py-1 font-bold md:px-4 md:py-3">The briefing</summary>
       <div className="space-y-4 border-t border-line px-4 py-4">
         {data.room.statement && (
           <div>
@@ -270,10 +272,11 @@ function Briefing({ data }: { data: RoomResponse }) {
 function Messages({ messages }: { messages: RoomMessageView[] }) {
   return (
     <section aria-labelledby="messages-heading" className="mb-4">
-      <h2 id="messages-heading" className="mb-3">
+      <h2 id="messages-heading" className="mb-2 text-lg md:mb-3 md:text-[1.3rem]">
         The conversation
       </h2>
-      <ol aria-live="polite" aria-relevant="additions" className="space-y-3">
+      {/* Padding below the last message, so the sticky message box never sits over it. */}
+      <ol aria-live="polite" aria-relevant="additions" className="space-y-3 pb-4">
         {messages.length === 0 && <li className="text-muted">The facilitator will open the conversation in a moment.</li>}
         {messages.map((m) =>
           m.authorType === 'facilitator' ? (
@@ -313,14 +316,15 @@ export function MessageBox({ roomId, onSent }: { roomId: string; onSent: () => v
     }
   };
   return (
-    <form onSubmit={(e) => void submit(e)} className="sticky bottom-0 z-10 -mx-4 border-t border-line bg-white px-4 pt-3 pb-3">
+    <form onSubmit={(e) => void submit(e)} className="sticky bottom-0 z-10 -mx-4 border-t border-line bg-white px-4 pt-2 pb-2 md:pt-3 md:pb-3">
       {err && <Banner tone="warn" className="mb-2">{err}</Banner>}
-      <label htmlFor="room-message" className="mb-1 block font-bold">
+      <label htmlFor="room-message" className="mb-1 block text-sm font-bold md:text-base">
         Your message
       </label>
       <textarea
         id="room-message"
-        className={`${inputClass} min-h-20`}
+        rows={2}
+        className={`${inputClass} resize-y`}
         value={text}
         maxLength={MESSAGE_MAX}
         aria-describedby="room-message-count"
@@ -329,7 +333,7 @@ export function MessageBox({ roomId, onSent }: { roomId: string; onSent: () => v
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submit(e);
         }}
       />
-      <div className="mt-2 flex items-center justify-between gap-3">
+      <div className="mt-1 flex items-center justify-between gap-3 md:mt-2">
         <span id="room-message-count" className="text-sm text-muted">
           {text.length} of {MESSAGE_MAX} characters
         </span>
