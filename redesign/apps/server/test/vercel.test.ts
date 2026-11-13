@@ -94,3 +94,16 @@ describe('the Vercel entry', () => {
     }
   });
 });
+
+describe('clearVercelHelpers', () => {
+  it("removes a helper's lazy req.cookies so cookie-parser parses signed cookies", async () => {
+    const { clearVercelHelpers } = await import('../src/vercel.js');
+    const req = {} as http.IncomingMessage;
+    // Vercel's helpers define a lazy, configurable getter like this one.
+    Object.defineProperty(req, 'cookies', { get: () => ({ sid: 'x' }), configurable: true, enumerable: true });
+    clearVercelHelpers(req);
+    expect((req as unknown as { cookies?: unknown }).cookies).toBeUndefined();
+    (req as unknown as { cookies: unknown }).cookies = { a: 1 };
+    expect((req as unknown as { cookies: unknown }).cookies).toEqual({ a: 1 });
+  });
+});

@@ -38,6 +38,21 @@ export function createHandler() {
       res.setHeader('retry-after', '5');
       return void res.end(JSON.stringify({ error: { code: 'starting', message: 'Unite is starting up. Please try again in a moment.' } }));
     }
+    clearVercelHelpers(req);
     app(req as express.Request, res as express.Response);
   };
+}
+
+/**
+ * Vercel's Node helpers put an already-parsed `req.cookies` on every request. cookie-parser then
+ * skips the request (it returns early when `req.cookies` is set), so `req.secret` and
+ * `req.signedCookies` are never set, every signed cookie reads as missing, and `res.cookie(…,
+ * { signed: true })` throws. Removing the helper's property lets cookie-parser do its job.
+ */
+export function clearVercelHelpers(req: IncomingMessage): void {
+  try {
+    Object.defineProperty(req, 'cookies', { value: undefined, writable: true, configurable: true, enumerable: true });
+  } catch (err) {
+    console.error('[vercel] could not reset req.cookies', err);
+  }
 }
