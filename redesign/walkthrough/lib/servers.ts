@@ -5,6 +5,7 @@
  * (so the interviewer asks its fixed questions and the `ai` feature is off).
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { createHmac, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -18,7 +19,16 @@ export const EPOCH = '2026-11-13T09:00:00Z';
 
 export interface Unite {
   url: string;
+  /** Signs a session cookie value, so the recording can act as a seeded person through the app's own endpoints. */
+  secret: string;
+  /** Opens the live-room fixture (see unite-server.ts). */
+  fixtureToken: string;
   stop(): void;
+}
+
+/** The value of a signed cookie as cookie-parser checks it ("s:" + value + "." + HMAC-SHA256, base64 without padding). */
+export function signCookie(value: string, secret: string): string {
+  return `s:${value}.${createHmac('sha256', secret).update(value).digest('base64').replace(/=+$/, '')}`;
 }
 
 /** A port nothing is listening on right now. */
@@ -50,10 +60,13 @@ async function waitFor(url: string, ms: number, proc: ChildProcess, log: () => s
 }
 
 /** The environment the recorded server runs with (exported for the tests). */
-export function serverEnv(port: number, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+export function serverEnv(port: number, base: NodeJS.ProcessEnv = process.env, keys: { secret?: string; fixtureToken?: string } = {}): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...base,
     PORT: String(port),
+    // A secret of this run's own, so the recording can sign the session of a seeded person.
+    ...(keys.secret ? { UNITE_SECRET: keys.secret } : {}),
+    ...(keys.fixtureToken ? { WALKTHROUGH_FIXTURE_TOKEN: keys.fixtureToken } : {}),
     UNITE_DATA_DIR: 'memory',
     UNITE_DEMO: '1',
     UNITE_NOW: EPOCH,
@@ -82,7 +95,15 @@ export async function startUnite(o: { log?: (s: string) => void } = {}): Promise
   ensureBuilt(o.log);
   const port = await freePort();
   let out = '';
-  const proc = spawn('pnpm', ['--filter', '@unite/server', 'start'], { cwd: ROOT, env: serverEnv(port), stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+  const secret = randomBytes(24).toString('hex');
+  const fixtureToken = randomBytes(24).toString('hex');
+  // The app's own server, plus the live-room fixture (unite-server.ts), run with the server's tsx.
+  const proc = spawn('pnpm', ['--filter', '@unite/server', 'exec', 'tsx', path.join(import.meta.dirname, 'unite-server.ts')], {
+    cwd: ROOT,
+    env: serverEnv(port, process.env, { secret, fixtureToken }),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: true,
+  });
   proc.stdout!.on('data', (d) => (out += d));
   proc.stderr!.on('data', (d) => (out += d));
   const stop = () => {
@@ -100,5 +121,5 @@ export async function startUnite(o: { log?: (s: string) => void } = {}): Promise
     stop();
     throw e;
   }
-  return { url, stop };
+  return { url, secret, fixtureToken, stop };
 }
