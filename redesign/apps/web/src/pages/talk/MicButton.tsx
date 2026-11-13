@@ -3,7 +3,18 @@ import { speechSupported, startDictation } from '../../lib/speech';
 import { Button } from '../../ui/Button';
 
 /** "Speak": browser speech recognition, adding what is heard to the box. Hidden where the browser has none. */
-export function MicButton({ lang, onText, onError }: { lang: string; onText: (text: string) => void; onError: (message: string) => void }) {
+export function MicButton({
+  lang,
+  onText,
+  onError,
+  className,
+}: {
+  lang: string;
+  onText: (text: string) => void;
+  onError: (message: string) => void;
+  /** A compact style; the default is a secondary button. */
+  className?: string;
+}) {
   const [listening, setListening] = useState(false);
   const stop = useRef<(() => void) | null>(null);
   useEffect(() => () => stop.current?.(), []);
@@ -26,9 +37,16 @@ export function MicButton({ lang, onText, onError }: { lang: string; onText: (te
       },
     });
   }
+  const label = listening ? 'Stop listening' : 'Speak';
+  if (className)
+    return (
+      <button type="button" className={className} onClick={toggle} aria-pressed={listening}>
+        {label}
+      </button>
+    );
   return (
     <Button variant="secondary" onClick={toggle} aria-pressed={listening}>
-      {listening ? 'Stop listening' : 'Speak instead'}
+      {label}
     </Button>
   );
 }

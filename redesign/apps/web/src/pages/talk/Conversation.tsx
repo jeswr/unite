@@ -13,6 +13,9 @@ import type { ConversationView } from './types';
 
 type TurnBody = { text: string } | { skip: true } | { stop: true } | { resume: true } | { answers: string[] };
 
+/** The small actions under the message box: link-like, still 44px tall to tap. */
+const COMPACT = 'inline-flex min-h-11 items-center px-2 text-sm font-bold text-accent underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+
 const errorText = (e: unknown) => (e instanceof ApiError ? e.message : 'That did not go through. Please try again.');
 
 /** /talk/:id: the conversation, on whichever route the person chose. */
@@ -97,13 +100,19 @@ interface RouteProps {
 }
 
 /** "Stop here and review", with a short confirmation. */
-function StopButton({ onStop, disabled, variant = 'quiet' }: { onStop: () => void; disabled?: boolean; variant?: 'quiet' | 'secondary' }) {
+function StopButton({ onStop, disabled, compact }: { onStop: () => void; disabled?: boolean; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant={variant} onClick={() => setOpen(true)} disabled={disabled}>
-        Stop here and review
-      </Button>
+      {compact ? (
+        <button type="button" className={COMPACT} onClick={() => setOpen(true)} disabled={disabled}>
+          Stop here and review
+        </button>
+      ) : (
+        <Button variant="quiet" onClick={() => setOpen(true)} disabled={disabled}>
+          Stop here and review
+        </Button>
+      )}
       <Dialog open={open} title="Stop here?" onClose={() => setOpen(false)}>
         <p className="mb-4">You will see the points from what you have said so far, and you can change or scrap any of them. The questions end here.</p>
         <Button
@@ -214,7 +223,7 @@ function Chat({ view, send, kicker }: RouteProps) {
       </div>
 
       <div ref={composer} className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-white">
-        <div className="mx-auto max-w-read px-4 py-3">
+        <div className="mx-auto max-w-read px-4 pt-3 pb-1">
           {error && (
             <Banner tone="warn" className="mb-2">
               {error}
@@ -257,12 +266,12 @@ function Chat({ view, send, kicker }: RouteProps) {
               <p id={`${boxId}-hint`} className="sr-only">
                 Enter sends. Shift and Enter starts a new line.
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-x-1">
-                <MicButton lang={c.language} onText={(t) => setText((s) => (s ? `${s} ${t}` : t))} onError={setError} />
-                <Button variant="quiet" onClick={() => void act({ skip: true })} disabled={thinking}>
+              <div className="-ml-2 flex flex-wrap items-center">
+                <MicButton className={COMPACT} lang={c.language} onText={(t) => setText((s) => (s ? `${s} ${t}` : t))} onError={setError} />
+                <button type="button" className={COMPACT} onClick={() => void act({ skip: true })} disabled={thinking}>
                   Skip this
-                </Button>
-                <StopButton onStop={() => void act({ stop: true })} disabled={thinking} />
+                </button>
+                <StopButton compact onStop={() => void act({ stop: true })} disabled={thinking} />
               </div>
             </form>
           )}
