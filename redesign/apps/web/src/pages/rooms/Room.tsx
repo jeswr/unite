@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { api, ApiError, useApi } from '../../lib/api';
 import { useAssembly } from '../../lib/useAssembly';
@@ -32,7 +32,7 @@ const errorText = (e: unknown) => (e instanceof ApiError ? e.message : 'That did
 function useRoomMessages(roomId: string, active: boolean) {
   const [messages, setMessages] = useState<RoomMessageView[]>([]);
   const [status, setStatus] = useState<RoomStatus>();
-  const [offset, setOffset] = useState(0);
+  const [offset, setOffset] = useState<number>();
   const last = useRef<string | undefined>(undefined);
   const busy = useRef(false);
 
@@ -85,6 +85,9 @@ export default function Room() {
   const live = !!data?.isMember && data.room.status === 'open';
   const { messages, status: polledStatus, offset: pollOffset, poll } = useRoomMessages(roomId, live);
   useTick(5000);
+  // The server's clock minus this device's, measured once when the room loads.
+  const loadedNow = data?.now;
+  const baseOffset = useMemo(() => (loadedNow ? Date.parse(loadedNow) - Date.now() : 0), [loadedNow]);
 
   if (error && !data)
     return (
@@ -101,7 +104,7 @@ export default function Room() {
 
   const room = data.room;
   const status = polledStatus === 'closed' ? 'closed' : room.status;
-  const offset = live && pollOffset ? pollOffset : Date.parse(data.now) - Date.now();
+  const offset = live && pollOffset !== undefined ? pollOffset : baseOffset;
   const left = room.endsAt ? Date.parse(room.endsAt) - (Date.now() + offset) : null;
   const timeUp = status === 'open' && left !== null && left <= 0;
 

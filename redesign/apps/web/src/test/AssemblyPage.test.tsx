@@ -96,6 +96,11 @@ describe('actionsFor', () => {
   it('does not offer looking around in a real assembly', () => {
     expect(labels(view({ isExample: false }))).toEqual(['Start my conversation']);
   });
+  it('offers to carry on a conversation that was started', () => {
+    expect(labels(view({}, { myConversation: { id: 'con_AAAAAAAAAAAA', status: 'active' } }))[0]).toBe('Carry on my conversation');
+    expect(labels(view({}, { myConversation: { id: 'con_AAAAAAAAAAAA', status: 'reviewing' } }))[0]).toBe('Check what I said');
+    expect(labels(view({}, { myConversation: { id: 'con_AAAAAAAAAAAA', status: 'abandoned' } }))[0]).toBe('Start my conversation');
+  });
   it('says when someone chose to look around first', () => {
     const v = view({}, { heard: true, membership: { id: 'mem_AAAAAAAAAAAA', personId: 'per_AAAAAAAAAAAA', assemblyId: 'asm_AAAAAAAAAAAA', role: 'participant', invited: false, lookedAroundFirst: true, joinedAt: '2026-11-13T09:00:00.000Z' } });
     expect(actionsFor(v).note).toBe('You chose to look around the example first.');

@@ -57,7 +57,7 @@ function mock(room: RoomResponse) {
       }
       if (u.endsWith('/version')) return new Response(JSON.stringify({ version: 1 }));
       if (u.includes('/messages')) {
-        const body = served ? { ...messages, messages: [] } : messages;
+        const body = { ...(served ? { ...messages, messages: [] } : messages), now: room.now };
         served = true;
         return new Response(JSON.stringify(body));
       }

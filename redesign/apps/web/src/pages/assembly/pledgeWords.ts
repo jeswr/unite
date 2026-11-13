@@ -7,8 +7,8 @@ export function ruleParagraph(p: Pledge): string {
   const level = levelName(p.decisionLevel);
   const base =
     `Listening carries on until at least ${p.minParticipants} people have had their own conversation. ` +
-    `A statement becomes common ground when at least ${pct(p.groupThreshold)} of the people in each opinion group agree with it, ` +
-    `with at least ${requiredCounted(p)} people answering. Opinion groups are worked out from how people answered, so nothing can pass on the votes of one side alone.`;
+    `People tend to answer in two broad ways. A statement becomes common ground when at least ${pct(p.groupThreshold)} of the people on each side agree with it, ` +
+    `with at least ${requiredCounted(p)} people answering. The two sides are worked out from how people answered, so nothing can pass on the votes of one side alone.`;
   switch (p.decisionLevel) {
     case 0:
       return `The rule is “${level}”: those affected are asked and the decision is logged. ${base}`;

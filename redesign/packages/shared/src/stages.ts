@@ -97,7 +97,7 @@ export interface DecisionLevelInfo {
 export const DECISION_LEVELS: readonly DecisionLevelInfo[] = [
   { level: 0, name: 'Do', usedFor: "Small, reversible things inside one group's remit", passesWhen: 'Those affected are asked and it is logged', ifNot: 'Not applicable', available: true },
   { level: 1, name: 'No objection', usedFor: 'Routine, reversible changes', passesWhen: 'Nobody raises a reasoned objection within a set number of days', ifNot: 'Goes up a level', available: true },
-  { level: 2, name: 'Consent', usedFor: 'Most assembly statements', passesWhen: 'Common ground across opinion groups, and every reasoned objection answered to the satisfaction of a named facilitator, with dissent recorded', ifNot: 'A time-limited trial with a review date', available: true },
+  { level: 2, name: 'Consent', usedFor: 'Most assembly statements', passesWhen: 'Common ground among people who answer differently, and every reasoned objection answered to the satisfaction of a named facilitator, with dissent recorded', ifNot: 'A time-limited trial with a review date', available: true },
   { level: 3, name: 'Deliberated supermajority', usedFor: 'Priorities that affect many people', passesWhen: 'A panel drawn by lot deliberates. If it cannot reach consent, a ranked vote must beat "no change" two to one', ifNot: 'No change', available: true },
   { level: 4, name: 'Constitutional', usedFor: "Unite's own rules", passesWhen: 'Three to one, a quorum, a cooling-off period, and ratification by a panel drawn by lot', ifNot: 'No change', available: false },
 ];

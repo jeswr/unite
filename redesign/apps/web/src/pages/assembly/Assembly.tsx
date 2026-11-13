@@ -39,7 +39,10 @@ export function actionsFor(view: AssemblyView): { note?: string; actions: Action
   const lookedAround = !!membership?.lookedAroundFirst && view.role === 'participant';
   if (after('answered')) actions.push({ label: 'Read the decisions and answers', to: `${base}/decisions` });
   if (!heard) {
-    if (canTalk) actions.push({ label: 'Start my conversation', to: `${base}/talk` });
+    const mine = view.myConversation;
+    if (canTalk && mine?.status === 'active') actions.push({ label: 'Carry on my conversation', to: `/talk/${mine.id}` });
+    else if (canTalk && mine?.status === 'reviewing') actions.push({ label: 'Check what I said', to: `/talk/${mine.id}/review` });
+    else if (canTalk) actions.push({ label: 'Start my conversation', to: `${base}/talk` });
     if (a.isExample) actions.push({ label: 'Look around the example first', lookAround: true });
   } else {
     if (a.stage === 'deciding') actions.push({ label: 'Choose my priorities', to: `${base}/priorities` });
@@ -131,7 +134,7 @@ export default function AssemblyPage() {
             <div>
               <dt className="font-bold">How it is decided</dt>
               <dd>
-                {levelName(p.decisionLevel)}: at least {Math.round(p.groupThreshold * 100)}% of each opinion group must agree.
+                {levelName(p.decisionLevel)}: at least {Math.round(p.groupThreshold * 100)}% must agree on each side of how people answered, not only overall.
               </dd>
             </div>
             <div>
