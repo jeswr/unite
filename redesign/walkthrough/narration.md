@@ -60,13 +60,28 @@ It doesn't ask what she thinks about the future of work. It asks about yesterday
 It doesn't ask what she thinks about the future of work. It asks about yesterday. Real days are more reliable than opinions. In this recording the interviewer is using fixed questions.
 
 [do: answer-mattered]
+[if: ai]
 Then it picks up something she said, and asks why it mattered. One question at a time.
 
+[do: answer-mattered]
+[if: !ai]
+Then it asks about one moment that mattered, and why. One question at a time.
+
 [do: answer-expensive]
+[if: ai]
 Watch what happens when she says the course is too expensive. It doesn't file that under "cost". It asks when that last got in her way, and what it would let her do if it were sorted. Her words stay her words.
 
+[do: answer-expensive]
+[if: !ai]
+Watch what happens when she says the course is too expensive. It doesn't file that under "cost". It asks what stops her, and she says it her way: the classes are on while she's at work or asleep. Her words stay her words.
+
 [do: answer-good-day]
+[if: ai]
 Then an ordinary Tuesday, a few years from now, in a life that's going well. Not a fantasy. A Tuesday.
+
+[do: answer-good-day]
+[if: !ai]
+Then an ordinary weekday, a few years from now, in a life that's going well. Not a fantasy. A weekday.
 
 [do: show-stage-names]
 There are eight short stages like this, about twelve minutes in all. She can skip any of them, or stop.
@@ -77,7 +92,7 @@ There are eight short stages like this, about twelve minutes in all. She can ski
 At the end the interviewer shows her what it heard. Five points, built from her own phrases.
 
 [do: edit-point]
-She fixes one. She scraps another. She decides how each is shown: counted only, shown without her name, or shown with it.
+She fixes one. She scraps another, and adds one of her own. She decides how each is shown: counted only, shown without her name, or shown with it.
 
 [do: approve-points]
 Only what she approves leaves the conversation. When researchers ran AI interviews like this with several hundred people, ninety-nine percent approved the summary of their own views. Here, approval isn't a statistic. It's the gate.
@@ -97,7 +112,7 @@ Every sentence in a summary can be opened. Here are the words behind it, and the
 If a summary gets it wrong, anyone can say so, right here. That report is shown beside the summary, with what was done about it.
 
 [do: point-who-is-missing]
-And the picture is honest about who's missing. Only three people under twenty-five have been heard so far. The target was ten.
+And the picture is honest about who's missing. Only three people under twenty-five have been heard so far. Ten were hoped for.
 
 ## Statements and reasons {#statements}
 
@@ -122,7 +137,7 @@ When people really differ, a few of them are drawn by lot into a live room. Six 
 The facilitator is an AI. It keeps time and turns, and it invites the people who haven't spoken. It never takes a side and never sums anyone up. In one study on Stanford's online deliberation platform, nearly a thousand people met in rooms run this way.
 
 [do: room-outcome]
-This room came back with new wording: paid learning hours, with the cost shared between the employer and the skills fund. That version became common ground.
+An earlier room came back with new wording: paid learning hours, with the cost shared between the employer and the skills fund. That version became common ground.
 
 ## Deciding, and what comes first {#decide}
 
@@ -133,7 +148,7 @@ The rule for deciding was fixed in the pledge, before anyone spoke. And on every
 The moment statements pass, everyone is asked the next question: which three matter most to you?
 
 [do: choose-priorities]
-Amina picks hers, and the list moves. It's ordered so that once a large group's first choice is placed, their other choices count for a little less. That way smaller groups reach the top as well.
+Amina picks hers, and the list counts her in. It's ordered so that once a large group's first choice is placed, their other choices count for less. That way smaller groups reach the top as well.
 
 [do: point-capacity]
 The top five go to the council and the college, who have until the eighteenth of December to answer each one.
@@ -161,18 +176,18 @@ Every decision carries numbered tests for "done", written so the people who made
 Builders proposed how to meet those tests, and the people who made the decision confirmed the plan was faithful to it. For software, AI coding agents can do much of the building, with a named person accountable for every piece.
 
 [do: open-check]
-Then it's checked, by a panel drawn by lot. Not by the host. Two tests met, one partly. So the record says: delivered, with small changes.
+Then it's checked, by a panel drawn by lot. Not by the host. Two tests met, and one not. So the record says: delivered, with small changes.
 
 ## The register {#register}
 
 [do: open-register]
-Every decision, in every assembly, lands in one public register. Awaiting an answer. Accepted. In progress. Delivered. Refused.
+Every decision, in every assembly, lands in one public register. Delivered with small changes. In progress. Delayed. Refused.
 
 [do: point-in-progress]
 "In progress" is never counted as done. After France's climate convention, the government counted about two thirds of the measures as implemented in full or in part. An independent count found about one in five implemented as proposed. So here the categories are fixed in advance, and someone else does the counting.
 
 [do: open-me]
-And Amina has her own page: what happened to what I said. Each of her points, traced to a theme, a statement, a decision, and where it stands today.
+And Amina has her own page: what happened to what I said. Each of her points, traced to the theme it joined and the statements that rest on it.
 
 ## Listening to the world {#listening}
 
@@ -180,10 +195,10 @@ And Amina has her own page: what happened to what I said. Each of her points, tr
 Not everything starts with a host. Open listening is always on. Anyone, anywhere, can have the conversation about their own life, in their own language.
 
 [do: point-languages]
-What they approve joins a wider picture. These are people in fourteen countries. All invented for this example.
+What they approve joins a wider picture. These are sixty people so far. All invented for this example.
 
 [do: point-no-host]
-Unite shows which themes keep coming up with nobody yet responsible for them. This one is about looking after an ageing parent while holding down a job.
+Unite shows which themes keep coming up with nobody yet responsible for them. This one kept coming up: looking after an ageing parent while holding down a job.
 
 [do: open-ai-and-care]
 That's the opening for someone to step forward. Here a coalition of care workers, providers and family carers has drafted a pledge. It's published, and for nine more days anyone can challenge the question before it opens.
@@ -197,7 +212,7 @@ Unite has to live by its own rules. On every page there's a button to give feedb
 It never argues and never defends the product. What you've said so far is always on screen, and you can change it.
 
 [do: open-your-feedback]
-Afterwards you get a private link that shows what happened to your feedback, and why. The people who run Unite are a host like any other. They answer, by a date, and someone else checks.
+Afterwards you get a private link that shows what happened to your feedback, and why. The people who run Unite are a host like any other. Their pledge, still a draft, says they answer by a date, and someone else checks.
 
 ## What comes next {#outro}
 
