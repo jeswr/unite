@@ -4,6 +4,7 @@ export * from './ids.js';
 export * from './clock.js';
 export * from './stages.js';
 export * from './text.js';
+export * from './timeLeft.js';
 export * from './interviewer.js';
 export * from './counting.js';
 export * from './priorities.js';

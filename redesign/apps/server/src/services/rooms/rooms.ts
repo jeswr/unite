@@ -1,5 +1,18 @@
-import { type AnswerTotals, type Assembly, type EvidenceCard, newId, opinionGroups, type Room, type RoomAnswer, type RoomMessage, type RoomMessageView, type Statement } from '@unite/shared';
-import { wordFacilitator } from '../../ai/facilitator.js';
+import {
+  type AnswerTotals,
+  type Assembly,
+  type EvidenceCard,
+  newId,
+  opinionGroups,
+  type Room,
+  type RoomAnswer,
+  type RoomMessage,
+  type RoomMessageView,
+  type RoomPace,
+  type Statement,
+  timeLeftWords,
+} from '@unite/shared';
+import { daysWords, wordFacilitator } from '../../ai/facilitator.js';
 import type { Deps } from '../../deps.js';
 import { HttpError } from '../../errors.js';
 import type { Store } from '../../store/types.js';
@@ -38,6 +51,9 @@ export async function eligibleForRoom(store: Store, assemblyId: string): Promise
 export interface CreateRoomInput {
   topic: string;
   statementId?: string;
+  /** Absent means live. */
+  pace?: RoomPace;
+  /** The room's length; for a slow room, its days times 1,440. */
   minutes: number;
   size: number;
   seed?: string;
@@ -77,6 +93,7 @@ export async function createRoom(deps: Pick<Deps, 'store' | 'clock'>, assembly: 
     briefing: input.briefing,
     status: 'scheduled',
     memberIds,
+    ...(input.pace === 'slow' ? { pace: 'slow' as const } : {}),
     minutes: input.minutes,
   };
   await store.put('rooms', room);
@@ -119,12 +136,14 @@ export async function checkFacilitator(deps: Deps, roomId: string, opts: { force
     if (!due) return undefined;
     const names = await memberNames(deps.store, room);
     const statement = room.statementId ? await deps.store.get('statements', room.statementId) : undefined;
-    const minutesLeft = Math.max(0, Math.ceil((Date.parse(room.endsAt!) - now) / 60000));
+    const msLeft = Date.parse(room.endsAt!) - now;
+    const minutesLeft = Math.max(0, Math.ceil(msLeft / 60000));
     const { text } = await wordFacilitator(deps, due.kind, {
       topic: room.topic,
       ...(statement ? { statement: statement.text } : {}),
       minutesLeft,
       ...(due.kind === 'invite' && due.personId ? { name: names.get(due.personId) } : {}),
+      ...(room.pace === 'slow' ? { pace: 'slow' as const, timeLeft: timeLeftWords(msLeft), length: daysWords(room.minutes) } : {}),
     });
     const msg: RoomMessage = {
       id: newId('msg'),
@@ -146,6 +165,34 @@ export function resetFacilitatorTimers(): void {
 }
 
 /* ------------------------------------------------------------- views */
+
+/** A room's pace, with live for rooms stored before slow rooms existed. */
+export const paceOf = (room: Pick<Room, 'pace'>): RoomPace => room.pace ?? 'live';
+
+export interface WriteFirst {
+  /** True for a member of a slow room who has not posted a message yet. */
+  mustWriteFirst: boolean;
+  /** The person messages held back from them. */
+  hiddenCount: number;
+  /** How many different people wrote those messages. */
+  hiddenPeople: number;
+}
+
+/**
+ * Write before you read (rule 5 widened, section 12.2): in a slow room, a member who has not posted
+ * sees only facilitator and system messages. Everyone else, and every live room, sees everything.
+ */
+export function writeFirst(room: Pick<Room, 'pace'>, messages: Pick<RoomMessage, 'authorType' | 'personId'>[], me: string | undefined): WriteFirst {
+  const people = messages.filter((m) => m.authorType === 'person');
+  const must = paceOf(room) === 'slow' && !people.some((m) => !!me && m.personId === me);
+  if (!must) return { mustWriteFirst: false, hiddenCount: 0, hiddenPeople: 0 };
+  return { mustWriteFirst: true, hiddenCount: people.length, hiddenPeople: new Set(people.map((m) => m.personId)).size };
+}
+
+/** The messages a person may read: without other people's messages while they must write first. */
+export function visibleMessages<T extends Pick<RoomMessage, 'authorType'>>(messages: T[], gate: WriteFirst): T[] {
+  return gate.mustWriteFirst ? messages.filter((m) => m.authorType !== 'person') : messages;
+}
 
 export function messageView(m: RoomMessage, names: Map<string, string>, me: string | undefined): RoomMessageView {
   return {

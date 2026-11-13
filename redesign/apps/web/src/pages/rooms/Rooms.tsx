@@ -9,14 +9,26 @@ import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
 import { Tag } from '../../ui/Tag';
 import { answersInWords, EvidenceCardView, NotHeardOrError, OutcomeView } from './parts';
-import type { RoomsResponse } from '@unite/shared';
-import { timeLeftWords } from './time';
+import type { RoomPace, RoomsResponse } from '@unite/shared';
+import { PACE_LABEL, roomLengthWords, roomTimeLeft } from './time';
 
-/** "Opens soon", "Running until 10:45 (31 minutes left)", or "Closed". */
-function whenWords(r: { status: string; endsAt: string | null; minutes?: number }, now: number): string {
-  if (r.status === 'scheduled') return r.minutes ? `Not open yet. It will run for ${r.minutes} minutes once it opens.` : 'Not open yet.';
-  if (r.status === 'open' && r.endsAt) return `Open now. ${timeLeftWords(Date.parse(r.endsAt) - now)}.`;
+/** "Not open yet. It will run for 45 minutes once it opens.", "Open now. 31 minutes left.", "Open now. 3 days left.", or "Closed." */
+function whenWords(r: { status: string; pace: RoomPace; endsAt: string | null; minutes?: number }, now: number): string {
+  if (r.status === 'scheduled') {
+    if (!r.minutes) return 'Not open yet.';
+    return r.pace === 'slow' ? `Not open yet. It will be open for ${roomLengthWords(r.minutes, 'slow')} once it opens.` : `Not open yet. It will run for ${r.minutes} minutes once it opens.`;
+  }
+  if (r.status === 'open' && r.endsAt) return `Open now. ${roomTimeLeft(Date.parse(r.endsAt) - now, r.pace)}.`;
   return 'Closed.';
+}
+
+/** "Live room" or "Slow room", before the room's timing. */
+function PaceTag({ pace }: { pace: RoomPace }) {
+  return (
+    <>
+      <Tag tone={pace === 'slow' ? 'accent' : 'neutral'}>{PACE_LABEL[pace]}</Tag>{' '}
+    </>
+  );
 }
 
 export default function Rooms() {
@@ -47,7 +59,10 @@ export default function Rooms() {
             {rooms.data.myRoom ? (
               <Card>
                 <h3 className="mb-1">{rooms.data.myRoom.topic}</h3>
-                <p className="mb-2">{whenWords(rooms.data.myRoom, now)}</p>
+                <p className="mb-2">
+                  <PaceTag pace={rooms.data.myRoom.pace} />
+                  {whenWords(rooms.data.myRoom, now)}
+                </p>
                 <p className="mb-3">
                   <span className="font-bold">In the room: </span>
                   {rooms.data.myRoom.members.map((m) => (m.isMe ? 'you' : m.name)).join(', ')}
@@ -78,6 +93,7 @@ export default function Rooms() {
                         <Link to={`/a/${slug}/rooms/${r.id}`}>{r.topic}</Link>
                       </h3>
                       <p className="text-muted">
+                        <PaceTag pace={r.pace} />
                         {r.size} people. {whenWords(r, now)}
                       </p>
                     </Card>
@@ -103,11 +119,10 @@ export default function Rooms() {
                       <h3 className="mb-1">
                         <Link to={`/a/${slug}/rooms/${r.id}`}>{r.topic}</Link>
                       </h3>
-                      {r.wasMine && (
-                        <p className="mb-2">
-                          <Tag tone="accent">You were in this room</Tag>
-                        </p>
-                      )}
+                      <p className="mb-2 flex flex-wrap gap-2">
+                        <Tag>{PACE_LABEL[r.pace]}</Tag>
+                        {r.wasMine && <Tag tone="accent">You were in this room</Tag>}
+                      </p>
                       <div className="mb-3">
                         <OutcomeView outcome={r.outcome} headingLevel={4} />
                       </div>

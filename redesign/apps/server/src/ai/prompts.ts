@@ -324,6 +324,23 @@ export const FACILITATOR_FALLBACK: Record<string, string> = {
   final: "Time is up. Please give your private final answer below, and add any reasons you want the assembly to see.",
 };
 
+/**
+ * Added to the facilitator's instructions in a slow room (section 12.2), which is open for days and
+ * where people write when they can. The time left is given in words.
+ */
+export const FACILITATOR_SLOW_NOTE = `This room is slow. It is open for several days, and people write when it suits them, so they may not be there at the same moment. Each person writes where they stand before they can read the others. You will be told the time left in words. Say it in those words; do not turn it into minutes.`;
+
+/** Fixed wording for a slow room. {days} is how long the room is open, {left} the time left, both in words. */
+export const FACILITATOR_FALLBACK_SLOW: Record<string, string> = {
+  welcome:
+    "Welcome. I am the facilitator, an AI, and I take no side. This room is open for {days}. Write where you stand before you read the others. Come back whenever it suits you.",
+  invite: "{name}, we have not read anything from you yet. When you have a moment, would you like to write where you stand? It is fine to pass.",
+  make_room: "Thank you. Let us leave some space for people who have not written for a while.",
+  half_time: "We are half way through the time, with {left}. Come back to write, and to read what others wrote.",
+  wording: "{left}. Does anyone want to suggest a different wording for the statement?",
+  final: "Time is up. Please give your private final answer below, and add any reasons you want the assembly to see.",
+};
+
 export const CONSENT_TEXT = [
   "You will be talking with an AI interviewer. It asks questions and listens. It has no opinions and will not give advice.",
   "What you type stays private to you. At the end you will see a few points in your own words. Only the points you approve are shared, and you choose how.",

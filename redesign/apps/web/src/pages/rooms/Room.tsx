@@ -10,7 +10,7 @@ import { Field, inputClass } from '../../ui/Field';
 import { Layout } from '../../ui/Layout';
 import { Tag } from '../../ui/Tag';
 import { answersInWords, EvidenceCardView, NotHeardOrError, OutcomeView } from './parts';
-import { timeLeftWords } from './time';
+import { roomLengthWords, roomTimeLeft, slowRoomLine, writeFirstNotice } from './time';
 import type { AnswerValue, MessagesResponse, RoomMessageView, RoomResponse, RoomStatus } from '@unite/shared';
 
 /** Rooms poll their own messages every 1.5 seconds (section 7). */
@@ -28,23 +28,40 @@ const OUTCOME_KINDS = [
 
 const errorText = (e: unknown) => (e instanceof ApiError ? e.message : 'That did not work. Please try again.');
 
-/** Polls the room's messages while `active`, appending what is new. Returns the messages and the server's clock offset. */
+export interface WriteFirstState {
+  mustWriteFirst: boolean;
+  hiddenPeople: number;
+}
+
+/**
+ * Polls the room's messages while `active`, appending what is new. Returns the messages and the server's clock offset.
+ * While a member of a slow room must write first, each poll fetches the whole list again, so the
+ * messages held back until now arrive in their places once they have written.
+ */
 function useRoomMessages(roomId: string, active: boolean) {
   const [messages, setMessages] = useState<RoomMessageView[]>([]);
   const [status, setStatus] = useState<RoomStatus>();
   const [offset, setOffset] = useState<number>();
+  const [gate, setGate] = useState<WriteFirstState>();
   const last = useRef<string | undefined>(undefined);
+  const gated = useRef(true);
   const busy = useRef(false);
 
   const poll = useCallback(async () => {
     if (busy.current) return;
     busy.current = true;
     try {
-      const q = last.current ? `?after=${encodeURIComponent(last.current)}` : '';
+      const whole = gated.current || !last.current;
+      const q = whole ? '' : `?after=${encodeURIComponent(last.current!)}`;
       const r = await api.get<MessagesResponse>(`/api/rooms/${encodeURIComponent(roomId)}/messages${q}`);
       setOffset(Date.parse(r.now) - Date.now());
       setStatus(r.status);
-      if (r.messages.length) {
+      gated.current = !!r.mustWriteFirst;
+      setGate({ mustWriteFirst: !!r.mustWriteFirst, hiddenPeople: r.hiddenPeople ?? 0 });
+      if (whole) {
+        last.current = r.messages.at(-1)?.id;
+        setMessages(r.messages);
+      } else if (r.messages.length) {
         last.current = r.messages[r.messages.length - 1]!.id;
         setMessages((m) => [...m, ...r.messages.filter((x) => !m.some((y) => y.id === x.id))]);
       }
@@ -64,7 +81,7 @@ function useRoomMessages(roomId: string, active: boolean) {
     return () => clearInterval(t);
   }, [active, poll]);
 
-  return { messages, status, offset, poll };
+  return { messages, status, offset, gate, poll };
 }
 
 /** Re-renders every few seconds so the timer stays current. */
@@ -83,7 +100,7 @@ export default function Room() {
   const { data, error, reload } = useApi<RoomResponse>(`/api/rooms/${encodeURIComponent(roomId)}`, version);
   const a = view?.assembly;
   const live = !!data?.isMember && data.room.status === 'open';
-  const { messages, status: polledStatus, offset: pollOffset, poll } = useRoomMessages(roomId, live);
+  const { messages, status: polledStatus, offset: pollOffset, gate: polledGate, poll } = useRoomMessages(roomId, live);
   useTick(5000);
   // The server's clock minus this device's, measured once when the room loads.
   const loadedNow = data?.now;
@@ -107,6 +124,9 @@ export default function Room() {
   const offset = live && pollOffset !== undefined ? pollOffset : baseOffset;
   const left = room.endsAt ? Date.parse(room.endsAt) - (Date.now() + offset) : null;
   const timeUp = status === 'open' && left !== null && left <= 0;
+  const slow = room.pace === 'slow';
+  // What the latest poll says, or the room's own answer before the first poll.
+  const gate: WriteFirstState = polledGate ?? { mustWriteFirst: data.mustWriteFirst, hiddenPeople: data.hiddenPeople };
 
   return (
     <Layout title={room.topic} assembly={a} kicker="A room">
@@ -116,11 +136,14 @@ export default function Room() {
       <div className="mb-4 flex flex-wrap items-start gap-x-3 gap-y-2 md:mb-6">
         <p className="flex min-h-10 flex-wrap items-center gap-2">
           <Tag tone={status === 'open' ? 'accent' : 'neutral'}>{STATUS_WORDS[status]}</Tag>
-          {status === 'open' && left !== null && <span className={left < 5 * 60_000 ? 'font-bold text-warn' : 'font-bold'}>{timeLeftWords(left)}</span>}
-          {status === 'scheduled' && <span>It will run for {room.minutes} minutes once it opens.</span>}
+          {status === 'open' && left !== null && <span className={left < 5 * 60_000 ? 'font-bold text-warn' : 'font-bold'}>{roomTimeLeft(left, room.pace)}</span>}
+          {status === 'scheduled' &&
+            (slow ? <span>This is a slow room. It will be open for {roomLengthWords(room.minutes, 'slow')} once it opens.</span> : <span>It will run for {room.minutes} minutes once it opens.</span>)}
         </p>
         <Briefing data={data} />
       </div>
+
+      {slow && status === 'open' && room.endsAt && <p className="mb-4">{slowRoomLine(room.endsAt)}</p>}
 
       {!data.isMember && (
         <section aria-labelledby="not-member" className="mb-8">
@@ -150,14 +173,21 @@ export default function Room() {
 
       {data.isMember && status === 'open' && (
         <>
+          {slow && gate.mustWriteFirst && (
+            <Banner className="mb-4">
+              <p>{writeFirstNotice(gate.hiddenPeople)}</p>
+            </Banner>
+          )}
           <Messages messages={messages} />
           {timeUp ? (
-            <FinalForms data={data} onDone={reload} />
+            <FinalForms data={data} mustWriteFirst={slow && gate.mustWriteFirst} onDone={reload} />
           ) : (
             <MessageBox
               roomId={room.id}
               onSent={() => {
                 void poll();
+                // Once you have written in a slow room, what the others added to the outcome is yours to read too.
+                if (slow && gate.mustWriteFirst) reload();
               }}
             />
           )}
@@ -360,7 +390,7 @@ export function MessageBox({ roomId, onSent }: { roomId: string; onSent: () => v
   );
 }
 
-function FinalForms({ data, onDone }: { data: RoomResponse; onDone: () => void }) {
+function FinalForms({ data, mustWriteFirst, onDone }: { data: RoomResponse; mustWriteFirst: boolean; onDone: () => void }) {
   const roomId = data.room.id;
   const [value, setValue] = useState<AnswerValue | undefined>(data.myAnswer?.value);
   const [note, setNote] = useState(data.myAnswer?.note ?? '');
@@ -441,23 +471,27 @@ function FinalForms({ data, onDone }: { data: RoomResponse; onDone: () => void }
           Add to what the room found
         </h2>
         <p className="mb-3">Each of you can add a reason for, a reason against, a better wording or a question for experts. These go back to the assembly in your words. The facilitator does not write any of it.</p>
-        <form onSubmit={(e) => void addItem(e)}>
-          <Field label="What are you adding?">
-            <select className={inputClass} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
-              {OUTCOME_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="In your words" error={itemErr}>
-            <textarea className={inputClass} value={item} maxLength={280} onChange={(e) => setItem(e.target.value)} />
-          </Field>
-          <Button type="submit" variant="secondary" disabled={busy || !item.trim()}>
-            Add it
-          </Button>
-        </form>
+        {mustWriteFirst ? (
+          <p className="text-muted">This was a slow room, and you did not write in it, so what the others added stays with them. You can still give your private final answer above.</p>
+        ) : (
+          <form onSubmit={(e) => void addItem(e)}>
+            <Field label="What are you adding?">
+              <select className={inputClass} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+                {OUTCOME_KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="In your words" error={itemErr}>
+              <textarea className={inputClass} value={item} maxLength={280} onChange={(e) => setItem(e.target.value)} />
+            </Field>
+            <Button type="submit" variant="secondary" disabled={busy || !item.trim()}>
+              Add it
+            </Button>
+          </form>
+        )}
         {data.room.outcome && (
           <Card className="mt-4">
             <h3 className="mb-2">Added so far</h3>
