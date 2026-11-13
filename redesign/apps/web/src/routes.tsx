@@ -17,6 +17,7 @@ import How from './pages/how/How';
 import Prompts from './pages/how/Prompts';
 import Rules from './pages/how/Rules';
 import Me from './pages/me/Me';
+import TalkItThrough from './pages/mediation/TalkItThrough';
 import Listening from './pages/picture/Listening';
 import Picture from './pages/picture/Picture';
 import Room from './pages/rooms/Room';
@@ -49,6 +50,7 @@ export function AppRoutes() {
       <Route path="/listening" element={<Listening />} />
       <Route path="/a/:slug/statements" element={<Statements />} />
       <Route path="/a/:slug/statements/:id" element={<Statement />} />
+      <Route path="/a/:slug/statements/:id/talk" element={<TalkItThrough />} />
       <Route path="/a/:slug/rooms" element={<Rooms />} />
       <Route path="/a/:slug/rooms/:roomId" element={<Room />} />
       <Route path="/a/:slug/priorities" element={<Priorities />} />
