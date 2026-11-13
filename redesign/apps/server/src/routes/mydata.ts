@@ -33,12 +33,13 @@ async function exportFor(store: Store, personId: string) {
     store.list('reports', { personId }),
     store.list('feedback', { personId }),
   ]);
-  return { person, memberships, conversations, turns, points, reactions, reasons, objections, priorityChoices, roomAnswers, roomMessages, reports, feedback };
+  const mediations = await store.list('mediations', { personId });
+  return { person, memberships, conversations, turns, points, reactions, reasons, objections, priorityChoices, roomAnswers, roomMessages, reports, feedback, mediations };
 }
 
 /**
  * Erases a person (section 7): the person, memberships, conversations, turns, points, reactions,
- * reasons, objections, priority choices and room answers. Their name is taken off statements
+ * reasons, objections, priority choices, room answers and mediations. Their name is taken off statements
  * they wrote and reports and feedback they sent. Their point ids are taken out of themes
  * (and theme sentences) and statements; a sentence left with no source is dropped (rule 3), and a
  * theme left with no points is removed unless a statement or report refers to it. Every affected
@@ -60,7 +61,7 @@ export async function erasePerson(deps: Pick<Deps, 'store' | 'clock'>, personId:
     }
     for (const p of points) await tx.delete('points', p.id);
 
-    for (const name of ['memberships', 'reactions', 'reasons', 'objections', 'priorityChoices'] as const) {
+    for (const name of ['memberships', 'reactions', 'reasons', 'objections', 'priorityChoices', 'mediations'] as const) {
       for (const doc of await tx.list(name, { personId })) {
         await tx.delete(name, doc.id);
         affected.add(doc.assemblyId);

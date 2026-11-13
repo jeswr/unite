@@ -1,11 +1,12 @@
 import { Router, type Request } from 'express';
 import { z } from 'zod';
-import { countPeople, newId, type Assembly, type Point, type Statement } from '@unite/shared';
+import { countPeople, newId, type Assembly, type Point, type Reason, type Statement } from '@unite/shared';
 import { getMembership, requireHeard, requirePerson, requireRole } from '../auth.js';
 import { draftStatements, MAX_STATEMENT_WORDS, reviseStatement } from '../ai/synthesis.js';
 import type { Deps } from '../deps.js';
 import { HttpError, notFound } from '../errors.js';
 import { getAssemblyBySlug } from '../services/assemblies.js';
+import { mediationSummary } from '../services/mediation/summary.js';
 import { namesFor, quotesOf, reportView } from '../services/picture/view.js';
 import {
   existingSources,
@@ -44,6 +45,62 @@ const ObjectionReplyBody = z.strictObject({
 });
 const WriteBody = z.strictObject({ text: statementText, pointIds: z.array(z.string()).max(200) });
 
+/** Writes a new candidate statement (rule 3: refused unless at least one source point exists). */
+export async function createStatement(
+  deps: Pick<Deps, 'store' | 'clock'>,
+  assembly: Assembly,
+  fields: { text: string; pointIds: string[]; origin: Statement['origin']; authorPersonId?: string; previous?: Statement },
+): Promise<Statement> {
+  const { store, clock } = deps;
+  const pointIds = await existingSources(store, assembly.id, fields.pointIds);
+  if (pointIds.length === 0)
+    throw new HttpError(422, 'no_sources', 'A statement must rest on at least one point people approved. Choose its source points.');
+  const now = clock.iso();
+  const s: Statement = {
+    id: newId('st'),
+    assemblyId: assembly.id,
+    text: fields.text,
+    version: fields.previous ? fields.previous.version + 1 : 1,
+    ...(fields.previous ? { previousId: fields.previous.id } : {}),
+    themeIds: await themesOfPoints(store, assembly.id, pointIds),
+    pointIds,
+    origin: fields.origin,
+    ...(fields.authorPersonId ? { authorPersonId: fields.authorPersonId } : {}),
+    status: 'candidate',
+    createdAt: now,
+    updatedAt: now,
+  };
+  return store.put('statements', s);
+}
+
+/** Refuses a rewording that is the statement's own wording. */
+export function checkRewording(statement: Statement, text: string): void {
+  if (text.trim() === statement.text.trim()) throw new HttpError(400, 'same_wording', 'That is the same wording as the statement. Change some words first.');
+}
+
+/** A participant's rewording: a new candidate statement with origin `reword`, resting on the statement's points. Used by the direct route and by talk it through. */
+export async function addRewording(deps: Pick<Deps, 'store' | 'clock'>, assembly: Assembly, statement: Statement, personId: string, text: string): Promise<Statement> {
+  checkRewording(statement, text);
+  const created = await createStatement(deps, assembly, { text, pointIds: statement.pointIds, origin: 'reword', authorPersonId: personId, previous: statement });
+  await bumpVersion(deps, assembly.id);
+  return created;
+}
+
+/** A reason for, against, or a question. Used by the direct route and by talk it through. */
+export async function addReason(deps: Pick<Deps, 'store' | 'clock'>, statement: Statement, personId: string, side: Reason['side'], text: string): Promise<Reason> {
+  const reason = await deps.store.put('reasons', {
+    id: newId('rsn'),
+    statementId: statement.id,
+    assemblyId: statement.assemblyId,
+    personId,
+    side,
+    text,
+    createdAt: deps.clock.iso(),
+  });
+  await bumpVersion(deps, statement.assemblyId);
+  return reason;
+}
+
 const viewerOf = (req: Request): Viewer => ({ personId: req.personId, role: req.role });
 const isSteward = (req: Request) => req.role === 'steward';
 
@@ -71,32 +128,6 @@ export function statementsRouter(deps: Deps): Router {
     return summaryOf(s, data, assembly.pledge, viewerOf(req));
   }
 
-  /** Writes a new candidate statement (rule 3: refused unless at least one source point exists). */
-  async function createStatement(
-    assembly: Assembly,
-    fields: { text: string; pointIds: string[]; origin: Statement['origin']; authorPersonId?: string; previous?: Statement },
-  ): Promise<Statement> {
-    const pointIds = await existingSources(store, assembly.id, fields.pointIds);
-    if (pointIds.length === 0)
-      throw new HttpError(422, 'no_sources', 'A statement must rest on at least one point people approved. Choose its source points.');
-    const now = clock.iso();
-    const s: Statement = {
-      id: newId('st'),
-      assemblyId: assembly.id,
-      text: fields.text,
-      version: fields.previous ? fields.previous.version + 1 : 1,
-      ...(fields.previous ? { previousId: fields.previous.id } : {}),
-      themeIds: await themesOfPoints(store, assembly.id, pointIds),
-      pointIds,
-      origin: fields.origin,
-      ...(fields.authorPersonId ? { authorPersonId: fields.authorPersonId } : {}),
-      status: 'candidate',
-      createdAt: now,
-      updatedAt: now,
-    };
-    return store.put('statements', s);
-  }
-
   r.get('/assemblies/:slug/statements', async (req, res) => {
     const assembly = await getAssemblyBySlug(store, String(req.params.slug));
     await requireHeard(deps, req, assembly);
@@ -113,11 +144,12 @@ export function statementsRouter(deps: Deps): Router {
     const { statement, assembly } = await load(req);
     const viewer = viewerOf(req);
     const data = await loadReactionData(store, assembly.id);
-    const [reasons, objections, reports, themes] = await Promise.all([
+    const [reasons, objections, reports, themes, mediations] = await Promise.all([
       store.list('reasons', { statementId: statement.id }),
       store.list('objections', { statementId: statement.id }),
       store.list('reports', { targetType: 'statement', targetId: statement.id }),
       store.list('themes', { assemblyId: assembly.id }),
+      store.list('mediations', { statementId: statement.id }),
     ]);
     const earlier: StatementDetail['earlier'] = [];
     const seen = new Set([statement.id]);
@@ -149,6 +181,7 @@ export function statementsRouter(deps: Deps): Router {
       objections: objections.map((o) => objectionView(o, viewer)),
       reports: reports.map((x) => reportView(x, viewer)),
       canSteward: isSteward(req),
+      mediation: mediationSummary(mediations, req.personId),
     };
     res.json(body);
   });
@@ -177,31 +210,14 @@ export function statementsRouter(deps: Deps): Router {
   r.post('/statements/:id/rewordings', requirePerson(deps), async (req, res) => {
     const body = parseBody(RewordBody, req.body);
     const { statement, assembly } = await load(req);
-    if (body.text === statement.text.trim()) throw new HttpError(400, 'same_wording', 'That is the same wording as the statement. Change some words first.');
-    const created = await createStatement(assembly, {
-      text: body.text,
-      pointIds: statement.pointIds,
-      origin: 'reword',
-      authorPersonId: req.person!.id,
-      previous: statement,
-    });
-    await bumpVersion(deps, assembly.id);
+    const created = await addRewording(deps, assembly, statement, req.person!.id, body.text);
     res.status(201).json({ statement: await summary(created.id, assembly, req) });
   });
 
   r.post('/statements/:id/reasons', requirePerson(deps), async (req, res) => {
     const body = parseBody(ReasonBody, req.body);
-    const { statement, assembly } = await load(req);
-    const reason = await store.put('reasons', {
-      id: newId('rsn'),
-      statementId: statement.id,
-      assemblyId: assembly.id,
-      personId: req.person!.id,
-      side: body.side,
-      text: body.text,
-      createdAt: clock.iso(),
-    });
-    await bumpVersion(deps, assembly.id);
+    const { statement } = await load(req);
+    const reason = await addReason(deps, statement, req.person!.id, body.side, body.text);
     res.status(201).json({ reason: reasonView(reason, viewerOf(req)) });
   });
 
@@ -254,7 +270,7 @@ export function statementsRouter(deps: Deps): Router {
       points,
     });
     const created: Statement[] = [];
-    for (const d of drafts) created.push(await createStatement(assembly, { text: d.text, pointIds: d.pointIds, origin: 'ai' }));
+    for (const d of drafts) created.push(await createStatement(deps, assembly, { text: d.text, pointIds: d.pointIds, origin: 'ai' }));
     if (created.length) await bumpVersion(deps, assembly.id);
     const data = await loadReactionData(store, assembly.id);
     const body: DraftStatementsResponse = {
@@ -270,7 +286,7 @@ export function statementsRouter(deps: Deps): Router {
   r.post('/assemblies/:slug/statements', requireRole('steward'), async (req, res) => {
     const body = parseBody(WriteBody, req.body);
     const assembly = await getAssemblyBySlug(store, String(req.params.slug));
-    const created = await createStatement(assembly, { text: body.text, pointIds: body.pointIds, origin: 'steward' });
+    const created = await createStatement(deps, assembly, { text: body.text, pointIds: body.pointIds, origin: 'steward' });
     await bumpVersion(deps, assembly.id);
     res.status(201).json({ statement: await summary(created.id, assembly, req) });
   });
@@ -286,7 +302,7 @@ export function statementsRouter(deps: Deps): Router {
       reasons.map((x) => ({ side: x.side, text: x.text })),
     );
     if (!revision.changed) return void res.json({ statement: null, note: revision.note, fallback: revision.fallback });
-    const created = await createStatement(assembly, { text: revision.text, pointIds: statement.pointIds, origin: 'ai', previous: statement });
+    const created = await createStatement(deps, assembly, { text: revision.text, pointIds: statement.pointIds, origin: 'ai', previous: statement });
     await bumpVersion(deps, assembly.id);
     res.status(201).json({ statement: await summary(created.id, assembly, req), note: revision.note, fallback: revision.fallback });
   });

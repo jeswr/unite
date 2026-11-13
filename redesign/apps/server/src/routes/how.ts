@@ -23,6 +23,21 @@ export function publishedPrompts(): PromptsResponse['prompts'] {
           repair: '<the rule that was broken>',
         }),
       });
+    else if (typeof value === 'function' && name === 'mediatorStepMessage')
+      out.push({
+        name,
+        kind: 'template',
+        text: prompts.mediatorStepMessage({
+          step: 2,
+          statement: '<the statement>',
+          answer: 'agree',
+          personTurnsInStep: 0,
+          minTurns: 1,
+          maxTurns: 2,
+          shownCount: 3,
+          repair: '<the rule that was broken>',
+        }),
+      });
     else if (typeof value === 'function') out.push({ name, kind: 'template', text: String(value) });
     else out.push({ name, kind: 'data', text: JSON.stringify(value, null, 2) });
   }

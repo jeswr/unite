@@ -14,6 +14,7 @@ import { feedbackRouter } from './routes/feedback.js';
 import { hostRouter } from './routes/host.js';
 import { howRouter } from './routes/how.js';
 import { listeningRouter } from './routes/listening.js';
+import { mediationsRouter } from './routes/mediations.js';
 import { myDataRouter } from './routes/mydata.js';
 import { pictureRouter } from './routes/picture.js';
 import { registerRouter } from './routes/register.js';
@@ -69,6 +70,7 @@ export function createApp(deps: Deps): express.Express {
     conversationsRouter,
     pictureRouter,
     statementsRouter,
+    mediationsRouter,
     listeningRouter,
     roomsRouter,
     decidingRouter,
