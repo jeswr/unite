@@ -602,3 +602,126 @@ Sign-in providers, email or SMS, real identity checks, spoken rooms, scheduled m
 posting to GitHub, coding agents building decisions, translation of the interface, level 4
 decisions, multi-operator federation, Solid, payments, analytics, cookies beyond the two
 described.
+
+## 12. Deliberating in your own time
+
+Added after the first build. Section 1's rules apply unchanged; two are widened here and each
+widening has a test.
+
+- Rule 2 also covers mediations: no endpoint returns another person's mediation turns or drafts.
+- Rule 5 also covers slow rooms: a member of a slow room sees other members' messages only after
+  posting one of their own.
+- Rule 8 also covers the reasons a mediation shows: they are chosen by arrival order and distinct
+  author, never by any count.
+- Rule 9 also covers the mediator: every mediator reply passes `validateInterviewerReply`.
+
+### 12.1 Talk it through (collection `mediations`, id prefix `med`)
+
+A private conversation between one person and the AI about one statement. The step machine is
+code; the model only words the question, and fixed questions are used when the AI is off or its
+reply fails the check three times (the page then says so, as the interview does).
+
+```
+Mediation {
+  id, assemblyId, statementId, personId,
+  status: 'active' | 'reviewing' | 'complete' | 'abandoned',
+  step: 1 | 2 | 3 | 4,                     // why, other_side, wording, question
+  answer: 'agree' | 'disagree' | 'unsure', // the person's answer when it started
+  turns: { role: 'mediator' | 'person', step, text, createdAt, fallback?, skipped? }[],
+  shownReasonIds: string[],                // chosen by code at step 2
+  drafts: { reason?, reasonSide?: 'for' | 'against', wording?, question? },
+  approved?: { reasonId?, questionId?, statementId? },
+  aiUsed: boolean, startedAt, updatedAt, completedAt?
+}
+```
+
+Who may start one: a person who is heard in the assembly (rule 1) and has answered the statement
+(409 `answer_first` otherwise: "Answer the statement first, then talk it through."). The
+statement must not be `retired` or `decided`. One mediation per person per statement; starting
+again returns the existing one.
+
+| Step | Key | What the mediator is asked to do | Person turns |
+|---|---|---|---|
+| 1 | why | Ask what is behind their answer, and for a time it mattered in their own life | 1 to 2 |
+| 2 | other_side | Code shows up to three reasons from people who answered differently. Ask what is true in them and what they leave out | 1 to 2 |
+| 3 | wording | Ask whether there is a wording they could agree with that the others might too, in their own words | 1 to 2 |
+| 4 | question | Ask what they would want checked or answered before deciding | 1 |
+
+Choosing the reasons for step 2 (`pickOtherSide`, pure, in `packages/shared`): from the
+statement's reasons with side `for` or `against`, take those on the side opposite the person's
+answer (`agree` sees `against`, `disagree` sees `for`, `unsure` sees both), drop the person's
+own, keep the earliest reason of each author, and return the first three by `createdAt` (for
+`unsure`, the first two of each side). When there are none, step 2 is skipped and a fixed line
+says nobody who answered differently has given a reason yet. The reasons are rendered by code
+as quotations under the heading "Reasons from people who answered differently". They are never
+passed to the model as text to repeat, and the model's reply is still checked.
+
+"Skip this" advances a step. "Stop here and review" goes to the review at once. A person turn
+is at most 1,200 characters. `safety` works as in the interview.
+
+Review ("Here is what I heard"): `extractMediation` (AI, effort low) returns
+`{ reason, wording, question }`, each either null or text whose words overlap the person's own
+turns (`wordOverlap` at the same threshold as points; a field that fails is replaced by the
+fallback). The fallback uses the person's own words: the first unskipped step 1 turn as the
+reason, the last unskipped step 3 turn as the wording, the step 4 turn as the question, each
+trimmed to the field's limit, and nothing for a step that was skipped or answered with only
+"no", "none" or "nothing". The reason's side defaults from the answer (`agree` to `for`,
+`disagree` to `against`) and must be chosen by the person when the answer was `unsure`. The
+person can edit or scrap each item. Approving creates, through the same service functions as
+the direct routes: a reason with the chosen side, a reason with side `question`, and a
+rewording (a candidate statement with `origin: 'reword'`, the same wording check as the direct
+route). Approving with everything scrapped is allowed and creates nothing.
+
+API (all bodies and views in `packages/shared/src/api/mediation.ts`):
+- `POST /api/statements/:id/mediations` starts or returns mine.
+- `GET /api/mediations/:id` (owner only, 403 otherwise).
+- `POST /api/mediations/:id/turns` with `{ text }`, `{ skip: true }` or `{ stop: true }`.
+- `PATCH /api/mediations/:id/drafts` with any of `reason`, `reasonSide`, `wording`, `question`
+  (an empty string scraps the item).
+- `POST /api/mediations/:id/approve`.
+- `GET /api/statements/:id` gains `mediation: { mine?: { id, status }, completed: number }`,
+  where `completed` is the number of people who have finished one, counted by code.
+- `GET /api/me/export` includes my mediations and `DELETE /api/me` removes them.
+
+Web: `/a/:slug/statements/:id/talk`. The statement page shows a "Talk it through" card once the
+person has answered, with one sentence on what it is and how long it takes; it is placed above
+the reasons when the statement's status is `differ`. The page follows the conversation page:
+one question at a time, the quotations shown as a quiet block, the fixed-questions notice, the
+review as cards with a side choice, then a short thank-you that links back to the statement.
+
+Prompts: `MEDIATOR_SYSTEM`, `MEDIATOR_FIXED` (two fixed questions per step) and
+`MEDIATION_EXTRACT_SYSTEM` in `prompts.ts`, published on the prompts page like the others.
+
+### 12.2 Slow rooms
+
+`Room` gains `pace?: 'live' | 'slow'` (absent means live). A slow room's length is still held in
+`minutes` (days times 1,440); the create form asks for 2 to 14 days, default 5.
+
+- Write before you read: `GET /api/rooms/:id/messages` for a member of a slow room who has not
+  posted returns only facilitator and system messages, with `mustWriteFirst: true` and
+  `hiddenCount` (the number of person messages held back). After their first message they get
+  everything.
+- Triggers by pace (pure, tested): the wording phase starts when a fifth of the time is left
+  (live rooms keep five minutes); "make room" fires at most once every six hours; a silent
+  member is invited only once 24 hours have passed since the room opened. Half time and time up
+  are unchanged.
+- Fixed wording for a slow room is in `FACILITATOR_FALLBACK_SLOW`; the model is told the pace and
+  the time left in words. `timeLeftWords(ms)` in `packages/shared` gives "3 days left",
+  "5 hours left", "20 minutes left".
+- The room page says "This is a slow room. It is open until {date}. Write when you can, and come
+  back to read the others." and shows the write-first notice with the hidden count. The rooms
+  list labels each room live or slow.
+- Everything else is as for a live room: the draw, the briefing, one unclosed room per person,
+  the private final answer, the outcome, closing.
+
+### 12.3 Seed and tests
+
+- Riverbend: four completed mediations on the statement about AI tools whose `approved.reasonId`
+  point at reasons already in the seed (so no public record changes), and one open slow room on
+  a statement that is not common ground, drawn from people who are in no other unclosed room.
+  The scheduled room on the AI-tools statement must stay exactly as it is: the video opens it.
+- Journeys: `e2e/journeys/talk-it-through.spec.ts` (answer, talk it through on fixed questions,
+  approve, see the reason on the statement, and a second person cannot open the first one's
+  mediation) and `e2e/journeys/slow-room.spec.ts` (a steward opens a slow room; a member sees
+  the write-first notice, writes, then sees the others).
+

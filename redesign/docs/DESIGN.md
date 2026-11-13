@@ -213,6 +213,27 @@ In September you asked for something "more like an interactive, like either soci
 
 **Reasons.** Under every statement anyone can add a short reason for it, a reason against it, or a question. Reasons are shown side by side so both columns are always seen, in the order they arrived. There are no likes and no replies to people, only to the statement. This is the open discourse, kept on the subject.
 
+### In your own time
+
+Everything above except the room already works whenever it suits you: the conversation, the picture, answering statements, adding reasons, suggesting better wording, and choosing priorities. The room was the one step that needed people in the same place at the same time. That shuts out the people Unite most needs to hear, such as someone who works nights, a carer, or anyone in an assembly that spans time zones. So there are two ways to work through a disagreement without meeting.
+
+**Talk it through.** On any statement you have answered, you can have a short private conversation with the AI about it. It takes about five minutes and has four steps. It asks what is behind your answer, anchored in something that happened to you. It shows you, in their own words, reasons from people who answered differently, and asks what is true in them and what they leave out. It asks whether there is a wording you could agree with that they might too. And it asks what you would want checked before deciding. Then, as in the first conversation, it shows what it heard: a reason, a wording and a question. Only what you approve goes onto the statement, where it joins everyone else's reasons, wordings and questions. A steward can then draft a new version of the statement from all of the suggested wordings, and everyone answers that version afresh.
+
+The AI in this conversation is a go-between, not a debater. It never gives a reason of its own and never says who is right. The other side's reasons are shown as quotations chosen by code: the earliest reason from each of a few different people, never the most popular. This is the same shape as the "Habermas Machine" study, where people wrote their views privately, an AI drafted a group statement, people criticised it and the AI redrafted. Nobody in that study spoke to anybody else, and agreement still rose.
+
+**Slow rooms.** The same room as before, five to eight people drawn by lot and mixed, with the same briefing and the same AI facilitator, but open for several days instead of forty-five minutes. Two things change. You write where you stand before you can read what the others wrote, so the first person to post does not set the frame for everyone else. And the facilitator's timings stretch: it invites people who have not written after a day, marks half time, and asks for wording when a fifth of the time is left. At the end each person still gives a private final answer.
+
+**When each one fits.** These are judgements from the evidence in the literature review, not settled findings, and a host can state in the pledge which will be used.
+
+| | Talk it through | Slow room | Live room |
+|---|---|---|---|
+| Who | Everyone who has answered the statement | Five to eight people by lot | Five to eight people by lot |
+| What it asks of you | About five minutes, at any time | A few minutes a day for three to seven days | Forty-five minutes at a set time |
+| Use it when | Many people are involved. The disagreement may be about wording or a missing condition. As a first pass on every statement where people differ | The trade-off needs people to answer each other, and they cannot meet: shift workers, carers, people in several time zones, people writing in a second language | Trust is low or feelings are high. A decision is close and a date is near. People need to hear each other, not only read each other |
+| It is weak when | The disagreement is about values. People never answer each other directly, so nobody is surprised by a person | Energy fades. Expect some people to stop coming back, and say how many did | People cannot make the time. It favours fast talkers and fast typists |
+
+The order I recommend is to offer "talk it through" on every statement where people differ, because it costs little, includes everyone and often produces a wording that settles it. Then use a room, slow or live, only for what is still contested. Working in your own time is not always the better choice. Studies of live small-group deliberation report that hearing the other side from a person is what builds respect between people who disagree, and reading a quotation does not do the same. An assembly on something bitter should still bring people together.
+
 ### What the AI facilitator does
 
 It keeps time and turns, invites people who have not spoken, asks the room to restate a point it may have misread, and records reasons in the speakers' own words. It does not rewrite what people say, take a side, supply facts or declare agreement. A human can take over any room.
