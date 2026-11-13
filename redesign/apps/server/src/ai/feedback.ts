@@ -2,7 +2,9 @@ import { countWords, findBannedPhrases, type Feedback } from '@unite/shared';
 import { z } from 'zod';
 import type { Deps } from '../deps.js';
 import type { ChangeSince } from '../services/feedback/releases.js';
-import { FEEDBACK_FREE_QUESTION, FEEDBACK_SYSTEM, FEEDBACK_TOPICS } from './prompts.js';
+import { FEEDBACK_FIXED, FEEDBACK_FREE_QUESTION, FEEDBACK_REFUSED_PHRASES, FEEDBACK_SYSTEM, FEEDBACK_TOPICS, feedbackTurnMessage } from './prompts.js';
+
+export { feedbackTurnMessage };
 
 /**
  * The feedback interviewer (section 6.5). Code decides which question comes next; the model only
@@ -32,14 +34,15 @@ export interface FeedbackPlan {
   steps: FeedbackStep[];
 }
 
-export const GUIDED_INTRO = 'Thank you for helping. There are ten short questions. Say as much or as little as you like, and send what you have whenever you want.';
-export const FREE_INTRO = 'Thank you. Say as much or as little as you like.';
-export const CHANGES_ELSE_QUESTION = 'Anything else about these changes?';
-export const CLOSING_MESSAGE = 'Thank you. That is everything we wanted to ask. Check what we have recorded, change anything that is not right, then send it.';
-export const AFTER_CLOSING_MESSAGE = 'Thank you. I have added that to your last answer.';
+// The wording itself is in prompts.ts, so that it is published with the rest.
+export const GUIDED_INTRO = FEEDBACK_FIXED.guidedIntro;
+export const FREE_INTRO = FEEDBACK_FIXED.freeIntro;
+export const CHANGES_ELSE_QUESTION = FEEDBACK_FIXED.changesElse;
+export const CLOSING_MESSAGE = FEEDBACK_FIXED.closing;
+export const AFTER_CLOSING_MESSAGE = FEEDBACK_FIXED.afterClosing;
 
 /** Phrases that argue with feedback or defend the product. A reply containing any is refused. */
-export const DEFENSIVE_PHRASES: readonly string[] = ['actually', "that's because", 'by design', 'you should', 'as intended', 'we already'];
+export const DEFENSIVE_PHRASES = FEEDBACK_REFUSED_PHRASES;
 export const MAX_FEEDBACK_REPLY_WORDS = 50;
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -116,30 +119,6 @@ export const FeedbackReplySchema = z.object({
   answer: z.string(),
 });
 export type FeedbackReply = z.infer<typeof FeedbackReplySchema>;
-
-/** The situation for one turn, given to the model as data. */
-export function feedbackTurnMessage(args: {
-  mode: FeedbackMode;
-  current: FeedbackStep;
-  followUpsUsed: number;
-  next?: FeedbackStep;
-  messages: Message[];
-}): string {
-  const { mode, current, followUpsUsed, next, messages } = args;
-  const left = Math.max(0, current.followUps - followUpsUsed);
-  return [
-    `Mode: ${mode}.`,
-    `Current topic: "${current.question}". Follow-ups you may still ask on it: ${left}.`,
-    next ? `Next topic: "${next.question}".` : 'There is no next topic. This is the last one.',
-    '',
-    'Conversation so far:',
-    ...messages.map((m) => `${m.role === 'interviewer' ? 'Interviewer' : 'Person'}: ${m.text}`),
-    '',
-    left > 0
-      ? 'Either ask one follow-up on the current topic (follow_up true) or ask the next topic (follow_up false).'
-      : 'Ask the next topic (follow_up false).',
-  ].join('\n');
-}
 
 export interface FeedbackTurnResult {
   answers: Answer[];

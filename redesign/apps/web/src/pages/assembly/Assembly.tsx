@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { formatDate, levelName, stageIndex, type AssemblyView } from '@unite/shared';
 import { api, ApiError } from '../../lib/api';
 import { useAssembly } from '../../lib/useAssembly';
@@ -64,6 +64,24 @@ export default function AssemblyPage() {
   const { data: view, error, reload } = useAssembly(slug, version);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string>();
+  const [params, setParams] = useSearchParams();
+  const invite = params.get('invite');
+  const [invited, setInvited] = useState(false);
+
+  // An invitation link carries a code. Use it once, then take it out of the address.
+  useEffect(() => {
+    if (!invite || !slug) return;
+    api
+      .post(`/api/assemblies/${slug}/join`, { inviteCode: invite })
+      .then(
+        () => {
+          setInvited(true);
+          reload();
+        },
+        (e: unknown) => setActionError(e instanceof ApiError ? e.message : 'That invitation could not be used. Please try the link again.'),
+      )
+      .finally(() => setParams({}, { replace: true }));
+  }, [invite, slug]);
 
   if (error && !view)
     return (
@@ -102,6 +120,7 @@ export default function AssemblyPage() {
 
       <Card as="section" className="mb-8">
         <h2 className="mb-2">What you can do now</h2>
+        {invited && <Banner className="mb-3">Your invitation has been accepted. What you say here will be counted.</Banner>}
         {note && <p className="mb-3">{note}</p>}
         {actionError && <Banner tone="warn" className="mb-3">{actionError}</Banner>}
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">

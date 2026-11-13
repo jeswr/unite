@@ -76,7 +76,7 @@ export default function Listening() {
                 <p className="text-sm text-muted">{KIND_WORDS[t.kind]}</p>
                 <p className="font-bold">{capitalise(t.name)}</p>
                 <p className="mb-2 text-muted">{personCount(t.people)}</p>
-                <Link to={`/host?theme=${encodeURIComponent(t.id)}`}>Host an assembly on this</Link>
+                <Link to={`/host?fromTheme=${encodeURIComponent(t.id)}`}>Host an assembly on this</Link>
               </Card>
             ))}
           </ul>

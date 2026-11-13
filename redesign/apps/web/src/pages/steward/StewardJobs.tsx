@@ -246,15 +246,19 @@ function DecideJob({ slug, capacity }: { slug: string; capacity: number }) {
     setTried(true);
     if (!drafts || drafts.some(incomplete)) return;
     const body = {
-      decisions: drafts.map((d) => ({
-        statementId: d.statementId,
-        title: d.title.trim(),
-        why: d.why.trim(),
-        options: lines(d.options),
-        dissent: d.dissent.trim(),
-        tests: lines(d.tests).map((text, k) => ({ n: k + 1, text })),
-        delivery: [...(d.technology ? ['technology'] : []), ...(d.social ? ['social'] : [])],
-      })),
+      decisions: Object.fromEntries(
+        drafts.map((d) => [
+          d.statementId,
+          {
+            title: d.title.trim(),
+            why: d.why.trim(),
+            options: lines(d.options),
+            dissent: d.dissent.trim(),
+            tests: lines(d.tests),
+            delivery: [...(d.technology ? ['technology'] : []), ...(d.social ? ['social'] : [])],
+          },
+        ]),
+      ),
     };
     if ((await run(() => api.post(`/api/assemblies/${slug}/decide`, body))) !== undefined) {
       setOk(`${drafts.length === 1 ? 'The decision is' : `${drafts.length} decisions are`} written up and waiting for the host’s answer.`);

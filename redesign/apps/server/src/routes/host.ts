@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireRole } from '../auth.js';
 import type { Deps } from '../deps.js';
 import { createAssembly, createInvite, listInvites, patchAssembly } from '../services/host/assemblies.js';
-import { checkLeadingFallback } from '../services/host/checkLeading.js';
+import { checkLeading } from '../ai/synthesis.js';
 import { intakeAnswer, startIntake } from '../services/host/intake.js';
 import { parseBody } from '../validate.js';
 
@@ -19,7 +19,7 @@ const CheckLeadingBody = z.strictObject({ text: z.string().trim().min(1, 'must n
  *   PATCH /api/host/assemblies/:slug — question, summary, probes, about questions, affected groups, pledge; only while proposed
  *   POST /api/host/assemblies/:slug/invites — a new invitation code
  *   GET /api/host/assemblies/:slug/invites — the codes made so far (for the console)
- *   POST /api/check-leading — { text }: { leading, why, suggestion } (phrase-list version)
+ *   POST /api/check-leading — { text }: { leading, why, suggestion } (the AI check, or the phrase list without it)
  */
 export function hostRouter(deps: Deps): Router {
   const r = Router();
@@ -51,7 +51,8 @@ export function hostRouter(deps: Deps): Router {
 
   r.post('/check-leading', requireRole('host', 'steward'), async (req, res) => {
     const { text } = parseBody(CheckLeadingBody, req.body);
-    res.json({ ...checkLeadingFallback(text), source: 'fallback' });
+    const { fallback, ...check } = await checkLeading(deps, text);
+    res.json({ ...check, source: fallback ? 'fallback' : 'ai' });
   });
 
   return r;

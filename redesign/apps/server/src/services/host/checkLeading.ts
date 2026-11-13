@@ -1,10 +1,8 @@
 import { findLeadingPhrases } from '@unite/shared';
 
 /**
- * The leading-wording check for a host's question and probes (section 6.3), phrase-list version
- * only. The AI version, `checkLeading(text)` with CHECK_LEADING_SYSTEM, belongs to the picture
- * part of the build; this is its fallback, so the host console works on its own and both can be
- * joined at merge.
+ * The leading-wording check for a host's question and probes (section 6.3), phrase-list version.
+ * It is the fallback for the AI check, `checkLeading` in `ai/synthesis.ts`.
  */
 export interface LeadingCheck {
   leading: boolean;

@@ -6,7 +6,7 @@
  * are told. Change PROMPT_VERSION whenever any text here changes.
  */
 
-export const PROMPT_VERSION = "2026-11-13.1";
+export const PROMPT_VERSION = "2026-11-13.2";
 
 /** Shown instead of an AI reply when a person seems to be in distress. */
 export const DISTRESS_MESSAGE =
@@ -223,6 +223,42 @@ export const FEEDBACK_TOPICS: { key: string; question: string }[] = [
 ];
 
 export const FEEDBACK_FREE_QUESTION = "What would you like to tell us about Unite?";
+
+/** Fixed wording the feedback interviewer says without the model. */
+export const FEEDBACK_FIXED = {
+  guidedIntro: "Thank you for helping. There are ten short questions. Say as much or as little as you like, and send what you have whenever you want.",
+  freeIntro: "Thank you. Say as much or as little as you like.",
+  changesElse: "Anything else about these changes?",
+  closing: "Thank you. That is everything we wanted to ask. Check what we have recorded, change anything that is not right, then send it.",
+  afterClosing: "Thank you. I have added that to your last answer.",
+};
+
+/** A feedback reply containing any of these argues or defends, and is replaced by the fixed question. */
+export const FEEDBACK_REFUSED_PHRASES: readonly string[] = ["actually", "that's because", "by design", "you should", "as intended", "we already"];
+
+/** The situation for one feedback turn, given to the model as data. */
+export function feedbackTurnMessage(args: {
+  mode: string;
+  current: { question: string; followUps: number };
+  followUpsUsed: number;
+  next?: { question: string };
+  messages: { role: string; text: string }[];
+}): string {
+  const { mode, current, followUpsUsed, next, messages } = args;
+  const left = Math.max(0, current.followUps - followUpsUsed);
+  return [
+    `Mode: ${mode}.`,
+    `Current topic: "${current.question}". Follow-ups you may still ask on it: ${left}.`,
+    next ? `Next topic: "${next.question}".` : "There is no next topic. This is the last one.",
+    "",
+    "Conversation so far:",
+    ...messages.map((m) => `${m.role === "interviewer" ? "Interviewer" : "Person"}: ${m.text}`),
+    "",
+    left > 0
+      ? "Either ask one follow-up on the current topic (follow_up true) or ask the next topic (follow_up false)."
+      : "Ask the next topic (follow_up false).",
+  ].join("\n");
+}
 
 export const HOST_INTAKE_SYSTEM = `You are helping an organisation prepare to open an assembly in Unite. An assembly needs a pledge: a written commitment from the host about what they can act on, what they have set aside, how the decision will be made, and when they will answer. You are given the topic to ask about next and what has been said so far.
 

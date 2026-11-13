@@ -27,18 +27,6 @@ describe('app', () => {
     expect(res.body.error.code).toBe('bad_json');
   });
 
-  it.each([
-    ['get', '/api/decisions/x'],
-    ['get', '/api/register'],
-    ['post', '/api/host/intake'],
-    ['get', '/api/steward/feedback'],
-    ['post', '/api/feedback'],
-    ['get', '/api/assemblies/x/export'],
-  ] as const)('%s %s is mounted and not built yet', async (method, path) => {
-    const res = await request(env.app)[method](path);
-    expect(res.status).toBe(501);
-    expect(res.body.error.code).toBe('not_built');
-  });
 });
 
 describe('how', () => {

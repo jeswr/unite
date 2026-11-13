@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { contentWords, wordOverlap, type Point, type PointType, type Statement, type Theme } from '@unite/shared';
 import type { Deps } from '../deps.js';
+import { checkLeadingFallback } from '../services/host/checkLeading.js';
 import {
   CHECK_LEADING_SYSTEM,
   DESCRIBE_THEME_SYSTEM,
@@ -354,23 +355,12 @@ export async function reviseStatement(
 export const LeadingOutputSchema = z.object({ leading: z.boolean(), why: z.string(), suggestion: z.string() });
 export type LeadingCheck = z.infer<typeof LeadingOutputSchema>;
 
-/** The fallback's list: wording that pushes people toward an answer. */
-export const LEADING_PHRASES = ["don't you", 'don’t you', 'wouldn’t you agree', "wouldn't you agree", 'should we not', 'obviously'];
-
-export function leadingByPhrase(text: string): LeadingCheck {
-  const lower = text.toLowerCase();
-  const hit = LEADING_PHRASES.find((p) => lower.includes(p));
-  return hit
-    ? { leading: true, why: `The wording “${hit}” pushes people toward one answer.`, suggestion: text }
-    : { leading: false, why: '', suggestion: text };
-}
-
 /** Whether a host's question or probe leads people toward an answer. Fallback: a phrase list. */
 export async function checkLeading(deps: AiDeps, text: string): Promise<LeadingCheck & { fallback: boolean }> {
   const outcome = await deps.ai.withAi(
     'checkLeading',
     (ai) => ai.parse({ schema: LeadingOutputSchema, system: CHECK_LEADING_SYSTEM, messages: userData({ wording: text }) }),
-    () => leadingByPhrase(text),
+    () => checkLeadingFallback(text),
   );
   return { ...outcome.value, fallback: outcome.source === 'fallback' };
 }

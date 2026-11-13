@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { DECISION_LEVELS, RULES, type PromptsResponse, type RulesResponse } from '@unite/shared';
 import * as prompts from '../ai/prompts.js';
 import type { Deps } from '../deps.js';
-import { notBuilt } from './notBuilt.js';
 
 /** Every export of prompts.ts, published as it is. */
 export function publishedPrompts(): PromptsResponse['prompts'] {
@@ -32,8 +31,6 @@ export function publishedPrompts(): PromptsResponse['prompts'] {
 
 /**
  * GET /api/how/prompts; GET /api/how/rules.
- * Stub for another part of the build: GET /api/assemblies/:slug/export (the pledge, picture,
- * statements with support, decisions, register entries; no transcripts, no person ids).
  */
 export function howRouter(deps: Deps): Router {
   const r = Router();
@@ -53,7 +50,6 @@ export function howRouter(deps: Deps): Router {
     res.json(body);
   });
 
-  r.get('/assemblies/:slug/export', notBuilt);
 
   return r;
 }
