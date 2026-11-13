@@ -40,7 +40,7 @@ describe('conversations in scripted mode', () => {
     expect(v.conversation.stage).toBe(3);
     expect(lastTurn(v).text).toBe(SCRIPTED_QUESTIONS[3]![0]);
 
-    v = (await say(env, cookie, id, { text: 'I wanted to go to the welding course but it runs at seven when I work.' })).body;
+    await say(env, cookie, id, { text: 'I wanted to go to the welding course but it runs at seven when I work.' });
     v = (await say(env, cookie, id, { stop: true })).body;
     expect(v.conversation).toMatchObject({ stage: 9, status: 'reviewing' });
     expect(v.points.length).toBeGreaterThanOrEqual(2);
