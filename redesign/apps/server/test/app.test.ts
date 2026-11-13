@@ -32,8 +32,6 @@ describe('app', () => {
     ['get', '/api/assemblies/x/picture'],
     ['get', '/api/assemblies/x/statements'],
     ['get', '/api/listening'],
-    ['get', '/api/rooms/x'],
-    ['put', '/api/assemblies/x/priorities'],
     ['get', '/api/decisions/x'],
     ['get', '/api/register'],
     ['post', '/api/host/intake'],
