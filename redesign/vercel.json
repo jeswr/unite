@@ -13,7 +13,7 @@
   "functions": {
     "api/index.mjs": {
       "maxDuration": 60,
-      "includeFiles": "{apps/server/src/**,apps/server/package.json,apps/server/tsconfig.json,apps/server/vercel-entry.mjs,packages/shared/src/**,packages/shared/package.json,packages/shared/vercel-trace.mjs,packages/shared/tsconfig.json,tsconfig.base.json,RELEASES.json,node_modules/.pnpm/@electric-sql+pglite@*/node_modules/@electric-sql/pglite/dist/**}"
+      "includeFiles": "{apps/server/{src/**,*.json,*.mjs},packages/shared/{src/**,*.json,*.mjs},tsconfig.base.json,RELEASES.json,node_modules/.pnpm/@electric-sql+pglite@*/node_modules/@electric-sql/pglite/dist/**}"
     }
   },
   "rewrites": [
