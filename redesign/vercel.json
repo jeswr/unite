@@ -4,19 +4,41 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @unite/web build",
   "outputDirectory": "apps/web/dist",
-  "git": { "deploymentEnabled": false },
+  "git": {
+    "deploymentEnabled": {
+      "*": false,
+      "claude/unite-showcase": true
+    }
+  },
   "functions": {
     "api/index.mjs": {
       "maxDuration": 60,
-      "includeFiles": "{apps/server/src/**,apps/server/package.json,apps/server/vercel-entry.mjs,packages/shared/src/**,packages/shared/package.json,tsconfig.base.json,RELEASES.json}"
+      "includeFiles": "{apps/server/{src/**,*.json,*.mjs},packages/shared/{src/**,*.json,*.mjs},tsconfig.base.json,RELEASES.json,node_modules/.pnpm/@electric-sql+pglite@*/node_modules/@electric-sql/pglite/dist/**}"
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.mjs" },
-    { "source": "/healthz", "destination": "/api/index.mjs" },
-    { "source": "/((?!api/|healthz|assets/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.mjs"
+    },
+    {
+      "source": "/healthz",
+      "destination": "/api/index.mjs"
+    },
+    {
+      "source": "/((?!api/|healthz|assets/).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
-    { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
   ]
 }

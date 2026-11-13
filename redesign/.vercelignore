@@ -1,0 +1,9 @@
+# Not uploaded by `vercel deploy` (Vercel installs and builds from source).
+node_modules
+.data
+.env
+apps/web/dist
+e2e/shots
+e2e/results
+walkthrough/out
+walkthrough/.cache

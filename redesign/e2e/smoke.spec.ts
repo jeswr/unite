@@ -37,7 +37,7 @@ for (const width of WIDTHS) {
         const errors = watch(page);
         await page.goto(p.path);
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(p.heading);
-        await expect(page.getByRole('link', { name: 'Give feedback' })).toBeVisible();
+        await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Give feedback' })).toBeVisible();
         await page.waitForLoadState('networkidle');
         await noSidewaysScroll(page);
         await page.screenshot({ path: path.join(SHOTS, `smoke-${p.name}-${width}.png`), fullPage: true });
