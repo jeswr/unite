@@ -44,6 +44,7 @@ const view = (over: Partial<AssemblyView['assembly']> = {}, rest: Partial<Assemb
   membership: null,
   role: 'participant',
   heard: false,
+  myConversation: null,
   checklist: { stage: 'deciding', next: 'answered', clear: false, items: [{ key: 'decisions_created', text: 'The top priorities have been written up as decisions', met: false }] },
   counts: { heard: 0, members: 0, invited: 0, statements: 0, decisions: 0 },
   ...rest,

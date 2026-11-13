@@ -68,7 +68,19 @@ export function assembliesRouter(deps: Deps): Router {
       checklistFor(assembly),
       assemblyCounts(store, assembly),
     ]);
-    const body: AssemblyView = { assembly, membership: membership ?? null, role: req.role, heard, checklist, counts };
+    const mine = req.personId
+      ? await store.list('conversations', { personId: req.personId, assemblyId: assembly.id }, { orderBy: 'created_at', dir: 'desc', limit: 1 })
+      : [];
+    const last = mine[0] as { id: string; status: 'active' | 'reviewing' | 'complete' | 'abandoned' } | undefined;
+    const body: AssemblyView = {
+      assembly,
+      membership: membership ?? null,
+      role: req.role,
+      heard,
+      myConversation: last ? { id: last.id, status: last.status } : null,
+      checklist,
+      counts,
+    };
     res.json(body);
   });
 

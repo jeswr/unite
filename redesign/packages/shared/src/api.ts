@@ -1,5 +1,5 @@
 import type { StageChecklist } from './checklist.js';
-import type { Assembly, Membership, Person } from './schemas.js';
+import type { Assembly, Conversation, Membership, Person } from './schemas.js';
 import type { Rule, DecisionLevelInfo } from './stages.js';
 
 /** Every error the API returns has this shape, with a plain-English message. */
@@ -53,6 +53,8 @@ export interface AssemblyView {
   role: Role;
   /** Whether rule 1 lets me see the group's work in this assembly. */
   heard: boolean;
+  /** My most recent conversation in this assembly, if I have one. */
+  myConversation: { id: string; status: Conversation['status'] } | null;
   checklist: StageChecklist;
   counts: AssemblyCounts;
 }

@@ -134,6 +134,8 @@ export const AssemblySchema = z.strictObject({
   pledge: PledgeSchema.nullable(),
   pictureConfirmedAt: IsoDateTime.optional(),
   pictureConfirmedBy: z.string().optional(),
+  /** The open-listening theme this assembly was opened to answer, if any. */
+  fromThemeId: z.string().optional(),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
   /** Increments on any change under the assembly. */
