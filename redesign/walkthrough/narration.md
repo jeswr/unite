@@ -195,7 +195,7 @@ And Amina has her own page: what happened to what I said. Each of her points, tr
 Not everything starts with a host. Open listening is always on. Anyone, anywhere, can have the conversation about their own life, in their own language.
 
 [do: point-languages]
-What they approve joins a wider picture. These are sixty people so far. All invented for this example.
+What they approve joins a wider picture. These are people in fourteen countries. All invented for this example.
 
 [do: point-no-host]
 Unite shows which themes keep coming up with nobody yet responsible for them. This one kept coming up: looking after an ageing parent while holding down a job.

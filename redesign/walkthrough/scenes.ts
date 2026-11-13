@@ -474,11 +474,17 @@ export const implemented = {
   async 'open-differ'(c) {
     await c.d.clearHighlight();
     await openPage(c, `${EARNING}/statements`, 'Statements', 'the statements');
-    const differ = section(c, 'Where we differ');
-    await c.d.highlight(differ.getByRole('heading', { name: 'Where we differ' }), 'where people differ', 'Where we differ, published too');
-    await c.d.pause(2400);
-    await openStatement(c, /^Nobody should have to lose pay to retrain/, 'the statement on losing pay to retrain');
+    // Until she answers a statement, where it stands stays hidden: it waits under "Still to answer".
+    const toAnswer = section(c, 'Still to answer');
+    const retrain = /^Nobody should have to lose pay to retrain/;
+    await c.d.claimVisible(toAnswer.getByText(/Where each of these stands shows once you have answered it/), 'where a statement stands shows once she answers');
+    await c.d.highlight(toAnswer.getByRole('listitem').filter({ hasText: retrain }), 'a statement she has not answered yet', 'Not answered yet');
+    await c.d.pause(2000);
+    await openStatement(c, retrain, 'the statement on losing pay to retrain');
     await react(c, 'Agree');
+    await c.d.claimVisible(main(c).getByText('Where we differ', { exact: true }).first(), 'the statement is published as one where people differ');
+    await c.d.highlight(main(c).getByText('Where we differ', { exact: true }).first(), 'where people differ', 'Where we differ, published too');
+    await c.d.pause(1600);
     const alike = section(c, 'How people answered').getByRole('list');
     const other = alike.getByRole('listitem').filter({ hasText: /answered differently from the majority/ });
     await c.d.claimVisible(other, 'how the other side answered');
@@ -567,10 +573,13 @@ export const implemented = {
     await c.d.highlight(wording, 'the new wording', 'New wording');
     await c.d.pause(3200);
     await c.d.clearHighlight();
-    await openPage(c, `${EARNING}/statements`, 'Statements', 'the statements');
-    const v2 = section(c, 'Common ground').getByRole('listitem').filter({ hasText: /paid learning hours/ });
-    await c.d.claimVisible(v2.getByText(/Version 2/), 'the new wording is version 2');
-    await c.d.highlight(v2, 'the new wording, now common ground', 'Common ground');
+    // Where a statement stands shows once she has answered it, so she answers the new wording too.
+    await openStatement(c, /^Workers in roles their employer expects to change should get paid learning hours/, 'the new wording');
+    const tags = main(c).getByRole('paragraph').filter({ hasText: /Version 2/ }).first();
+    await c.d.claimVisible(tags, 'the new wording is version 2');
+    await react(c, 'Agree');
+    await c.d.claimVisible(tags.getByText('Common ground', { exact: true }), 'the new wording is common ground');
+    await c.d.highlight(tags, 'the new wording, now common ground', 'Version 2, common ground');
   },
 
   async 'open-statement-rule'(c) {
@@ -747,7 +756,9 @@ export const implemented = {
 
   async 'point-languages'(c) {
     await c.d.clearHighlight();
-    await ringWithText(c, main(c).getByRole('paragraph'), /^60 people have said/, 'how many people', 'Sixty people');
+    const reach = main(c).getByRole('paragraph').filter({ hasText: /^60 people/ });
+    await c.d.claimVisible(reach.filter({ hasText: /in 14 countries/ }), 'sixty people in fourteen countries');
+    await ringWithText(c, main(c).getByRole('paragraph'), /^60 people/, 'how many people, and where', 'Fourteen countries');
     await c.d.pause(2400);
     await ringWithText(c, c.d.page.getByRole('note').filter({ hasText: /invented/ }), /Example/, 'the example notice', 'All invented');
   },
