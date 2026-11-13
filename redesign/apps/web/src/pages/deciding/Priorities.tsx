@@ -22,7 +22,7 @@ export function capacityLine(capacity: number | null, replyBy: string | null): s
 export default function Priorities() {
   const { slug = '' } = useParams();
   const version = useLive(slug);
-  const { data: view } = useAssembly(slug, version);
+  const { data: view, reload: reloadView } = useAssembly(slug, version);
   const { data, error, reload } = useApi<PrioritiesResponse>(`/api/assemblies/${encodeURIComponent(slug)}/priorities`, version);
   const a = view?.assembly;
   const [picked, setPicked] = useState<string[] | null>(null);
@@ -40,7 +40,7 @@ export default function Priorities() {
   if (error && !data)
     return (
       <Layout title="Which three matter most to you?" assembly={a} kicker={a?.question}>
-        <NotHeardOrError error={error} slug={slug} what="Choosing priorities" />
+        <NotHeardOrError error={error} slug={slug} what="the statements people are choosing between" isExample={a?.isExample} onLookedAround={() => (reloadView(), reload())} />
       </Layout>
     );
   if (!shown)

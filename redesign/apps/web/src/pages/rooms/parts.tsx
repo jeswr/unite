@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { NotHeard } from '../picture/parts';
 import type { EvidenceCard } from '@unite/shared';
 import type { ApiError } from '../../lib/api';
 import { Card } from '../../ui/Card';
@@ -102,20 +102,19 @@ export function OutcomeView({ outcome, headingLevel = 3 }: { outcome: RoomOutcom
 }
 
 /** What a page behind rule 1 shows before the person has been heard, or when it could not load. */
-export function NotHeardOrError({ error, slug, what }: { error: ApiError; slug: string; what: string }) {
-  if (error.code === 'not_heard')
-    return (
-      <div className="space-y-3">
-        <p>{error.message}</p>
-        <p>
-          {what} opens to you once you have been heard. That way what you say is your own, before you see what others said.
-        </p>
-        <p>
-          <Link to={`/a/${slug}`} className="font-bold">
-            Back to the assembly
-          </Link>
-        </p>
-      </div>
-    );
+export function NotHeardOrError({
+  error,
+  slug,
+  what,
+  isExample,
+  onLookedAround,
+}: {
+  error: ApiError;
+  slug: string;
+  what: string;
+  isExample?: boolean;
+  onLookedAround?: () => void;
+}) {
+  if (error.code === 'not_heard') return <NotHeard slug={slug} isExample={isExample} what={what} onLookedAround={onLookedAround} />;
   return <p role="alert">{error.message}</p>;
 }

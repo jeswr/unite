@@ -79,7 +79,7 @@ function useTick(ms: number) {
 export default function Room() {
   const { slug = '', roomId = '' } = useParams();
   const version = useLive(slug);
-  const { data: view } = useAssembly(slug, version);
+  const { data: view, reload: reloadView } = useAssembly(slug, version);
   const { data, error, reload } = useApi<RoomResponse>(`/api/rooms/${encodeURIComponent(roomId)}`, version);
   const a = view?.assembly;
   const live = !!data?.isMember && data.room.status === 'open';
@@ -92,7 +92,7 @@ export default function Room() {
   if (error && !data)
     return (
       <Layout title={error.status === 404 ? 'There is no room here' : 'A room'} assembly={a} kicker={a?.question}>
-        <NotHeardOrError error={error} slug={slug} what="This room" />
+        <NotHeardOrError error={error} slug={slug} what="this room" isExample={a?.isExample} onLookedAround={() => (reloadView(), reload())} />
       </Layout>
     );
   if (!data)
