@@ -84,7 +84,7 @@ export default function Listening() {
       </section>
 
       {hasThemes ? (
-        <ThemeSections sections={data.sections} canReport={data.heard} onChange={reload} />
+        <ThemeSections sections={data.sections.filter((s) => s.kind !== 'day')} canReport={data.heard} onChange={reload} />
       ) : (
         <EmptyState title="No themes yet">
           <p>Themes appear here as people approve their points.</p>
@@ -97,7 +97,19 @@ export default function Listening() {
         </h2>
         <p className="mb-4 text-muted">Moments from the days people hope for, grouped by what matters in them. No names and no ranking.</p>
         {!data.heard ? (
-          <p className="text-muted">These open once you have described your own good ordinary day.</p>
+          <>
+            <ul className="mb-3 space-y-1">
+              {data.sections
+                .filter((s) => s.kind === 'day')
+                .flatMap((s) => s.themes)
+                .map((t) => (
+                  <li key={t.id}>
+                    {capitalise(t.name)} <span className="text-muted">({personCount(t.people)})</span>
+                  </li>
+                ))}
+            </ul>
+            <p className="text-muted">The moments themselves open once you have described your own good ordinary day.</p>
+          </>
         ) : data.days.length === 0 ? (
           <p className="text-muted">None yet. They will appear as people describe their own.</p>
         ) : (
