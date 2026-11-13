@@ -1,9 +1,9 @@
 import type { SeedCtx } from './builders.js';
 
 /**
- * Hook for another part of the build. Making Unite better: no people and no points. Anything else beyond its assembly record and draft pledge.
- * Runs after seedAssemblies. Must be idempotent: use fixed ids (stableId) so a second run
- * overwrites rather than duplicates.
+ * Making Unite better is the one real assembly, so nothing in it is invented: no people, no
+ * conversations, no points. Its question and draft pledge live on the assembly record in
+ * `seed/assemblies.ts`.
  */
 export async function seedFeedbackAssembly(ctx: SeedCtx): Promise<void> {
   void ctx;
