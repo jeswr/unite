@@ -1,30 +1,79 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
+import { requirePerson, requireRole } from '../auth.js';
 import type { Deps } from '../deps.js';
-import { notBuilt } from './notBuilt.js';
+import { getAssemblyBySlug } from '../services/assemblies.js';
+import {
+  addDeliveryItem,
+  addProposal,
+  answerDecision,
+  cardOf,
+  decisionRecord,
+  decisionsOf,
+  patchDeliveryItem,
+  patchProposal,
+  recordCheck,
+  type Viewer,
+} from '../services/delivery/decisions.js';
+import { exportAssembly } from '../services/delivery/export.js';
+
+const viewerOf = (req: Request): Viewer => ({ role: req.role, ...(req.personId ? { personId: req.personId } : {}) });
 
 /**
- * Delivering. Not built yet: every endpoint answers 501 until its part of the build fills it in.
- * Mounted under /api in app.ts. Endpoints that belong here (section 7):
+ * Delivering (section 7). Decisions are public: they can be read without having been heard.
  *
  *   GET /api/assemblies/:slug/decisions
- *   GET /api/decisions/:id — decision, statement, trace to themes and point counts, answer, proposals, delivery items, check
- *   POST /api/decisions/:id/answer — host
- *   POST /api/decisions/:id/proposals
- *   PATCH /api/proposals/:id — host: choose; steward: confirm faithful
- *   POST /api/decisions/:id/delivery
- *   PATCH /api/delivery/:id — host: status, update
- *   POST /api/decisions/:id/check — steward or checker only; sets delivered_* or not_delivered (rule 7)
+ *   GET /api/decisions/:id — decision, statement, trail to themes and people, answer, proposals, delivery items, check
+ *   POST /api/decisions/:id/answer — host, once
+ *   POST /api/decisions/:id/proposals — anyone heard, or the host
+ *   PATCH /api/proposals/:id — host: { status: 'chosen' }; steward: { faithful: true }
+ *   POST /api/decisions/:id/delivery — host
+ *   PATCH /api/delivery/:id — host: status, update, link
+ *   POST /api/decisions/:id/check — steward or checker only; the only write of delivered_* or not_delivered (rule 7)
+ *   GET /api/assemblies/:slug/export — the assembly's public record (replaces the stub in how.ts)
  */
 export function deliveryRouter(deps: Deps): Router {
-  void deps;
   const r = Router();
-  r.get('/assemblies/:slug/decisions', notBuilt);
-  r.get('/decisions/:id', notBuilt);
-  r.post('/decisions/:id/answer', notBuilt);
-  r.post('/decisions/:id/proposals', notBuilt);
-  r.patch('/proposals/:id', notBuilt);
-  r.post('/decisions/:id/delivery', notBuilt);
-  r.patch('/delivery/:id', notBuilt);
-  r.post('/decisions/:id/check', notBuilt);
+  const { store, clock } = deps;
+
+  r.get('/assemblies/:slug/decisions', async (req, res) => {
+    const a = await getAssemblyBySlug(store, String(req.params.slug));
+    const now = clock.now();
+    const decisions = (await decisionsOf(store, a.id)).map((d) => cardOf(d, now));
+    res.json({ assembly: { slug: a.slug, title: a.title, question: a.question, hostName: a.hostName, hostSlug: a.hostSlug, isExample: a.isExample, stage: a.stage }, decisions });
+  });
+
+  r.get('/decisions/:id', async (req, res) => {
+    res.json(await decisionRecord(deps, String(req.params.id), viewerOf(req)));
+  });
+
+  r.post('/decisions/:id/answer', requireRole('host'), async (req, res) => {
+    res.json({ decision: await answerDecision(deps, String(req.params.id), req.body) });
+  });
+
+  r.post('/decisions/:id/proposals', requirePerson(deps), async (req, res) => {
+    res.status(201).json({ proposal: await addProposal(deps, String(req.params.id), req.body, viewerOf(req)) });
+  });
+
+  r.patch('/proposals/:id', requireRole('host', 'steward'), async (req, res) => {
+    res.json({ proposal: await patchProposal(deps, String(req.params.id), req.body, viewerOf(req)) });
+  });
+
+  r.post('/decisions/:id/delivery', requireRole('host'), async (req, res) => {
+    res.status(201).json({ item: await addDeliveryItem(deps, String(req.params.id), req.body) });
+  });
+
+  r.patch('/delivery/:id', requireRole('host'), async (req, res) => {
+    res.json(await patchDeliveryItem(deps, String(req.params.id), req.body));
+  });
+
+  r.post('/decisions/:id/check', async (req, res) => {
+    res.status(201).json(await recordCheck(deps, String(req.params.id), req.body, viewerOf(req)));
+  });
+
+  r.get('/assemblies/:slug/export', async (req, res) => {
+    const body = await exportAssembly(deps, String(req.params.slug), viewerOf(req));
+    res.set('Content-Disposition', `attachment; filename="${body.assembly.slug}-export.json"`).json(body);
+  });
+
   return r;
 }
