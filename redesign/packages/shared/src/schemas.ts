@@ -307,6 +307,52 @@ export const ObjectionSchema = z.strictObject({
 });
 export type Objection = z.infer<typeof ObjectionSchema>;
 
+/** Talk it through (section 12.1): a private conversation with the AI about one statement. Readable only by its owner. */
+export const MediationStep = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
+export type MediationStep = z.infer<typeof MediationStep>;
+
+export const MediationTurnSchema = z.strictObject({
+  role: z.enum(['mediator', 'person']),
+  step: MediationStep,
+  text: z.string(),
+  createdAt: IsoDateTime,
+  /** A mediator turn: the fixed question was used. */
+  fallback: z.boolean().optional(),
+  /** A person turn: "Skip this". A mediator turn: the fixed line said in place of a skipped step. */
+  skipped: z.boolean().optional(),
+});
+export type MediationTurn = z.infer<typeof MediationTurnSchema>;
+
+export const MediationSchema = z.strictObject({
+  id: idOf('med'),
+  assemblyId: idOf('asm'),
+  statementId: idOf('st'),
+  personId: idOf('per'),
+  status: z.enum(['active', 'reviewing', 'complete', 'abandoned']),
+  /** 1 why, 2 other_side, 3 wording, 4 question. */
+  step: MediationStep,
+  /** The person's answer when it started. */
+  answer: ReactionValue,
+  turns: z.array(MediationTurnSchema),
+  /** Chosen by code at step 2 (pickOtherSide). */
+  shownReasonIds: z.array(idOf('rsn')),
+  drafts: z.strictObject({
+    reason: z.string().min(1).max(280).optional(),
+    reasonSide: z.enum(['for', 'against']).optional(),
+    wording: z.string().min(1).max(300).optional(),
+    question: z.string().min(1).max(280).optional(),
+  }),
+  approved: z
+    .strictObject({ reasonId: idOf('rsn').optional(), questionId: idOf('rsn').optional(), statementId: idOf('st').optional() })
+    .optional(),
+  /** False when fixed questions are used throughout (no AI key, or a spending cap). */
+  aiUsed: z.boolean(),
+  startedAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+  completedAt: IsoDateTime.optional(),
+});
+export type Mediation = z.infer<typeof MediationSchema>;
+
 /* ---------------------------------------------------------------- Rooms */
 
 export const EvidenceCardSchema = z.strictObject({

@@ -82,3 +82,4 @@ export * from './api/feedback.js';
 export * from './api/rooms.js';
 export * from './api/deciding.js';
 export * from './api/host.js';
+export * from './api/mediation.js';
