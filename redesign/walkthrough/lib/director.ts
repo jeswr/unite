@@ -1,0 +1,294 @@
+/**
+ * Helpers the scenes use to drive the browser like a person would on a screen
+ * recording: the pointer glides to things before clicking, typing has a human rhythm,
+ * and anything the narration talks about can be ringed.
+ *
+ * UI drift should not wreck a recording, so helpers that look for an element are soft:
+ * if it isn't there they log a warning and carry on. Run with --strict to make any
+ * warning fail the run (CI does this, so a renamed button is caught on the PR).
+ *
+ * A check run (--check, no video) is `fast`: what only paces the video for a viewer goes
+ * (glides, typing rhythm, pauses between shots, pacing in the stage pages), and settling
+ * waits for the page's own requests and spinners rather than fixed delays. Everything
+ * that is checked, and every wait for the app itself, stays the same.
+ */
+import type { Locator, Page, Request } from '@playwright/test';
+
+/** What stage/overlay.js puts on every page during a recording. */
+interface Overlay {
+  setCursor(x: number, y: number): void;
+  chapter(card: { eyebrow?: string; title: string; sub?: string }, holdMs: number): Promise<void>;
+  hideChapter(): Promise<void>;
+  highlight(target: Element | null, tag?: string): Ringed | null;
+  ringLost?(): string;
+  label(text: string): void;
+}
+
+declare global {
+  interface Window {
+    __wt?: Overlay;
+  }
+}
+
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export class Director {
+  private cursor = { x: 640, y: 420 };
+  readonly warnings: string[] = [];
+  /** Requests the page has started and not yet finished (for a fast settle). */
+  private readonly inFlight = new Set<Request>();
+
+  constructor(
+    readonly page: Page,
+    private readonly strict: boolean,
+    readonly fast = false,
+  ) {
+    // Long-lived streams never finish, so they don't count as the page being busy.
+    const tracked = (r: Request) => !['eventsource', 'websocket'].includes(r.resourceType());
+    page.context().on('request', (r) => tracked(r) && this.inFlight.add(r));
+    page.context().on('requestfinished', (r) => this.inFlight.delete(r));
+    page.context().on('requestfailed', (r) => this.inFlight.delete(r));
+    // A script error, a console error or a failed request is a broken shot, even if every
+    // click landed: the page may be showing an error state the narration doesn't mention.
+    page.context().on('weberror', (e) => this.note(`Page error on ${e.page()?.url() ?? '?'}: ${e.error().message.split('\n')[0]}`));
+    page.context().on('console', async (m) => {
+      if (m.type() !== 'error' || /ERR_BLOCKED_BY_CLIENT/.test(m.text())) return;
+      let text = m.text();
+      // A format string ("%o") says nothing on its own: show what was logged with it.
+      if (/%[osdifcO]/.test(text)) {
+        const args = await Promise.all(m.args().slice(1).map((a) => a.evaluate((x) => (x instanceof Error ? x.message : typeof x === 'object' ? JSON.stringify(x) : String(x))).catch(() => '?')));
+        if (args.length) text = `${text} ${args.join(' ')}`;
+      }
+      this.note(`Console error on ${m.page()?.url() ?? '?'}: ${text.split('\n')[0].slice(0, 200)}`);
+    });
+    page.context().on('requestfailed', (r) => {
+      const why = r.failure()?.errorText ?? '';
+      // Blocked requests are reported as outside requests; aborted ones are cancelled by navigating away.
+      if (!/ERR_BLOCKED_BY_CLIENT|ERR_ABORTED/.test(why)) this.note(`Request failed: ${r.method()} ${r.url()} (${why})`);
+    });
+    page.context().on('response', (r) => {
+      if (r.status() >= 400 && !/\/favicon\.ico$/.test(r.url())) this.note(`HTTP ${r.status()} from ${r.request().method()} ${r.url()}`);
+    });
+  }
+
+  /**
+   * A pause that is only there for the viewer (a beat to read a ring, a gap between shots).
+   * A check run skips it; a wait for the app to do something must use sleep() or a real wait.
+   */
+  pause(ms: number) {
+    return this.fast ? Promise.resolve() : sleep(ms);
+  }
+
+  /** Records a warning without throwing (for events that arrive outside a step). */
+  note(msg: string) {
+    this.warnings.push(msg);
+    console.warn(`  ! ${msg}`);
+  }
+
+  /**
+   * Checks something the narration claims (a query returned rows, validation passed).
+   * A recording where an action ran but its claimed outcome didn't happen must not publish.
+   */
+  claim(ok: unknown, msg: string) {
+    if (!ok) this.warn(`Narrated outcome not shown: ${msg}`);
+    return !!ok;
+  }
+
+  /** Waits for something to appear as the narration claims, or warns. */
+  async claimVisible(target: Locator, msg: string, timeout = 10_000) {
+    const ok = await target
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+    return this.claim(ok, msg);
+  }
+
+  warn(msg: string) {
+    this.warnings.push(msg);
+    console.warn(`  ! ${msg}`);
+    if (this.strict) throw new Error(msg);
+  }
+
+  /** Navigates and waits for the app to settle (no spinners, fonts loaded). */
+  async goto(url: string, opts: { settle?: boolean; keepCard?: boolean } = {}) {
+    await this.checkRing();
+    const res = await this.page.goto(url, { waitUntil: 'domcontentloaded' });
+    if (res && res.status() >= 400) this.warn(`${url} answered HTTP ${res.status()}`);
+    await this.settle(opts.settle !== false);
+    // A chapter card carries across navigation; unless asked to keep it, fade it out now.
+    if (!opts.keepCard) await this.page.evaluate(() => window.__wt?.hideChapter()).catch(() => {});
+    await this.page.evaluate(([x, y]) => window.__wt?.setCursor(x, y), [this.cursor.x, this.cursor.y]).catch(() => {});
+  }
+
+  async settle(spinners = true) {
+    if (this.fast) return this.settleFast(spinners);
+    await this.page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
+    if (spinners) {
+      // No spinners for a moment in a row: some pages load in two waves.
+      for (let quiet = 0, tries = 0; quiet < 3 && tries < 75; tries++) {
+        const busy = await this.page.locator('[aria-busy="true"]').count().catch(() => 0);
+        quiet = busy ? 0 : quiet + 1;
+        await sleep(200);
+      }
+    }
+    await this.page.evaluate(() => document.fonts?.ready).catch(() => {});
+    await sleep(250);
+  }
+
+  /**
+   * settle() for a check run: no request in flight and no spinner, seen on three polls in a
+   * row 50 ms apart (some pages load in two waves), then fonts. networkidle instead waits
+   * at least 500 ms after the last request, and the fixed delays above are for the video.
+   */
+  private async settleFast(spinners: boolean) {
+    await this.page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {});
+    const busy = async () => this.inFlight.size > 0 || (spinners && (await this.page.locator('[aria-busy="true"]').count().catch(() => 0)) > 0);
+    for (let quiet = 0, tries = 0; quiet < 3 && tries < 300; tries++) {
+      quiet = (await busy()) ? 0 : quiet + 1;
+      await sleep(50);
+    }
+    await this.page.evaluate(() => document.fonts?.ready).catch(() => {});
+  }
+
+  /** Resolves a locator to its first visible match, or warns and returns undefined. */
+  async find(target: Locator, what: string, timeout = 8000): Promise<Locator | undefined> {
+    const l = target.first();
+    try {
+      await l.waitFor({ state: 'visible', timeout });
+      return l;
+    } catch {
+      this.warn(`Could not find ${what}`);
+      return undefined;
+    }
+  }
+
+  /** Glides the pointer to (x, y) with an ease-in-out curve. */
+  async moveTo(x: number, y: number, ms = 650) {
+    if (this.fast) {
+      await this.page.mouse.move(x, y);
+      this.cursor = { x, y };
+      return;
+    }
+    const from = { ...this.cursor };
+    const steps = Math.max(8, Math.round(ms / 16));
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const e = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+      await this.page.mouse.move(from.x + (x - from.x) * e, from.y + (y - from.y) * e);
+      await sleep(ms / steps);
+    }
+    this.cursor = { x, y };
+  }
+
+  async pointAt(target: Locator, what: string) {
+    const l = await this.find(target, what);
+    if (!l) return undefined;
+    await l.scrollIntoViewIfNeeded().catch(() => {});
+    const box = await l.boundingBox();
+    if (!box) return undefined;
+    await this.moveTo(box.x + Math.min(box.width / 2, 60), box.y + box.height / 2);
+    return l;
+  }
+
+  async click(target: Locator, what: string, opts: { settle?: boolean } = {}) {
+    const l = await this.pointAt(target, what);
+    if (!l) return false;
+    await this.pause(180);
+    await this.page.mouse.down();
+    await this.pause(70);
+    await this.page.mouse.up();
+    if (opts.settle !== false) await this.settle();
+    return true;
+  }
+
+  async type(target: Locator, text: string, what: string, cps = 16) {
+    if (!(await this.click(target, what, { settle: false }))) return false;
+    await target.first().fill('');
+    await target.first().pressSequentially(text, { delay: this.fast ? 0 : 1000 / cps });
+    return true;
+  }
+
+  /**
+   * Rings an element (with an optional caption) until the next highlight or clear. The ring
+   * follows the element itself in the page, and ringing nothing visible is a warning (so a
+   * --publish run refuses it): a ring once sat on an empty side panel.
+   */
+  async highlight(target: Locator | undefined, what: string, tag?: string) {
+    if (!target) return this.clearHighlight();
+    // Settle the ring being shown before scrolling, which would move it out of view.
+    await this.checkRing();
+    const l = await this.find(target, what);
+    if (!l) return;
+    await l.scrollIntoViewIfNeeded().catch(() => {});
+    await this.ring(l, what, tag);
+  }
+
+  /** Rings exactly this element (see highlight). */
+  async ring(l: Locator, what: string, tag?: string) {
+    await this.checkRing();
+    this.ringed = what;
+    const seen = await l.evaluate((el, t) => window.__wt?.highlight(el, t) ?? null, tag).catch(() => null);
+    const problem = ringProblem(seen);
+    if (problem) this.warn(`The highlight on ${what} ${problem}`);
+  }
+
+  async clearHighlight() {
+    await this.checkRing();
+    await this.page.evaluate(() => window.__wt?.highlight(null)).catch(() => {});
+  }
+
+  /**
+   * The ring being shown, and whether it stayed in view while it was (the overlay hides it if
+   * not). Checked when it is cleared or replaced, before scrolling to a new one, when the page
+   * changes, and at the end of the recording.
+   */
+  private ringed = '';
+  async checkRing() {
+    if (!this.ringed) return;
+    const what = this.ringed;
+    this.ringed = '';
+    const lost = await this.page.evaluate(() => window.__wt?.ringLost?.() ?? '').catch(() => '');
+    if (lost) this.warn(`The highlight on ${what} ${lost} while it was shown`);
+  }
+
+  async label(text?: string) {
+    await this.page.evaluate((t) => window.__wt?.label(t), text ?? '').catch(() => {});
+  }
+
+  /** A full-screen chapter card that fades out to reveal the page underneath. */
+  async chapter(card: { eyebrow?: string; title: string; sub?: string }, holdMs = 2800) {
+    if (this.fast) holdMs = Math.min(holdMs, 300);
+    await this.page.evaluate(([c, ms]) => window.__wt?.chapter(c, ms), [card, holdMs] as const);
+  }
+
+  /** Scrolls the main page smoothly by dy pixels. */
+  async scroll(dy: number, ms = 900) {
+    const steps = Math.max(6, Math.round(ms / 16));
+    for (let i = 0; i < steps; i++) {
+      await this.page.mouse.wheel(0, dy / steps);
+      if (!this.fast) await sleep(ms / steps);
+    }
+    // The page scrolls after the wheel events are handled, so give it a moment to get there.
+    if (this.fast) await sleep(150);
+  }
+}
+
+/** What the overlay reported about a ringed element, if it shows nothing worth ringing. */
+export interface Ringed {
+  visible: boolean;
+  onScreen: boolean;
+  text: string;
+  media: boolean;
+  width: number;
+  height: number;
+}
+
+/** Why a ring would be around nothing (blank, hidden or off screen), or undefined if it's fine. */
+export function ringProblem(r: Ringed | null | undefined): string | undefined {
+  if (!r) return 'could not be drawn';
+  if (!r.visible) return `is around something hidden (${r.width}×${r.height})`;
+  if (!r.onScreen) return 'is off screen';
+  if (!r.text && !r.media) return 'is around blank space';
+  return undefined;
+}
