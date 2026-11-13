@@ -6,3 +6,5 @@ e2e/results
 .env
 .vercel
 *.tsbuildinfo
+walkthrough/out
+walkthrough/.cache
