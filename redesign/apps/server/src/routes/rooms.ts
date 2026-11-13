@@ -15,16 +15,28 @@ import {
   memberNames,
   MESSAGE_MAX,
   messageView,
+  paceOf,
+  visibleMessages,
+  writeFirst,
 } from '../services/rooms/rooms.js';
 import { parseBody } from '../validate.js';
 import { bumpVersion } from '../version.js';
 
 const line = z.string().trim().min(1).max(280);
 
+/** How long a slow room may be open, in days. */
+export const SLOW_DAYS = { min: 2, max: 14, default: 5 } as const;
+const LIVE_MINUTES_DEFAULT = 45;
+
 const CreateBody = z.strictObject({
   topic: z.string().trim().min(1).max(200),
   statementId: z.string().optional(),
-  minutes: z.number().int().min(10).max(120).default(45),
+  /** Absent means live. */
+  pace: z.enum(['live', 'slow']).optional(),
+  /** A live room's length. */
+  minutes: z.number().int().min(10).max(120).optional(),
+  /** A slow room's length (section 12.2). */
+  days: z.number().int().min(SLOW_DAYS.min).max(SLOW_DAYS.max).optional(),
   size: z.number().int().min(ROOM_SIZE.min).max(ROOM_SIZE.max).default(ROOM_SIZE.default),
   seed: z.string().min(1).max(200).optional(),
   briefing: z
@@ -89,6 +101,7 @@ export function roomsRouter(deps: Deps): Router {
           id: current.id,
           topic: current.topic,
           status: current.status,
+          pace: paceOf(current),
           minutes: current.minutes,
           startedAt: current.startedAt ?? null,
           endsAt: current.endsAt ?? null,
@@ -97,13 +110,23 @@ export function roomsRouter(deps: Deps): Router {
       : null;
     const others = rooms
       .filter((x) => x.status !== 'closed' && x.id !== current?.id)
-      .map((x) => ({ id: x.id, topic: x.topic, status: x.status, startedAt: x.startedAt ?? null, endsAt: x.endsAt ?? null, size: x.memberIds.length }));
+      .map((x) => ({
+        id: x.id,
+        topic: x.topic,
+        status: x.status,
+        pace: paceOf(x),
+        minutes: x.minutes,
+        startedAt: x.startedAt ?? null,
+        endsAt: x.endsAt ?? null,
+        size: x.memberIds.length,
+      }));
     const closed = await Promise.all(
       rooms
         .filter((x) => x.status === 'closed')
         .map(async (x) => ({
           id: x.id,
           topic: x.topic,
+          pace: paceOf(x),
           wasMine: !!me && x.memberIds.includes(me),
           outcome: x.outcome ?? { reasonsFor: [], reasonsAgainst: [], questionsForExperts: [] },
           answers: answerTotals(await store.list('roomAnswers', { roomId: x.id })),
@@ -114,35 +137,46 @@ export function roomsRouter(deps: Deps): Router {
   });
 
   r.post('/assemblies/:slug/rooms', requireRole('host', 'steward'), async (req, res) => {
-    const body = parseBody(CreateBody, req.body);
+    const { days, minutes, pace, ...body } = parseBody(CreateBody, req.body);
+    if (pace === 'slow' && minutes !== undefined) throw new HttpError(400, 'bad_length', 'A slow room is open for a number of days. Give its length in days, not minutes.');
+    if (pace !== 'slow' && days !== undefined) throw new HttpError(400, 'bad_length', 'A live room runs for a number of minutes. Give its length in minutes, not days.');
     const assembly = await getAssemblyBySlug(store, String(req.params.slug));
-    const room = await createRoom(deps, assembly, body);
+    const room = await createRoom(
+      deps,
+      assembly,
+      pace === 'slow' ? { ...body, pace, minutes: (days ?? SLOW_DAYS.default) * 1440 } : { ...body, minutes: minutes ?? LIVE_MINUTES_DEFAULT },
+    );
     const out: RoomCreatedResponse = { room };
     res.status(201).json(out);
   });
 
   r.get('/rooms/:id', async (req, res) => {
     const { room, assembly, isMember } = await loadRoom(req);
-    const [statement, evidence, answers] = await Promise.all([
+    const [statement, evidence, answers, messages] = await Promise.all([
       room.statementId ? store.get('statements', room.statementId) : undefined,
       evidenceFor(store, room.briefing.evidenceIds),
       store.list('roomAnswers', { roomId: room.id }),
+      isMember && paceOf(room) === 'slow' ? store.list('roomMessages', { roomId: room.id }) : [],
     ]);
     const names = isMember ? await memberNames(store, room) : undefined;
     const mine = answers.find((a) => a.personId === req.personId);
     const closed = room.status === 'closed';
+    // Write before you read: a member of a slow room who has not written sees nobody else's words.
+    const gate = isMember ? writeFirst(room, messages, req.personId) : { mustWriteFirst: false, hiddenCount: 0, hiddenPeople: 0 };
     const body: RoomResponse = {
       room: {
         id: room.id,
         topic: room.topic,
         status: room.status,
+        pace: paceOf(room),
         minutes: room.minutes,
         startedAt: room.startedAt ?? null,
         endsAt: room.endsAt ?? null,
         statement: statement ? { id: statement.id, text: statement.text } : null,
         briefing: { summary: room.briefing.summary, forSide: room.briefing.forSide, againstSide: room.briefing.againstSide, evidence },
-        // The members' outcome is shown once the room has closed, or to its members while it runs.
-        outcome: closed || isMember ? (room.outcome ?? null) : null,
+        // The members' outcome is shown once the room has closed, or to its members while it runs
+        // (in a slow room, once they have written).
+        outcome: closed || (isMember && !gate.mustWriteFirst) ? (room.outcome ?? null) : null,
       },
       assembly: { slug: assembly.slug },
       // Names only to the people in the room.
@@ -153,6 +187,7 @@ export function roomsRouter(deps: Deps): Router {
       myAnswer: isMember && mine ? { value: mine.value, note: mine.note ?? null } : null,
       // Private final answers: only totals, and only after the room is closed.
       answerTotals: closed ? answerTotals(answers) : null,
+      ...gate,
       now: clock.iso(),
     };
     res.json(body);
@@ -179,14 +214,18 @@ export function roomsRouter(deps: Deps): Router {
     membersOnly(isMember);
     if (room.status === 'open') await checkFacilitator(deps, room.id);
     const all = await store.list('roomMessages', { roomId: room.id }, { orderBy: 'created_at' });
+    // Write before you read (section 12.2): held-back messages are left out before anything else.
+    const gate = writeFirst(room, all, req.personId);
+    const visible = visibleMessages(all, gate);
     const after = typeof req.query.after === 'string' ? req.query.after : undefined;
-    const from = after ? all.findIndex((m) => m.id === after) + 1 : 0;
+    const from = after ? visible.findIndex((m) => m.id === after) + 1 : 0;
     const names = await memberNames(store, room);
     const fresh = await store.get('rooms', room.id);
     const body: MessagesResponse = {
-      messages: all.slice(from).map((m) => messageView(m, names, req.personId)),
+      messages: visible.slice(from).map((m) => messageView(m, names, req.personId)),
       status: fresh?.status ?? room.status,
       endsAt: fresh?.endsAt ?? null,
+      ...gate,
       now: clock.iso(),
     };
     res.set('Cache-Control', 'no-store').json(body);
@@ -235,6 +274,9 @@ export function roomsRouter(deps: Deps): Router {
     membersOnly(isMember);
     const body = parseBody(OutcomeBody, req.body);
     if (room.status !== 'open') throw new HttpError(409, 'not_open', room.status === 'scheduled' ? 'This room has not opened yet.' : 'This room has closed.');
+    // The reply carries what the others added, so in a slow room it waits until you have written.
+    if (paceOf(room) === 'slow' && writeFirst(room, await store.list('roomMessages', { roomId: room.id }), req.personId).mustWriteFirst)
+      throw new HttpError(409, 'write_first', 'Write where you stand in the conversation first. Then you can add to what the room found.');
     const outcome = await store.transaction(async (tx) => {
       const now = (await tx.get('rooms', room.id)) ?? room;
       const o = now.outcome ?? { reasonsFor: [], reasonsAgainst: [], questionsForExperts: [] };
