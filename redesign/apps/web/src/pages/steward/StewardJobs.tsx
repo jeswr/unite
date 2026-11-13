@@ -19,6 +19,7 @@ import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Field, inputClass } from '../../ui/Field';
 import { checkable } from '../delivery/Decision';
+import { DEFAULT_ROOM_LENGTH, roomLengthBody, RoomLengthFields } from '../rooms/RoomLength';
 import { messageOf, useAction } from '../delivery/useAction';
 import { STATUS_WORDS } from '../statements/parts';
 
@@ -200,7 +201,7 @@ function ObjectionsJob({ slug }: { slug: string }) {
 
 function RoomJob({ slug }: { slug: string }) {
   const [topic, setTopic] = useState('');
-  const [minutes, setMinutes] = useState('45');
+  const [length, setLength] = useState(DEFAULT_ROOM_LENGTH);
   const [statementId, setStatementId] = useState('');
   const [statements, setStatements] = useState<StatementSummary[]>([]);
   const [made, setMade] = useState<string>();
@@ -215,7 +216,7 @@ function RoomJob({ slug }: { slug: string }) {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setMade(undefined);
-    const body = { topic: topic.trim(), minutes: Number(minutes) || 45, ...(statementId ? { statementId } : {}) };
+    const body = { topic: topic.trim(), ...roomLengthBody(length), ...(statementId ? { statementId } : {}) };
     const created = await run(() => api.post<RoomCreatedResponse>(`/api/assemblies/${slug}/rooms`, body));
     if (created) {
       setMade(created.room.id);
@@ -241,9 +242,7 @@ function RoomJob({ slug }: { slug: string }) {
             </select>
           </Field>
         )}
-        <Field label="How long, in minutes">
-          <input type="number" min={10} className={inputClass} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
-        </Field>
+        <RoomLengthFields value={length} onChange={setLength} />
         <Button type="submit" variant="secondary" disabled={busy || !topic.trim()}>
           Draw the room
         </Button>

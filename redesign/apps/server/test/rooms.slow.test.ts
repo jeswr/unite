@@ -120,21 +120,22 @@ describe('write before you read', () => {
     const id = await slowRoomWithOneMessage();
     const bo = people[1]!;
     const first = (await get(`/api/rooms/${id}/messages`, bo.cookie)).body.messages[0].id as string;
-    const reads = [
-      await get(`/api/rooms/${id}/messages`, bo.cookie),
-      await get(`/api/rooms/${id}/messages?after=${first}`, bo.cookie),
-      await get(`/api/rooms/${id}/messages?after=nothing`, bo.cookie),
-      await get(`/api/rooms/${id}`, bo.cookie),
-      await get(`/api/assemblies/${SLUG}/rooms`, bo.cookie),
-      await get(`/api/assemblies/${SLUG}/evidence`, bo.cookie),
-      await get(`/api/assemblies/${SLUG}`, bo.cookie),
-      await get('/api/me/export', bo.cookie),
+    const paths = [
+      `/api/rooms/${id}/messages`,
+      `/api/rooms/${id}/messages?after=${first}`,
+      `/api/rooms/${id}/messages?after=nothing`,
+      `/api/rooms/${id}`,
+      `/api/assemblies/${SLUG}/rooms`,
+      `/api/assemblies/${SLUG}/evidence`,
+      `/api/assemblies/${SLUG}`,
+      '/api/me/export',
     ];
-    for (const res of reads) {
-      expect(res.status, res.req.path).toBeLessThan(400);
+    const reads = await Promise.all(paths.map((path) => get(path, bo.cookie)));
+    for (const [i, res] of reads.entries()) {
+      expect(res.status, paths[i]).toBeLessThan(400);
       const body = JSON.stringify(res.body);
-      expect(body, res.req.path).not.toContain(said);
-      expect(body, res.req.path).not.toContain(outcomeText);
+      expect(body, paths[i]).not.toContain(said);
+      expect(body, paths[i]).not.toContain(outcomeText);
     }
     const detail = reads[3]!.body;
     expect(detail).toMatchObject({ isMember: true, mustWriteFirst: true, hiddenCount: 1, hiddenPeople: 1 });

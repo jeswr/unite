@@ -11,6 +11,7 @@ const roomBody = (over: Partial<RoomResponse> = {}, roomOver: Partial<RoomRespon
     id: 'room_AAAAAAAAAAAA',
     topic: 'Teaching AI tools as a basic skill',
     status: 'open',
+    pace: 'live',
     minutes: 45,
     startedAt: '2026-11-13T09:00:00.000Z',
     endsAt: '2026-11-13T09:45:00.000Z',
@@ -29,6 +30,9 @@ const roomBody = (over: Partial<RoomResponse> = {}, roomOver: Partial<RoomRespon
   canManage: false,
   myAnswer: null,
   answerTotals: null,
+  mustWriteFirst: false,
+  hiddenCount: 0,
+  hiddenPeople: 0,
   now: NOW.toISOString(),
   ...over,
 });
@@ -41,6 +45,9 @@ const messages: MessagesResponse = {
   ],
   status: 'open',
   endsAt: '2026-11-13T09:45:00.000Z',
+  mustWriteFirst: false,
+  hiddenCount: 0,
+  hiddenPeople: 0,
   now: NOW.toISOString(),
 };
 
@@ -147,5 +154,92 @@ describe('room page', () => {
     expect(await screen.findByRole('heading', { name: 'What the room found' })).toBeTruthy();
     expect(screen.getByText('Final answers: 2 agree, 3 disagree, 1 not sure.')).toBeTruthy();
     expect(screen.getByText('Offer AI basics to anyone who wants them.')).toBeTruthy();
+  });
+
+  describe('a slow room', () => {
+    const SLOW_NOW = new Date('2026-11-13T09:00:00.000Z');
+    const slowRoom = (over: Partial<RoomResponse> = {}) =>
+      roomBody(
+        { now: SLOW_NOW.toISOString(), mustWriteFirst: true, hiddenCount: 4, hiddenPeople: 3, ...over },
+        { pace: 'slow', minutes: 5 * 1440, startedAt: '2026-11-11T09:00:00.000Z', endsAt: '2026-11-16T09:00:00.000Z' },
+      );
+    const welcome = { id: 'msg_AAAAAAAAAAA1', authorType: 'facilitator' as const, author: 'Facilitator (AI)', mine: false, text: 'Welcome. This room is open for 5 days.', createdAt: SLOW_NOW.toISOString() };
+    const bo = { id: 'msg_AAAAAAAAAAA2', authorType: 'person' as const, author: 'Bo', mine: false, text: 'I run a garage and cannot find anyone trained.', createdAt: SLOW_NOW.toISOString() };
+
+    /** Serves the messages held back until the member has posted, as the server does. */
+    function mockSlow(room: RoomResponse, held = { hiddenCount: 4, hiddenPeople: 3 }) {
+      let written = false;
+      const urls: string[] = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: RequestInit) => {
+          const u = String(url);
+          if (init?.method === 'POST') {
+            written = true;
+            return new Response(JSON.stringify({ message: {} }), { status: 201 });
+          }
+          if (u.endsWith('/version')) return new Response(JSON.stringify({ version: 1 }));
+          if (u.includes('/messages')) {
+            urls.push(u);
+            const mine = { id: 'msg_AAAAAAAAAAA3', authorType: 'person' as const, author: 'Amina', mine: true, text: 'Evening courses or nothing.', createdAt: SLOW_NOW.toISOString() };
+            const body: MessagesResponse = written
+              ? { messages: [welcome, bo, mine], status: 'open', endsAt: room.room.endsAt, mustWriteFirst: false, hiddenCount: 0, hiddenPeople: 0, now: room.now }
+              : { messages: [welcome], status: 'open', endsAt: room.room.endsAt, mustWriteFirst: true, ...held, now: room.now };
+            return new Response(JSON.stringify(body));
+          }
+          if (u.includes('/api/rooms/')) return new Response(JSON.stringify(written ? { ...room, mustWriteFirst: false, hiddenCount: 0, hiddenPeople: 0 } : room));
+          return new Response(JSON.stringify({ error: { code: 'not_found', message: 'no' } }), { status: 404 });
+        }),
+      );
+      return urls;
+    }
+
+    it('says it is a slow room, until when, and the time left in days', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: SLOW_NOW });
+      mockSlow(slowRoom());
+      renderRoom();
+      expect(await screen.findByText('This is a slow room. It is open until 16 November 2026. Write when you can, and come back to read the others.')).toBeTruthy();
+      expect(screen.getByText('3 days left')).toBeTruthy();
+    });
+
+    it('shows the write-first notice with how many people have written, then the others once you have written', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: SLOW_NOW });
+      const urls = mockSlow(slowRoom());
+      renderRoom();
+      expect(await screen.findByText('3 people have written. You will see what they wrote once you have written where you stand.')).toBeTruthy();
+      expect(await screen.findByText('Welcome. This room is open for 5 days.')).toBeTruthy();
+      expect(screen.queryByText(bo.text)).toBeNull();
+      fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'Evening courses or nothing.' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      expect(await screen.findByText(bo.text)).toBeTruthy();
+      expect(screen.getByText('Evening courses or nothing.')).toBeTruthy();
+      expect(screen.queryByText(/people have written/)).toBeNull();
+      // The whole list is fetched again after writing, so the held-back messages arrive in their places.
+      expect(urls.every((u) => !u.includes('after='))).toBe(true);
+      const items = screen.getAllByRole('listitem').map((li) => li.textContent);
+      expect(items.findIndex((t) => t?.includes(bo.text))).toBeLessThan(items.findIndex((t) => t?.includes('Evening courses or nothing.')));
+    });
+
+    it('says plainly when nobody else has written yet', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: SLOW_NOW });
+      mockSlow(slowRoom({ hiddenCount: 0, hiddenPeople: 0 }), { hiddenCount: 0, hiddenPeople: 0 });
+      renderRoom();
+      expect(await screen.findByText('Nobody else has written yet. Write where you stand, and you will see what the others write after that.')).toBeTruthy();
+    });
+
+    it('says how long a scheduled slow room will be open', async () => {
+      mockSlow(roomBody({ mustWriteFirst: false }, { status: 'scheduled', pace: 'slow', minutes: 3 * 1440, startedAt: null, endsAt: null }));
+      renderRoom();
+      expect(await screen.findByText('This is a slow room. It will be open for 3 days once it opens.')).toBeTruthy();
+    });
+
+    it('keeps what others added from a member who never wrote, once time is up', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-16T10:00:00.000Z') });
+      mockSlow(slowRoom({ now: '2026-11-16T10:00:00.000Z' }));
+      renderRoom();
+      expect(await screen.findByRole('heading', { name: 'Your private final answer' })).toBeTruthy();
+      expect(screen.queryByLabelText('What are you adding?')).toBeNull();
+      expect(screen.getByText(/you did not write in it/)).toBeTruthy();
+    });
   });
 });
