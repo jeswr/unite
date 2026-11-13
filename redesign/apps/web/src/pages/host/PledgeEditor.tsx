@@ -429,7 +429,7 @@ export function PledgeEditor({ initial, assembly, intakeId, fromThemeId, onSaved
       <div aria-live="polite">
         {error && (
           <Banner tone="warn" className="mb-4">
-            <p>{error}</p>
+            <p>{unmet && unmet.length > 0 ? 'The pledge cannot be published yet. Still needed:' : error}</p>
             {unmet && unmet.length > 0 && (
               <ul className="mt-2 list-disc pl-6">
                 {unmet.map((i) => (

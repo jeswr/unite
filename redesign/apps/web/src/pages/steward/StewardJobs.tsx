@@ -361,10 +361,10 @@ function FollowThroughJobs({ slug }: { slug: string }) {
         <ul className="space-y-2">
           {toCheck.map((r) => (
             <li key={r.decision.id}>
+              <span className="mb-1 block">{r.decision.title}</span>
               <Button variant="secondary" to={`/a/${slug}/decisions/${r.decision.id}`}>
                 Check decision {r.decision.number}
               </Button>
-              <span className="ml-3">{r.decision.title}</span>
             </li>
           ))}
         </ul>

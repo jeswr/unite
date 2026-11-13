@@ -145,7 +145,7 @@ export function AssemblyPanel({ slug }: { slug: string }) {
               <div className="mt-3" aria-live="polite">
                 {error && (
                   <Banner tone="warn" className="mb-3">
-                    <p>{error}</p>
+                    <p>{unmet && unmet.length > 0 ? 'This assembly cannot move on yet. Still needed:' : error}</p>
                     {unmet && (
                       <ul className="mt-2 list-disc pl-6">
                         {unmet.map((i) => (
