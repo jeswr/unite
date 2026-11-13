@@ -79,3 +79,12 @@ export interface StatementDetail {
   reports: ReportView[];
   canSteward: boolean;
 }
+
+/** POST /api/assemblies/:slug/statements/draft */
+export interface DraftStatementsResponse {
+  created: StatementSummary[];
+  /** True when the AI is not switched on, so nothing was drafted. */
+  fallback: boolean;
+  /** What happened, in plain words. */
+  message: string;
+}

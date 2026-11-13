@@ -5,7 +5,7 @@ import { requireHeard, requirePerson, requireRole } from '../auth.js';
 import type { Deps } from '../deps.js';
 import { HttpError, notFound } from '../errors.js';
 import { getAssemblyBySlug } from '../services/assemblies.js';
-import type { PictureResponse, ThemePointsResponse } from '@unite/shared';
+import type { PictureConfirmResponse, PictureResponse, PictureUpdateResponse, ReportsResponse, ThemePointsResponse } from '@unite/shared';
 import { isUpdating, LAZY_UPDATE_THRESHOLD, unthemedPoints, updatePicture } from '../services/picture/update.js';
 import { hardChoices, loadPictureData, namesFor, quotesOf, reportView, sections, whoIsMissing, type Viewer } from '../services/picture/view.js';
 import { bumpVersion } from '../version.js';
@@ -82,7 +82,8 @@ export function pictureRouter(deps: Deps): Router {
   r.post('/assemblies/:slug/picture/update', requireRole('steward', 'host'), async (req, res) => {
     const assembly = await getAssemblyBySlug(store, String(req.params.slug));
     const result = await updatePicture(deps, assembly.id);
-    res.json({ result });
+    const body: PictureUpdateResponse = { result };
+    res.json(body);
   });
 
   r.post('/assemblies/:slug/picture/confirm', requireRole('steward'), async (req, res) => {
@@ -96,7 +97,8 @@ export function pictureRouter(deps: Deps): Router {
       if (a) await tx.put('assemblies', { ...a, pictureConfirmedAt: at, pictureConfirmedBy: by, updatedAt: at });
     });
     await bumpVersion(deps, assembly.id);
-    res.json({ confirmed: { at, by } });
+    const out: PictureConfirmResponse = { confirmed: { at, by } };
+    res.json(out);
   });
 
   r.post('/reports', requirePerson(deps), async (req, res) => {
@@ -126,7 +128,8 @@ export function pictureRouter(deps: Deps): Router {
     await requireHeard(deps, req, assembly);
     const reports = await store.list('reports', { assemblyId: assembly.id });
     const viewer = viewerOf(req);
-    res.json({ reports: reports.map((x) => ({ ...reportView(x, viewer), targetType: x.targetType, targetId: x.targetId })) });
+    const body: ReportsResponse = { reports: reports.map((x) => ({ ...reportView(x, viewer), targetType: x.targetType, targetId: x.targetId })) };
+    res.json(body);
   });
 
   r.patch('/reports/:id', requireRole('steward'), async (req, res) => {

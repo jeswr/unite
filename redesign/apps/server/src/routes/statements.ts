@@ -17,7 +17,7 @@ import {
   themesOfPoints,
   type Viewer,
 } from '../services/statements/index.js';
-import type { StatementDetail, StatementsResponse } from '@unite/shared';
+import type { DraftStatementsResponse, StatementDetail, StatementsResponse } from '@unite/shared';
 import { bumpVersion } from '../version.js';
 import { parseBody } from '../validate.js';
 import { stewardName } from './picture.js';
@@ -257,13 +257,14 @@ export function statementsRouter(deps: Deps): Router {
     for (const d of drafts) created.push(await createStatement(assembly, { text: d.text, pointIds: d.pointIds, origin: 'ai' }));
     if (created.length) await bumpVersion(deps, assembly.id);
     const data = await loadReactionData(store, assembly.id);
-    res.json({
+    const body: DraftStatementsResponse = {
       created: created.map((s) => summaryOf(data.statements.find((x) => x.id === s.id)!, data, assembly.pledge, viewerOf(req))),
       fallback,
       message: fallback
         ? 'The AI is not switched on, so no statements were drafted. Write them by hand, each with its source points.'
         : `${created.length} statement${created.length === 1 ? '' : 's'} drafted.`,
-    });
+    };
+    res.json(body);
   });
 
   r.post('/assemblies/:slug/statements', requireRole('steward'), async (req, res) => {

@@ -1,4 +1,4 @@
-import { newId, type Point, type Theme } from '@unite/shared';
+import { newId, type PictureUpdateResult, type Point, type Theme } from '@unite/shared';
 import { checkSentences, describeTheme, groupPoints, themeKindOf } from '../../ai/synthesis.js';
 import type { Deps } from '../../deps.js';
 import { bumpVersion } from '../../version.js';
@@ -13,23 +13,10 @@ import { bumpVersion } from '../../version.js';
 /** GET .../picture updates the picture by itself when at least this many approved points have no theme. */
 export const LAZY_UPDATE_THRESHOLD = 5;
 
-export interface UpdateResult {
-  /** Points put into a theme by this update. */
-  themed: number;
-  created: number;
-  /** Points taken out of themes because they were withdrawn, scrapped or deleted. */
-  removed: number;
-  deleted: number;
-  /** Themes kept although empty, because a report or statement is attached. */
-  keptEmpty: number;
-  /** True when any step used the scripted fallback. */
-  fallback: boolean;
-}
-
 /** One update at a time per assembly: a second call while one runs gets the running one. */
-const running = new Map<string, Promise<UpdateResult>>();
+const running = new Map<string, Promise<PictureUpdateResult>>();
 
-export function updatePicture(deps: Deps, assemblyId: string): Promise<UpdateResult> {
+export function updatePicture(deps: Deps, assemblyId: string): Promise<PictureUpdateResult> {
   const now = running.get(assemblyId);
   if (now) return now;
   const run = runUpdate(deps, assemblyId).finally(() => running.delete(assemblyId));
@@ -50,7 +37,7 @@ export function unthemedPoints(points: Point[], themes: Pick<Theme, 'pointIds'>[
   return points.filter((p) => p.status === 'approved' && themeKindOf(p.type) !== undefined && !inTheme.has(p.id));
 }
 
-async function runUpdate(deps: Deps, assemblyId: string): Promise<UpdateResult> {
+async function runUpdate(deps: Deps, assemblyId: string): Promise<PictureUpdateResult> {
   const { store, clock } = deps;
   const [points, themes, reports, statements] = await Promise.all([
     store.list('points', { assemblyId }),

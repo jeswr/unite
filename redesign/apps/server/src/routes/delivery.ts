@@ -1,3 +1,4 @@
+import type { DecisionsResponse } from '@unite/shared';
 import { Router, type Request } from 'express';
 import { requirePerson, requireRole } from '../auth.js';
 import type { Deps } from '../deps.js';
@@ -39,7 +40,11 @@ export function deliveryRouter(deps: Deps): Router {
     const a = await getAssemblyBySlug(store, String(req.params.slug));
     const now = clock.now();
     const decisions = (await decisionsOf(store, a.id)).map((d) => cardOf(d, now));
-    res.json({ assembly: { slug: a.slug, title: a.title, question: a.question, hostName: a.hostName, hostSlug: a.hostSlug, isExample: a.isExample, stage: a.stage }, decisions });
+    const body: DecisionsResponse = {
+      assembly: { slug: a.slug, title: a.title, question: a.question, hostName: a.hostName, hostSlug: a.hostSlug, isExample: a.isExample, stage: a.stage },
+      decisions,
+    };
+    res.json(body);
   });
 
   r.get('/decisions/:id', async (req, res) => {

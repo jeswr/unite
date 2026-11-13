@@ -1,3 +1,4 @@
+import type { LeadingCheckResponse } from '@unite/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireRole } from '../auth.js';
@@ -52,7 +53,8 @@ export function hostRouter(deps: Deps): Router {
   r.post('/check-leading', requireRole('host', 'steward'), async (req, res) => {
     const { text } = parseBody(CheckLeadingBody, req.body);
     const { fallback, ...check } = await checkLeading(deps, text);
-    res.json({ ...check, source: fallback ? 'fallback' : 'ai' });
+    const body: LeadingCheckResponse = { ...check, source: fallback ? 'fallback' : 'ai' };
+    res.json(body);
   });
 
   return r;

@@ -1,15 +1,28 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import type { Objection, Report } from '@unite/shared';
+import type {
+  DecisionRecord,
+  DecisionsResponse,
+  DraftStatementsResponse,
+  ObjectionView,
+  PictureUpdateResponse,
+  PrioritiesResponse,
+  ReportsResponse,
+  RoomCreatedResponse,
+  StatementDetail,
+  StatementsResponse,
+  StatementSummary,
+  StewardReportView,
+} from '@unite/shared';
 import { api } from '../../lib/api';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Field, inputClass } from '../../ui/Field';
 import { checkable } from '../delivery/Decision';
-import type { DecisionRecord, DecisionsResponse } from '@unite/shared';
 import { messageOf, useAction } from '../delivery/useAction';
-import { objectionsOf, rankedIdsOf, reportsOf, statementsOf, type StatementLite } from './shapes';
+import { STATUS_WORDS } from '../statements/parts';
 
+const TARGET_WORDS: Record<StewardReportView['targetType'], string> = { theme: 'A theme', statement: 'A statement', decision: 'A decision' };
 function Job({ title, about, count, children }: { title: string; about: string; count?: string; children: ReactNode }) {
   return (
     <li className="border-b border-line py-4">
@@ -40,13 +53,20 @@ function Result({ error, done }: { error?: string; done?: string }) {
   );
 }
 
-/** A job that is one call: a button, then what happened. */
-function ActionJob({ title, about, label, path, done }: { title: string; about: string; label: string; path: string; done: string }) {
+/** A job that is one call: a button, then what happened, in the words `done` makes of the answer. */
+function ActionJob<T>({ title, about, label, path, done }: { title: string; about: string; label: string; path: string; done: (answer: T) => string }) {
   const { busy, error, run } = useAction();
   const [ok, setOk] = useState<string>();
   return (
     <Job title={title} about={about}>
-      <Button variant="secondary" disabled={busy} onClick={() => void run(() => api.post(path)).then((r) => setOk(r !== undefined ? done : undefined))}>
+      <Button
+        variant="secondary"
+        disabled={busy}
+        onClick={() => {
+          setOk(undefined);
+          void run(() => api.post<T>(path)).then((r) => setOk(r !== undefined ? done(r) : undefined));
+        }}
+      >
         {label}
       </Button>
       <Result error={error} done={ok} />
@@ -54,20 +74,30 @@ function ActionJob({ title, about, label, path, done }: { title: string; about: 
   );
 }
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+function updatedWords({ result }: PictureUpdateResponse): string {
+  const r = result;
+  const parts = [`${plural(r.themed, 'point was', 'points were')} put into themes, with ${plural(r.created, 'new theme', 'new themes')}.`];
+  if (r.removed) parts.push(`${plural(r.removed, 'point was', 'points were')} taken out because people withdrew them.`);
+  if (r.fallback) parts.push('The AI is not switched on, so new themes were grouped by shared words and show quotes only.');
+  return parts.join(' ');
+}
+
 function ReportsJob({ slug }: { slug: string }) {
-  const [reports, setReports] = useState<Report[]>();
+  const [reports, setReports] = useState<StewardReportView[]>();
   const [loadError, setLoadError] = useState<string>();
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const { busy, error, run } = useAction();
   const load = () =>
     api
-      .get(`/api/assemblies/${slug}/reports`)
-      .then((b) => setReports(reportsOf(b)))
+      .get<ReportsResponse>(`/api/assemblies/${slug}/reports`)
+      .then((b) => setReports(b.reports))
       .catch((e) => setLoadError(messageOf(e)));
   useEffect(() => void load(), [slug]);
   const waiting = reports?.filter((r) => r.status === 'open') ?? [];
-  const resolve = (r: Report, status: 'upheld' | 'not_upheld') =>
+  const resolve = (r: StewardReportView, status: 'upheld' | 'not_upheld') =>
     void run(() => api.patch(`/api/reports/${r.id}`, { status, outcomeNote: (notes[r.id] ?? '').trim() })).then((x) => {
       if (x !== undefined) void load();
     });
@@ -84,15 +114,30 @@ function ReportsJob({ slug }: { slug: string }) {
         <ul className="mt-3 space-y-3">
           {waiting.map((r) => (
             <li key={r.id} className="rounded-ui border border-line p-3">
+              <p className="text-sm text-muted">
+                {TARGET_WORDS[r.targetType]}
+                {r.targetType === 'statement' && (
+                  <>
+                    {' '}
+                    (<Link to={`/a/${slug}/statements/${r.targetId}`}>read it</Link>)
+                  </>
+                )}
+                {r.targetType === 'theme' && (
+                  <>
+                    {' '}
+                    (<Link to={`/a/${slug}/picture`}>read the picture</Link>)
+                  </>
+                )}
+              </p>
               <p className="mb-2">{r.text}</p>
-              <Field label="What you found">
+              <Field label="What you found" hint="Everyone will see this beside the report.">
                 <textarea className={inputClass} rows={2} value={notes[r.id] ?? ''} onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })} />
               </Field>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" disabled={busy} onClick={() => resolve(r, 'upheld')}>
+                <Button variant="secondary" disabled={busy || !notes[r.id]?.trim()} onClick={() => resolve(r, 'upheld')}>
                   Uphold it
                 </Button>
-                <Button variant="secondary" disabled={busy} onClick={() => resolve(r, 'not_upheld')}>
+                <Button variant="secondary" disabled={busy || !notes[r.id]?.trim()} onClick={() => resolve(r, 'not_upheld')}>
                   Do not uphold it
                 </Button>
               </div>
@@ -106,18 +151,18 @@ function ReportsJob({ slug }: { slug: string }) {
 }
 
 function ObjectionsJob({ slug }: { slug: string }) {
-  const [items, setItems] = useState<{ o: Objection; statement: string }[]>();
+  const [items, setItems] = useState<{ o: ObjectionView; statement: string }[]>();
   const [replies, setReplies] = useState<Record<string, string>>({});
   const { busy, error, run } = useAction();
   const find = () =>
     run(async () => {
-      const list = statementsOf(await api.get(`/api/assemblies/${slug}/statements`));
-      const found: { o: Objection; statement: string }[] = [];
-      for (const s of list) for (const o of objectionsOf(await api.get(`/api/statements/${s.id}`))) if (o.status === 'open') found.push({ o, statement: s.text });
+      const { statements } = await api.get<StatementsResponse>(`/api/assemblies/${slug}/statements`);
+      const details = await Promise.all(statements.map((s) => api.get<StatementDetail>(`/api/statements/${s.id}`)));
+      const found = details.flatMap((d) => d.objections.filter((o) => o.status === 'open').map((o) => ({ o, statement: d.statement.text })));
       setItems(found);
       return found;
     });
-  const reply = (o: Objection, status: 'answered' | 'sustained') =>
+  const reply = (o: ObjectionView, status: 'answered' | 'sustained') =>
     void run(() => api.patch(`/api/objections/${o.id}`, { reply: (replies[o.id] ?? '').trim(), status })).then((x) => {
       if (x !== undefined) void find();
     });
@@ -157,18 +202,23 @@ function RoomJob({ slug }: { slug: string }) {
   const [topic, setTopic] = useState('');
   const [minutes, setMinutes] = useState('45');
   const [statementId, setStatementId] = useState('');
-  const [statements, setStatements] = useState<StatementLite[]>([]);
-  const [ok, setOk] = useState<string>();
+  const [statements, setStatements] = useState<StatementSummary[]>([]);
+  const [made, setMade] = useState<string>();
   const { busy, error, run } = useAction();
   useEffect(() => {
-    api.get(`/api/assemblies/${slug}/statements`).then((b) => setStatements(statementsOf(b)), () => setStatements([]));
+    api.get<StatementsResponse>(`/api/assemblies/${slug}/statements`).then(
+      // Where people differ first: that is what a room is for.
+      (b) => setStatements([...b.statements].sort((x, y) => Number(y.status === 'differ') - Number(x.status === 'differ'))),
+      () => setStatements([]),
+    );
   }, [slug]);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    setOk(undefined);
+    setMade(undefined);
     const body = { topic: topic.trim(), minutes: Number(minutes) || 45, ...(statementId ? { statementId } : {}) };
-    if ((await run(() => api.post(`/api/assemblies/${slug}/rooms`, body))) !== undefined) {
-      setOk('The room is drawn. Its members are chosen by lot from invited participants.');
+    const created = await run(() => api.post<RoomCreatedResponse>(`/api/assemblies/${slug}/rooms`, body));
+    if (created) {
+      setMade(created.room.id);
       setTopic('');
     }
   };
@@ -184,6 +234,7 @@ function RoomJob({ slug }: { slug: string }) {
               <option value="">None</option>
               {statements.map((s) => (
                 <option key={s.id} value={s.id}>
+                  {s.status ? `${STATUS_WORDS[s.status]}: ` : ''}
                   {s.text}
                 </option>
               ))}
@@ -197,7 +248,14 @@ function RoomJob({ slug }: { slug: string }) {
           Draw the room
         </Button>
       </form>
-      <Result error={error} done={ok} />
+      <Result error={error} />
+      {made && (
+        <Banner className="mt-3">
+          <p>
+            The room is drawn by lot from invited participants. <Link to={`/a/${slug}/rooms/${made}`}>Go to the room to open it</Link>.
+          </p>
+        </Banner>
+      )}
     </Job>
   );
 }
@@ -228,13 +286,10 @@ function DecideJob({ slug, capacity }: { slug: string; capacity: number }) {
 
   const prepare = () =>
     run(async () => {
-      const [prio, stmts] = await Promise.all([api.get(`/api/assemblies/${slug}/priorities`), api.get(`/api/assemblies/${slug}/statements`)]);
-      const byId = new Map(statementsOf(stmts).map((s) => [s.id, s]));
-      const top = rankedIdsOf(prio)
-        .map((id) => byId.get(id))
-        .filter((s): s is StatementLite => !!s && (!s.status || s.status === 'common_ground'))
-        .slice(0, capacity);
-      setDrafts(top.map((s) => ({ statementId: s.id, text: s.text, title: s.text, why: '', options: '', dissent: '', tests: '', technology: false, social: false })));
+      // The same rule as the server: the top `capacity` ranked statements that are common ground and that somebody chose.
+      const prio = await api.get<PrioritiesResponse>(`/api/assemblies/${slug}/priorities`);
+      const top = prio.ranked.filter((r) => r.status === 'common_ground' && r.score > 0).slice(0, capacity);
+      setDrafts(top.map((s) => ({ statementId: s.statementId, text: s.text, title: s.text, why: '', options: '', dissent: '', tests: '', technology: false, social: false })));
       return top;
     });
 
@@ -273,7 +328,7 @@ function DecideJob({ slug, capacity }: { slug: string; capacity: number }) {
           Prepare the decisions
         </Button>
       )}
-      {drafts && drafts.length === 0 && <p>No priority is common ground yet.</p>}
+      {drafts && drafts.length === 0 && <p>No priority is ready: none that people chose is common ground yet.</p>}
       {drafts && drafts.length > 0 && (
         <form onSubmit={(e) => void submit(e)} noValidate>
           {drafts.map((d, i) => (
@@ -386,14 +441,14 @@ export function StewardJobs({ slug, capacity }: { slug: string; capacity: number
         about="Group new approved points into themes and describe them."
         label="Update the picture"
         path={`/api/assemblies/${slug}/picture/update`}
-        done="The picture is updated."
+        done={updatedWords}
       />
       <ActionJob
         title="Confirm the picture"
         about="Confirm the picture is faithful to what people said. Read it first."
         label="Confirm the picture"
         path={`/api/assemblies/${slug}/picture/confirm`}
-        done="The picture is confirmed."
+        done={() => 'The picture is confirmed. Everyone can see that you did.'}
       />
       <ReportsJob slug={slug} />
       <ObjectionsJob slug={slug} />
@@ -402,7 +457,7 @@ export function StewardJobs({ slug, capacity }: { slug: string; capacity: number
         about="Draft statements from the picture for people to react to. Each rests on points people approved."
         label="Draft statements"
         path={`/api/assemblies/${slug}/statements/draft`}
-        done="Statements are drafted. Read them on the statements page."
+        done={(r: DraftStatementsResponse) => r.message}
       />
       <RoomJob slug={slug} />
       <DecideJob slug={slug} capacity={capacity} />

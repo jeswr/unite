@@ -58,6 +58,11 @@ export async function currentPerson(deps: Pick<Deps, 'store'>, req: Request): Pr
   return p;
 }
 
+/** Sets the session cookie to an existing person (used only by the test-only sign-in route). */
+export function setSession(deps: Pick<Deps, 'config'>, res: Response, personId: string): void {
+  res.cookie(SID_COOKIE, personId, cookieOptions(deps, YEAR_MS));
+}
+
 /** Creates a person and sets the session cookie. */
 export async function createPerson(deps: Pick<Deps, 'store' | 'clock' | 'config'>, req: Request, res: Response): Promise<Person> {
   const person: Person = { id: newId('per'), createdAt: deps.clock.iso(), isExample: false, about: {}, locale: 'en-GB' };

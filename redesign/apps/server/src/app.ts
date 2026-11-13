@@ -21,6 +21,7 @@ import { roomsRouter } from './routes/rooms.js';
 import { sessionRouter } from './routes/session.js';
 import { statementsRouter } from './routes/statements.js';
 import { stewardRouter } from './routes/steward.js';
+import { testOnlyRouter } from './routes/testOnly.js';
 
 const isWrite = (req: Request) => !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
 const addressKey = (req: Request) => ipKeyGenerator(req.ip ?? 'unknown');
@@ -78,6 +79,7 @@ export function createApp(deps: Deps): express.Express {
     feedbackRouter,
   ])
     app.use('/api', router(deps));
+  if (deps.config.testRoutes) app.use('/api', testOnlyRouter(deps));
 
   app.use('/api', (req) => {
     throw new HttpError(404, 'not_found', `There is nothing at ${req.method} /api${req.path}.`);

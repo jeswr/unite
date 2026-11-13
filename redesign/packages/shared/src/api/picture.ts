@@ -118,3 +118,27 @@ export interface ListeningResponse {
   noHost: { id: string; kind: Theme['kind']; name: string; people: number }[];
   days: { id: string; name: string; people: number; quotes: Quote[] }[];
 }
+
+/** What one picture update did. */
+export interface PictureUpdateResult {
+  /** Points put into a theme by this update. */
+  themed: number;
+  created: number;
+  /** Points taken out of themes because they were withdrawn, scrapped or deleted. */
+  removed: number;
+  deleted: number;
+  /** Themes kept although empty, because a report or statement is attached. */
+  keptEmpty: number;
+  /** True when any step used the scripted fallback. */
+  fallback: boolean;
+}
+
+/** POST /api/assemblies/:slug/picture/update */
+export interface PictureUpdateResponse {
+  result: PictureUpdateResult;
+}
+
+/** POST /api/assemblies/:slug/picture/confirm */
+export interface PictureConfirmResponse {
+  confirmed: { at: string; by: string };
+}

@@ -1,3 +1,4 @@
+import type { DecideResponse } from '@unite/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireHeard, requirePerson, requireRole } from '../auth.js';
@@ -50,7 +51,8 @@ export function decidingRouter(deps: Deps): Router {
     const assembly = await getAssemblyBySlug(store, String(req.params.slug));
     const { decisions } = parseBody(DecideBody, req.body);
     const created = await decide(deps, assembly, decisions);
-    res.status(201).json({ decisions: created });
+    const body: DecideResponse = { decisions: created };
+    res.status(201).json(body);
   });
 
   return r;
