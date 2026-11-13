@@ -20,6 +20,7 @@ import { seed } from '../src/seed/index.js';
 import { OPEN_IDS } from '../src/seed/open.js';
 import { VOLUNTEERING_IDS } from '../src/seed/volunteering.js';
 import type { Store } from '../src/store/types.js';
+import { dueTrigger } from '../src/services/rooms/triggers.js';
 import { testEnv, type TestEnv } from './helpers.js';
 
 let env: TestEnv;
@@ -257,6 +258,47 @@ describe('seed: Riverbend (earning and learning)', () => {
       // Sources link only to the publishing organisation’s home page.
       for (const s of e.sources) expect(s.url).toMatch(/^https:\/\/www\.[a-z]+\.org$/);
     }
+  });
+
+  it('has an open slow room on S7, two days into five, drawn from people in no other unclosed room', async () => {
+    const room = (await store.get('rooms', EARNING_IDS.roomS7Slow))!;
+    expect(room).toMatchObject({ status: 'open', pace: 'slow', statementId: EARNING_IDS.statement('S7'), minutes: 5 * 1440 });
+    expect((await store.get('statements', room.statementId!))!.status).not.toBe('common_ground');
+    expect(Date.parse(SEED_NOW) - Date.parse(room.startedAt!)).toBe(2 * 24 * 3_600_000);
+    expect(Date.parse(room.endsAt!) - Date.parse(room.startedAt!)).toBe(5 * 24 * 3_600_000);
+    expect(room.memberIds).toHaveLength(6);
+    const others = (await store.list('rooms', { assemblyId: ASSEMBLY_IDS.earning })).filter((r) => r.id !== room.id && r.status !== 'closed');
+    for (const r of others) for (const id of r.memberIds) expect(room.memberIds).not.toContain(id);
+    // Both sides are there.
+    const sts = await store.list('statements', { assemblyId: ASSEMBLY_IDS.earning });
+    const groups = opinionGroups(await store.list('reactions', { assemblyId: ASSEMBLY_IDS.earning }), sts.map((s) => s.id));
+    for (const g of groups.groups) expect(room.memberIds.filter((id) => g.personIds.includes(id)).length).toBeGreaterThanOrEqual(2);
+
+    const msgs = await store.list('roomMessages', { roomId: room.id }, { orderBy: 'created_at' });
+    expect(msgs[0]).toMatchObject({ authorType: 'facilitator' });
+    expect(msgs[0]!.personId).toBeUndefined();
+    expect(msgs[0]!.text).toContain('This room is open for 5 days.');
+    const people = msgs.filter((m) => m.authorType === 'person');
+    expect(people.length).toBeGreaterThanOrEqual(3);
+    expect(people.length).toBeLessThanOrEqual(4);
+    for (const m of people) expect(room.memberIds).toContain(m.personId);
+    // The two who have not written were invited by name, after the first day.
+    const invites = msgs.filter((m) => m.authorType === 'facilitator' && m.personId);
+    expect(invites.map((m) => m.personId).sort()).toEqual(room.memberIds.filter((id) => !people.some((m) => m.personId === id)).sort());
+    for (const m of invites) expect(Date.parse(m.createdAt) - Date.parse(room.startedAt!)).toBeGreaterThanOrEqual(24 * 3_600_000);
+    for (const m of msgs) expect(m.createdAt <= SEED_NOW).toBe(true);
+    // Nothing is due from the facilitator at the seed's "now".
+    expect(dueTrigger(room, msgs, Date.parse(SEED_NOW))).toBeUndefined();
+  });
+
+  it('leaves the scheduled room on S5 and the closed room on S2 as they were', async () => {
+    const s5 = (await store.get('rooms', EARNING_IDS.roomS5))!;
+    expect(s5.pace).toBeUndefined();
+    expect(s5.minutes).toBe(45);
+    expect(s5.startedAt).toBeUndefined();
+    const s2 = (await store.get('rooms', EARNING_IDS.roomS2))!;
+    expect(s2.pace).toBeUndefined();
+    expect(s2.minutes).toBe(45);
   });
 
   it('has at least four reasons on each side of S5 and S7, an answered objection on S4 and an upheld report', async () => {

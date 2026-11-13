@@ -1,4 +1,5 @@
 import { stableId } from '@unite/shared';
+import { fallbackWording } from '../ai/facilitator.js';
 import { FACILITATOR_FALLBACK } from '../ai/prompts.js';
 import { ASSEMBLY_IDS } from './assemblies.js';
 import {
@@ -26,6 +27,7 @@ import {
   REPORT_COUNTS,
   ROOM_S2,
   ROOM_S5,
+  ROOM_S7_SLOW,
   type StatementKey,
 } from './content/earningDebate.js';
 import { EARNING_PEOPLE, EARNING_THEMES } from './content/earningPeople.js';
@@ -43,6 +45,7 @@ export const EARNING_IDS = {
   point: (ref: string) => ids.point(ref),
   roomS2: stableId('room', 'earning/S2'),
   roomS5: stableId('room', 'earning/S5'),
+  roomS7Slow: stableId('room', 'earning/S7-slow'),
   evidence: (key: string) => stableId('evd', `earning/${key}`),
   objectionS4: stableId('obj', 'earning/S4'),
   report: stableId('rpt', 'earning/counts'),
@@ -60,8 +63,9 @@ export function plannedReactions(key: StatementKey): { person: string; value: 'a
 /**
  * Riverbend: 48 invited participants with completed conversations (listening from 16 September
  * to 14 October 2026), the picture (confirmed 20 October), statements S1 to S8 with reactions,
- * reasons, the closed room on S2 that wrote S2b, the scheduled room on S5 with its evidence, an
- * answered objection, an upheld report and 31 people's priority choices. No decisions yet.
+ * reasons, the closed room on S2 that wrote S2b, the scheduled room on S5 with its evidence, the
+ * open slow room on S7, an answered objection, an upheld report and 31 people's priority choices.
+ * No decisions yet.
  */
 export async function seedEarning(ctx: SeedCtx): Promise<void> {
   await writePeople(ctx, { scope: EARNING_SCOPE, assemblyId: A, people: EARNING_PEOPLE, start: '2026-09-16T00:00:00.000Z', end: '2026-10-14T23:00:00.000Z', invited: true });
@@ -173,6 +177,34 @@ export async function seedEarning(ctx: SeedCtx): Promise<void> {
     memberIds: ROOM_S5.members.map((m) => ids.person(m)),
     minutes: 45,
   });
+
+  // The open slow room on S7, two days into its five.
+  const slowMinutes = ROOM_S7_SLOW.days * 1440;
+  await makeRoom(at(ctx, ROOM_S7_SLOW.startedAt), {
+    id: EARNING_IDS.roomS7Slow,
+    assemblyId: A,
+    statementId: ids.statement('S7'),
+    topic: ROOM_S7_SLOW.topic,
+    briefing: { ...ROOM_S7_SLOW.briefing, evidenceIds: [] },
+    status: 'open',
+    memberIds: ROOM_S7_SLOW.members.map((m) => ids.person(m)),
+    pace: 'slow',
+    minutes: slowMinutes,
+    startedAt: ROOM_S7_SLOW.startedAt,
+    endsAt: addHours(ROOM_S7_SLOW.startedAt, slowMinutes / 60),
+  });
+  for (const [i, [hours, author, text]] of ROOM_S7_SLOW.messages.entries()) {
+    const when = addHours(ROOM_S7_SLOW.startedAt, hours);
+    const id = stableId('msg', `earning/S7-slow/${i}`);
+    if (author === 'facilitator') {
+      const [trigger, name] = text.split(':');
+      const words = fallbackWording(trigger as 'welcome' | 'invite', name, { length: `${ROOM_S7_SLOW.days} days`, timeLeft: '' });
+      const invited = name ? ids.person(name.toLowerCase()) : undefined;
+      await makeRoomMessage(at(ctx, when), { id, roomId: EARNING_IDS.roomS7Slow, authorType: 'facilitator', ...(invited ? { personId: invited } : {}), text: words });
+    } else {
+      await makeRoomMessage(at(ctx, when), { id, roomId: EARNING_IDS.roomS7Slow, authorType: 'person', personId: ids.person(author), text });
+    }
+  }
 
   for (const [i, [person, keys]] of EARNING_PRIORITIES.entries()) {
     await choosePriorities(at(ctx, finishedAt(i, EARNING_PRIORITIES.length, '2026-11-01T00:00:00.000Z', '2026-11-12T22:00:00.000Z')), {

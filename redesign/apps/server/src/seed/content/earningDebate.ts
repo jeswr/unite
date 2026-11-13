@@ -302,6 +302,43 @@ export const EVIDENCE = [
   },
 ];
 
+/* ------------------------------------------------------------------ the slow room on S7 */
+
+/**
+ * A slow room (section 12.2) on S7, open for five days from two days before the seed's "now".
+ * Its six members are in no other unclosed room, three from each side. Each wrote where they
+ * stood before they could read the others; two have not written yet and were invited once the
+ * first day had passed.
+ */
+export const ROOM_S7_SLOW = {
+  topic: 'Should courses be chosen by what local employers say they need?',
+  members: ['priya', 'jas', 'grace', 'mei', 'paul', 'shabnam'],
+  startedAt: '2026-11-11T09:00:00.000Z',
+  days: 5,
+  briefing: {
+    summary:
+      'People in Riverbend split on this. Employers and people looking for work mostly agreed: courses should lead to jobs that exist here. Others said employers only know what they need this year, and learners need a say in what lasts.',
+    forSide: [
+      'Courses that match real vacancies get people into work sooner.',
+      'If a course does not lead to a job here, people take it and then move away.',
+    ],
+    againstSide: [
+      'Employers did not see the last big changes coming either, and asked for jobs that then disappeared.',
+      'Some things people want to learn, such as nursing or starting a business, no employer will ask for.',
+    ],
+  },
+  /** [hours after the start, author key or 'facilitator', text]. Facilitator turns use the slow fixed wording. */
+  messages: [
+    [0, 'facilitator', 'welcome'],
+    [7.2, 'mei', 'I said agree, mostly. I can’t find anyone qualified in lashes and it’s half my bookings. But my girls need classes that fit school hours, and no employer is going to think to ask for that.'],
+    [12.7, 'priya', 'I said disagree. I teach the evening classes. Three years ago we ran a course the distribution centre asked for. They hired four people from it, then automated the site. Ask employers, yes. Don’t let them choose on their own.'],
+    [21.8, 'grace', 'Disagree. If you ask the care homes, they’ll ask for more level 2 carers, because that’s cheap. I want the nursing access course in the evenings. Not one of them would ask for that.'],
+    [22.25, 'jas', 'Agree. I’ve had an advert up since August for someone who can work on electric cars. Nobody local is trained for it. If the college asked me, I’d tell them, and I’d take two apprentices on.'],
+    [24.05, 'facilitator', 'invite:Paul'],
+    [24.35, 'facilitator', 'invite:Shabnam'],
+  ] as [number, string, string][],
+};
+
 /* ------------------------------------------------------------------ objection and report */
 
 export const OBJECTION_S4 = {
