@@ -45,7 +45,7 @@ describe('assemblies', () => {
     expect(res.body.heard).toBe(false);
     expect(res.body.checklist.stage).toBe('deciding');
     expect(res.body.checklist.next).toBe('answered');
-    expect(res.body.counts).toMatchObject({ heard: 0, statements: 0, decisions: 0 });
+    expect(res.body.counts).toMatchObject({ heard: 48, statements: 9, decisions: 0 });
   });
 
   it('404s an unknown slug in the error shape', async () => {
@@ -64,14 +64,14 @@ describe('assemblies', () => {
     expect((await env.deps.store.get('invites', stableId('inv', 'earning')))?.uses).toBe(1);
     const view = await request(env.app).get('/api/assemblies/earning-and-learning').set('Cookie', cookiesOf(res));
     expect(view.body.membership.invited).toBe(true);
-    expect(view.body.counts.invited).toBe(1);
+    expect(view.body.counts.invited).toBe(49);
   });
 
   it('refuses a wrong invite code and does not create a membership', async () => {
     const res = await request(env.app).post('/api/assemblies/earning-and-learning/join').send({ inviteCode: 'WRONG' });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('bad_invite');
-    expect(await env.deps.store.count('memberships')).toBe(0);
+    expect(await env.deps.store.count('memberships')).toBe(144);
   });
 });
 

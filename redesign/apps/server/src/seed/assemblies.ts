@@ -85,7 +85,7 @@ export const VOLUNTEERING_GROUPS: AffectedGroup[] = [
 ];
 
 export const VOLUNTEERING_PLEDGE: Pledge = {
-  setAside: 'A build budget of £60,000 for 2026–27, and a named product owner, Dele Okafor, two days a week.',
+  setAside: 'A build budget of £60,000 for 2026–27, and a named product owner, Dele, two days a week.',
   remit: 'What the shared volunteering tool does, how it handles volunteers’ records, and the order things are built in.',
   offTable: 'Changing any member group’s own safeguarding rules, because each group is responsible for its own.',
   decisionLevel: 2,
@@ -162,6 +162,7 @@ export async function seedAssemblies(ctx: SeedCtx): Promise<void> {
     hostSlug: '',
     hostDescription: '',
     stage: 'listening',
+    createdAt: '2026-01-12T09:00:00.000Z',
     isExample: true,
     isOpenListening: true,
     aboutQuestions: OPEN_ABOUT,
@@ -180,6 +181,7 @@ export async function seedAssemblies(ctx: SeedCtx): Promise<void> {
     hostSlug: 'riverbend-council-and-college',
     hostDescription: 'The council and the further education college of Riverbend, an invented town.',
     stage: 'deciding',
+    createdAt: '2026-08-18T09:00:00.000Z',
     isExample: true,
     probes: [
       'When did you last learn something that helped you at work, and how did it happen?',
@@ -207,6 +209,7 @@ export async function seedAssemblies(ctx: SeedCtx): Promise<void> {
     hostSlug: 'northern-volunteer-centres-network',
     hostDescription: 'An invented network of volunteer centres and the groups they support.',
     stage: 'delivering',
+    createdAt: '2026-01-19T09:00:00.000Z',
     isExample: true,
     probes: [
       'Think of the last time you started helping a new group. What happened in the first week?',
@@ -226,13 +229,15 @@ export async function seedAssemblies(ctx: SeedCtx): Promise<void> {
     title: 'AI and care',
     question: 'In looking after people, what should AI do and what should stay with humans?',
     summary:
-      'Opened after a theme in open listening kept coming back: care workers with too little time for each person, and families wondering what machines will be asked to do. The pledge can be challenged until 22 November.',
+      'Opened after a theme in open listening kept coming back: people in many countries caring for an ageing parent while holding down a job. The pledge can be challenged until 22 November.',
     kind: 'advisory',
     scale: 'global',
     hostName: 'Care Futures Coalition',
     hostSlug: 'care-futures-coalition',
     hostDescription: 'An invented coalition of care workers’ unions, care providers and family carer groups in six countries.',
     stage: 'pledged',
+    fromThemeId: stableId('thm', 'open/care'),
+    createdAt: '2026-11-06T09:00:00.000Z',
     isExample: true,
     probes: [
       'Think of the last time you looked after someone, or were looked after. Which part of it could only a person have done?',

@@ -28,7 +28,10 @@ describe('seed', () => {
       expect(care.pledge?.challengeEndsAt).toBe('2026-11-22T09:00:00.000Z');
       expect(byId(ASSEMBLY_IDS.feedback)).toMatchObject({ kind: 'advisory', scale: 'platform', stage: 'proposed', isExample: false });
       expect(byId(ASSEMBLY_IDS.feedback).pledge?.publishedAt).toBeUndefined();
-      for (const a of all) expect(a.createdAt).toBe('2026-11-13T09:00:00.000Z');
+      // Each example was opened before its first conversation; only Unite's own assembly is new today.
+      expect(byId(ASSEMBLY_IDS.volunteering).createdAt).toBe('2026-01-19T09:00:00.000Z');
+      expect(byId(ASSEMBLY_IDS.feedback).createdAt).toBe('2026-11-13T09:00:00.000Z');
+      expect(care.fromThemeId).toBeDefined();
     } finally {
       await env.close();
     }
