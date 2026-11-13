@@ -26,7 +26,7 @@ export default function Rooms() {
   const rooms = useApi<RoomsResponse>(`/api/assemblies/${encodeURIComponent(slug)}/rooms`, version);
   const evidence = useApi<{ evidence: EvidenceCard[] }>(rooms.data ? `/api/assemblies/${encodeURIComponent(slug)}/evidence` : null, version);
   const a = view?.assembly;
-  const now = Date.now();
+  const now = rooms.data ? Date.parse(rooms.data.now) : Date.now();
 
   return (
     <Layout title="Rooms" assembly={a} kicker={a?.question}>

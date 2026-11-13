@@ -109,7 +109,7 @@ export function roomsRouter(deps: Deps): Router {
           answers: answerTotals(await store.list('roomAnswers', { roomId: x.id })),
         })),
     );
-    res.json({ myRoom, others, closed, canManage: isManager(req) });
+    res.json({ myRoom, others, closed, canManage: isManager(req), now: clock.iso() });
   });
 
   r.post('/assemblies/:slug/rooms', requireRole('host', 'steward'), async (req, res) => {

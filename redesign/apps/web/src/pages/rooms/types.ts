@@ -41,6 +41,8 @@ export interface RoomsResponse {
   others: { id: string; topic: string; status: RoomStatus; startedAt: string | null; endsAt: string | null; size: number }[];
   closed: { id: string; topic: string; wasMine: boolean; outcome: RoomOutcome; answers: AnswerTotals }[];
   canManage: boolean;
+  /** The server's time, for the timers. */
+  now: string;
 }
 
 /** GET /api/rooms/:id */

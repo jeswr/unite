@@ -208,8 +208,10 @@ function ManagerControls({ roomId, status, onDone }: { roomId: string; status: R
 
 function Briefing({ data }: { data: RoomResponse }) {
   const b = data.room.briefing;
+  // Open on wider screens; folded on phones so the conversation is near the top.
+  const [open, setOpen] = useState(() => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)').matches : true));
   return (
-    <details open className="mb-6 rounded-ui border border-line">
+    <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="mb-6 rounded-ui border border-line">
       <summary className="cursor-pointer px-4 py-3 font-bold">The briefing</summary>
       <div className="space-y-4 border-t border-line px-4 py-4">
         {data.room.statement && (
