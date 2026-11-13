@@ -121,4 +121,24 @@ describe('the review page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add this point' }));
     await waitFor(() => expect(calls.find((c) => c.url.endsWith('/points') && c.method === 'POST')?.body).toEqual({ type: 'idea', text: 'Record the classes' }));
   });
+
+  it('asks for a name to show before approving a point shared with a name', async () => {
+    const calls = server();
+    show();
+    await screen.findByLabelText('Point 1, in your words');
+    expect(screen.queryByLabelText('The name to show beside your words')).toBeNull();
+    fireEvent.click(screen.getAllByLabelText(/Shown with your name/)[0]!);
+    const name = (await screen.findByLabelText('The name to show beside your words')) as HTMLInputElement;
+
+    fireEvent.click(screen.getByRole('button', { name: 'These are right' }));
+    expect(await screen.findByText('Give the name to show, or choose another way to show each point.')).toBeTruthy();
+    expect(calls.some((c) => c.url.endsWith('/approve'))).toBe(false);
+
+    fireEvent.change(name, { target: { value: ' Amina ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'These are right' }));
+    await waitFor(() => expect(calls.some((c) => c.url.endsWith('/approve'))).toBe(true));
+    const saved = calls.findIndex((c) => c.method === 'PATCH' && c.url === '/api/me');
+    expect(calls[saved]?.body).toEqual({ displayName: 'Amina' });
+    expect(saved).toBeLessThan(calls.findIndex((c) => c.url.endsWith('/approve')));
+  });
 });

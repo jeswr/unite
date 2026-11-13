@@ -148,6 +148,8 @@ function Chat({ view, send, kicker }: RouteProps) {
     if (!el) return;
     const apply = () => {
       document.body.style.paddingBottom = `${el.offsetHeight}px`;
+      // Scrolling to the newest message stops above the box, not behind it.
+      if (end.current) end.current.style.scrollMarginBottom = `${el.offsetHeight + 16}px`;
     };
     apply();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : undefined;

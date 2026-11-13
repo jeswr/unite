@@ -14,7 +14,7 @@ pnpm walkthrough --publish --voice elevenlabs   # a release video; needs ELEVENL
 pnpm walkthrough --list-actions                 # every action, with the pending ones marked
 ```
 
-Other flags: `--voice silent|say|elevenlabs` (without `--draft` or `--publish`), `--voice-id`, `--model`, `--rate 0.95`, `--voice-budget <chars>`, `--out <dir>`, `--headed`.
+Other flags: `--voice silent|say|elevenlabs` (without `--draft` or `--publish`), `--voice-id`, `--model`, `--rate 0.95`, `--voice-budget <chars>`, `--out <dir>`, `--headed`, `--burn-captions` or `--soft-captions`. With no voice the captions are drawn on a bar under the picture (and kept as a soft track); with a voice they are a soft track only, unless you pass `--burn-captions`.
 
 `--publish` is strict, uses ElevenLabs, and refuses to start without `ELEVENLABS_API_KEY` in the environment (it never asks for it), when a pending action is in the scenes it would record, when the narration not yet in the voice cache would pass the character budget, or when the ElevenLabs account hasn't that many characters left plus 10%. Nothing is sent before those checks pass. After recording it refuses to call the result publishable if there was any warning or blocked request.
 

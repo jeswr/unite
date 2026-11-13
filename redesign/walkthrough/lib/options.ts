@@ -17,6 +17,8 @@ export interface Options {
   budget: number | undefined;
   out?: string;
   headed: boolean;
+  /** Draw the captions into the picture. On by default when there is no voice, since a silent video needs them. */
+  burnCaptions: boolean;
   listActions: boolean;
   help: boolean;
 }
@@ -36,6 +38,8 @@ export function parseOptions(args: string[], env: NodeJS.ProcessEnv = process.en
       'voice-budget': { type: 'string' },
       out: { type: 'string' },
       headed: { type: 'boolean' },
+      'burn-captions': { type: 'boolean' },
+      'soft-captions': { type: 'boolean' },
       'list-actions': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
@@ -53,6 +57,7 @@ export function parseOptions(args: string[], env: NodeJS.ProcessEnv = process.en
   // A paid voice never starts without its key, and never asks for it: set it in the environment.
   const key = needsKey(provider);
   if (key && !env[key]?.trim()) throw new Error(`${key} is not set. --voice ${provider} needs it in the environment; nothing was started.`);
+  if (v['burn-captions'] && v['soft-captions']) throw new Error('Choose one of --burn-captions and --soft-captions');
   const rate = v.rate === undefined ? undefined : Number(v.rate);
   if (rate !== undefined && !(rate > 0.5 && rate < 2)) throw new Error(`--rate must be between 0.5 and 2 (got "${v.rate}")`);
   return {
@@ -70,6 +75,7 @@ export function parseOptions(args: string[], env: NodeJS.ProcessEnv = process.en
     budget,
     out: v.out,
     headed: !!v.headed,
+    burnCaptions: v['burn-captions'] ? true : v['soft-captions'] ? false : provider === 'silent',
     listActions: !!v['list-actions'],
     help: !!v.help,
   };

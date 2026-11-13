@@ -18,6 +18,7 @@
     .ring { position: absolute; border-radius: 12px; box-shadow: 0 0 0 4px rgba(245,158,11,.95), 0 0 0 9999px rgba(15,23,42,.28); transition: all .45s cubic-bezier(.2,.8,.2,1); opacity: 0; }
     .ring.on { opacity: 1; }
     .ring .tag { position: absolute; left: 0; top: calc(100% + 10px); background: #0f172a; color: #fff; font-size: 15px; font-weight: 600; padding: 7px 12px; border-radius: 8px; white-space: nowrap; }
+    .ring .tag.side { left: calc(100% + 16px); top: 0; }
     .card { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 9vw; background: radial-gradient(1200px 600px at 20% 30%, #1e3a5f 0%, #0b1220 60%); color: #f8fafc; opacity: 0; transition: opacity .6s ease; }
     .card.on { opacity: 1; }
     .card .eyebrow { font-size: 18px; letter-spacing: .14em; text-transform: uppercase; color: #93c5fd; font-weight: 600; margin-bottom: 18px; }
@@ -277,12 +278,15 @@
         const top = Math.max(r.top, 8 + pad), bottom = Math.min(r.bottom, innerHeight - 8 - pad);
         const left = Math.max(r.left, 8 + pad), right = Math.min(r.right, innerWidth - 8 - pad);
         Object.assign(ring.style, { left: `${left - pad}px`, top: `${top - pad}px`, width: `${Math.max(0, right - left) + pad * 2}px`, height: `${Math.max(0, bottom - top) + pad * 2}px` });
+        // The tag sits in the empty margin beside the ring when it fits there, so it never
+        // covers the line of the page under the ring; otherwise it goes below.
+        t.classList.toggle('side', !!tag && right + pad + 16 + t.offsetWidth <= innerWidth - 12);
         state.track = requestAnimationFrame(draw);
       };
-      draw();
       const t = ring.querySelector('.tag');
       t.hidden = !tag;
       t.textContent = tag || '';
+      draw();
       return seen;
     },
     /** What happened to the current ring after it was drawn ('' if it stayed in view). */

@@ -270,6 +270,19 @@ function Briefing({ data }: { data: RoomResponse }) {
 }
 
 function Messages({ messages }: { messages: RoomMessageView[] }) {
+  // A new message is followed when you are already near the end, or wrote it yourself.
+  // Someone reading further up is left where they are.
+  const end = useRef<HTMLDivElement>(null);
+  const seen = useRef<number | undefined>(undefined);
+  const count = messages.length;
+  const lastMine = messages[count - 1]?.mine ?? false;
+  useEffect(() => {
+    const before = seen.current;
+    seen.current = count;
+    if (before === undefined || count <= before) return;
+    const fromEnd = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+    if (lastMine || fromEnd < 360) end.current?.scrollIntoView?.({ block: 'end' });
+  }, [count, lastMine]);
   return (
     <section aria-labelledby="messages-heading" className="mb-4">
       <h2 id="messages-heading" className="mb-2 text-lg md:mb-3 md:text-[1.3rem]">
@@ -292,6 +305,8 @@ function Messages({ messages }: { messages: RoomMessageView[] }) {
           ),
         )}
       </ol>
+      {/* The margin is the height of the message box, which sits over the bottom of the screen. */}
+      <div ref={end} className="scroll-mb-48" />
     </section>
   );
 }

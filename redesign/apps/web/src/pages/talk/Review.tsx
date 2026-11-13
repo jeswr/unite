@@ -18,7 +18,13 @@ const draftOf = (p: Point): PointDraft => ({ text: p.text, visibility: p.visibil
 /** /talk/:id/review: "Here is what I heard." Check the points, approve them, then the two exit questions. */
 export default function Review() {
   const { id } = useParams();
-  const { refresh } = useMe();
+  const { me, refresh } = useMe();
+  const savedName = me?.person?.displayName ?? '';
+  const [name, setName] = useState('');
+  const [nameError, setNameError] = useState<string>();
+  useEffect(() => {
+    if (savedName) setName((n) => n || savedName);
+  }, [savedName]);
   const [view, setView] = useState<ConversationView>();
   const [drafts, setDrafts] = useState<Record<string, PointDraft>>({});
   const [loadError, setLoadError] = useState<ApiError>();
@@ -67,9 +73,16 @@ export default function Review() {
 
   async function approve() {
     if (!view) return;
+    const named = view.points.some((p) => drafts[p.id]?.status !== 'scrapped' && drafts[p.id]?.visibility === 'named');
+    if (named && !name.trim()) {
+      setNameError('Give the name to show, or choose another way to show each point.');
+      return;
+    }
+    setNameError(undefined);
     setBusy(true);
     setError(undefined);
     try {
+      if (named && name.trim() !== savedName) await api.patch('/api/me', { displayName: name.trim() });
       // Words still being typed are saved first.
       for (const p of view.points) {
         const text = drafts[p.id]?.text.trim();
@@ -131,6 +144,7 @@ export default function Review() {
     );
 
   const kept = view.points.filter((p) => drafts[p.id]?.status !== 'scrapped');
+  const wantsName = kept.some((p) => drafts[p.id]?.visibility === 'named');
   const sourceTurns = (p: Point) => view.turns.filter((t) => t.role === 'person' && p.sourceTurnIds.includes(t.id));
 
   return (
@@ -170,6 +184,15 @@ export default function Review() {
       )}
       {kept.length === 0 && view.points.length > 0 && (
         <p className="mb-3">You have scrapped every point. Nothing you said will be shared, and you will still count as having taken part.</p>
+      )}
+      {wantsName && (
+        <Field
+          label="The name to show beside your words"
+          hint="Any name you like. It is shown with the points you chose to share with your name, and in a live room if you join one."
+          error={nameError}
+        >
+          <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="nickname" disabled={busy} />
+        </Field>
       )}
       <Button onClick={() => void approve()} disabled={busy}>
         {busy ? 'Saving…' : 'These are right'}

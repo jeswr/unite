@@ -74,4 +74,22 @@ describe('/me', () => {
     expect(screen.getByRole('link', { name: 'Start a conversation' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Delete my data' })).toBeNull();
   });
+
+  it('saves the name other people see', async () => {
+    let name: string | undefined;
+    const calls = mockApi((c) => {
+      if (c.url === '/api/me/trace') return { points: trace };
+      if (c.url === '/api/conversations') return { conversations };
+      if (c.method === 'PATCH') name = (c.body as { displayName: string }).displayName;
+      return { ...me, person: { ...me.person!, ...(name ? { displayName: name } : {}) } };
+    });
+    show();
+    const box = (await screen.findByLabelText('The name other people see')) as HTMLInputElement;
+    const save = screen.getByRole('button', { name: 'Save my name' }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.change(box, { target: { value: 'Amina ' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')).toMatchObject({ url: '/api/me', body: { displayName: 'Amina' } }));
+    expect(await screen.findByText('Your name is saved.')).toBeTruthy();
+  });
 });

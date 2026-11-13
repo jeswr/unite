@@ -52,7 +52,20 @@ export function ffmetadata(chapters: { at: number; title: string }[], end: numbe
   return lines.join('\n') + '\n';
 }
 
-export async function mux(opts: { video: string; videoSeconds: number; clips: Placed[]; out: string; captions: string; chapters?: { at: number; title: string }[]; title?: string }) {
+/** A path as the value of an ffmpeg filter option (inside a filter graph). */
+const filterPath = (p: string) => p.replace(/\\/g, '/').replace(/([:'[\],;])/g, '\\$1');
+
+/**
+ * How burned-in captions look. The picture is drawn at nine tenths of its size at the top of
+ * the frame and the caption sits on a dark bar under it, so a caption never covers the page
+ * (the message box of a conversation is at the bottom of the screen, where a caption would be).
+ * Font sizes and margins are in libass units of a 288-line frame.
+ */
+export const BURN_FILTER = (captions: string) =>
+  `scale=iw*0.9:ih*0.9:flags=lanczos,pad=iw/0.9:ih/0.9:(ow-iw)/2:0:color=0x0b1220,` +
+  `subtitles=filename=${filterPath(captions)}:force_style='FontName=Inter,FontSize=11,PrimaryColour=&H00FFFFFF,BorderStyle=1,Outline=0,Shadow=0,Alignment=2,MarginV=8'`;
+
+export async function mux(opts: { video: string; videoSeconds: number; clips: Placed[]; out: string; captions: string; chapters?: { at: number; title: string }[]; title?: string; burn?: boolean }) {
   await writeFile(opts.captions, vtt(opts.clips));
   const meta = `${opts.out}.ffmeta`;
   await writeFile(meta, ffmetadata(opts.chapters ?? [], opts.videoSeconds, opts.title));
@@ -76,9 +89,12 @@ export async function mux(opts: { video: string; videoSeconds: number; clips: Pl
   } else {
     audioMap = [];
   }
+  // Burned captions are drawn into the picture (so the video is re-encoded); the soft track stays as well.
+  if (opts.burn) filters.push(`[0:v]${BURN_FILTER(opts.captions)}[vout]`);
   args.push('-filter_complex_threads', '1');
   if (filters.length) args.push('-filter_complex', filters.join(';'));
-  args.push('-map', '0:v', ...audioMap, '-map', `${subIndex}:s`, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-c:s', 'mov_text', '-metadata:s:s:0', 'language=eng', '-movflags', '+faststart');
+  const video = opts.burn ? ['-map', '[vout]', '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p'] : ['-map', '0:v', '-c:v', 'copy'];
+  args.push(...video, ...audioMap, '-map', `${subIndex}:s`, '-c:a', 'aac', '-b:a', '192k', '-c:s', 'mov_text', '-metadata:s:s:0', 'language=eng', '-movflags', '+faststart');
   args.push('-map_metadata', String(metaIndex), '-map_chapters', String(metaIndex));
   args.push('-t', opts.videoSeconds.toFixed(3), opts.out);
   try {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { formatDate } from '@unite/shared';
 import { api, ApiError, useApi } from '../../lib/api';
@@ -8,6 +8,7 @@ import { Button, buttonClass } from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState } from '../../ui/EmptyState';
+import { Field, inputClass } from '../../ui/Field';
 import { Layout } from '../../ui/Layout';
 import type { MyConversation, TraceEntry } from '@unite/shared';
 import { CONVERSATION_STATUS_WORDS, POINT_TYPE_LABELS, VISIBILITY_CHOICES } from '../talk/words';
@@ -96,6 +97,8 @@ export default function Me() {
           ))}
         </ul>
       )}
+
+      {hasPerson && <MyName />}
 
       <h2 className="mb-3">My data</h2>
       {hasPerson ? (
@@ -203,5 +206,57 @@ function TraceCard({ t }: { t: TraceEntry }) {
         )}
       </dl>
     </Card>
+  );
+}
+
+/** The name shown in a live room and beside points shared with a name. Optional. */
+function MyName() {
+  const { me, refresh } = useMe();
+  const saved = me?.person?.displayName ?? '';
+  const [name, setName] = useState(saved);
+  const [note, setNote] = useState<string>();
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setName(saved), [saved]);
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setNote(undefined);
+    if (!name.trim()) {
+      setError('Type a name first. To take part without one, leave things as they are.');
+      return;
+    }
+    setError(undefined);
+    setBusy(true);
+    try {
+      await api.patch('/api/me', { displayName: name.trim() });
+      await refresh();
+      setNote('Your name is saved.');
+    } catch (e2) {
+      setError(e2 instanceof ApiError ? e2.message : 'Your name could not be saved. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void save(e)} className="mb-10" noValidate>
+      <h2 className="mb-3">My name</h2>
+      <Field
+        label="The name other people see"
+        hint="Optional, and any name you like. It is shown in a live room, and beside points you chose to share with your name. Without one, a room calls you by a number."
+        error={error}
+      >
+        <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="nickname" disabled={busy} />
+      </Field>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={busy || name.trim() === saved}>
+          Save my name
+        </Button>
+        <span aria-live="polite" className="text-agree">
+          {note}
+        </span>
+      </div>
+    </form>
   );
 }

@@ -33,6 +33,14 @@ describe('the command line', () => {
     expect(parseOptions(['--publish'], { ELEVENLABS_API_KEY: 'k' }).budget).toBe(2500);
   });
 
+  it('draws the captions into a silent video unless told not to', () => {
+    expect(parseOptions(['--draft'], {}).burnCaptions).toBe(true);
+    expect(parseOptions(['--draft', '--soft-captions'], {}).burnCaptions).toBe(false);
+    expect(parseOptions(['--publish'], { ELEVENLABS_API_KEY: 'k' }).burnCaptions).toBe(false);
+    expect(parseOptions(['--publish', '--burn-captions'], { ELEVENLABS_API_KEY: 'k' }).burnCaptions).toBe(true);
+    expect(() => parseOptions(['--draft', '--burn-captions', '--soft-captions'], {})).toThrow(/Choose one/);
+  });
+
   it('rejects unknown voices', () => {
     expect(() => parseOptions(['--voice', 'openai'], {})).toThrow(/Unknown voice/);
   });

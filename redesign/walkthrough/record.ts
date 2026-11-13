@@ -8,7 +8,7 @@
  *   pnpm walkthrough --list-actions
  *
  * Output goes to walkthrough/out/: unite-walkthrough.mp4 (1920×1080, 30 fps, soft captions,
- * a chapter per scene), .vtt, .transcript.md, .chapters.txt and .report.json.
+ * a chapter per scene; with no voice the captions are also drawn under the picture, see --soft-captions), .vtt, .transcript.md, .chapters.txt and .report.json.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -194,7 +194,7 @@ async function main() {
 
     // Mix the narration in, with captions and chapters.
     log('Mixing…');
-    await mux({ video: raw, videoSeconds: seconds, clips: placed, out: outFile('.mp4'), captions: outFile('.vtt'), chapters, title: TITLE });
+    await mux({ video: raw, videoSeconds: seconds, clips: placed, out: outFile('.mp4'), captions: outFile('.vtt'), chapters, title: TITLE, burn: opts.burnCaptions });
     await rm(raw, { force: true });
     await writeFile(outFile('.chapters.txt'), chaptersText(chapters));
     await writeFile(outFile('.transcript.md'), transcript(kept, chapters));
