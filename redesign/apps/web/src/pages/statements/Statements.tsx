@@ -10,12 +10,12 @@ import { Layout } from '../../ui/Layout';
 import { Tag } from '../../ui/Tag';
 import { NotHeard } from '../picture/parts';
 import { ANSWER_WORDS, AnswerBars, AnswerButtons, groupOf, SETTLED, STATUS_TONE, STATUS_WORDS } from './parts';
-import type { StatementsResponse, StatementSummary } from './types';
+import type { StatementsResponse, StatementSummary } from '@unite/shared';
 
 const GROUPS: { key: ReturnType<typeof groupOf>; title: string; empty: string }[] = [
-  { key: 'common', title: 'Common ground', empty: 'No statement has reached common ground yet.' },
-  { key: 'differ', title: 'Where we differ', empty: 'No statement shows people split yet.' },
-  { key: 'notEnough', title: 'Not enough voices yet', empty: 'None.' },
+  { key: 'common', title: 'Common ground', empty: 'None of the statements you have answered has reached common ground yet.' },
+  { key: 'differ', title: 'Where we differ', empty: 'None of the statements you have answered shows people split yet.' },
+  { key: 'notEnough', title: 'Not enough voices yet', empty: 'None of the statements you have answered.' },
 ];
 
 /** The statements I have not answered, one at a time: answer, see how others answered, move on. */
@@ -87,7 +87,7 @@ function StatementItem({ s, slug }: { s: StatementSummary; slug: string }) {
         <Link to={`/a/${slug}/statements/${s.id}`}>{s.text}</Link>
       </p>
       <p className="mb-2 flex flex-wrap gap-2">
-        <Tag tone={STATUS_TONE[s.status]}>{STATUS_WORDS[s.status]}</Tag>
+        {s.status && <Tag tone={STATUS_TONE[s.status]}>{STATUS_WORDS[s.status]}</Tag>}
         {s.version > 1 && <Tag>Version {s.version}</Tag>}
         {s.mine && <Tag tone="accent">Your wording</Tag>}
       </p>
@@ -113,7 +113,7 @@ export default function Statements() {
   const [queueIds, setQueueIds] = useState<string[]>();
   useEffect(() => {
     if (!data) return;
-    const open = data.statements.filter((s) => !s.myReaction && !s.mine && !SETTLED.has(s.status)).map((s) => s.id);
+    const open = data.statements.filter((s) => !s.myReaction && !s.mine && !(s.status && SETTLED.has(s.status))).map((s) => s.id);
     setQueueIds((q) => (q ? [...q, ...open.filter((id) => !q.includes(id))] : open));
   }, [data]);
   const assembly = view?.assembly;
@@ -149,6 +149,10 @@ export default function Statements() {
 
   const byId = new Map(data.statements.map((s) => [s.id, s]));
   const queue = queueIds.map((id) => byId.get(id)).filter((s): s is StatementSummary => !!s && !s.myReaction);
+  // Rule 5: the three groups hold only statements I have answered (a host or steward sees every one).
+  const seen = (s: StatementSummary) => !!s.myReaction || !!s.results;
+  const answered = data.statements.filter(seen);
+  const toAnswer = data.statements.filter((s) => !seen(s));
   return layout(
     <>
       <p className="mb-6 text-muted">
@@ -156,8 +160,23 @@ export default function Statements() {
         answer.
       </p>
       <OneAtATime slug={slug} queue={queue} onAnswered={reload} />
+      {toAnswer.length > 0 && (
+        <section aria-labelledby="still-to-answer" className="mt-8">
+          <h2 id="still-to-answer" className="mb-2">
+            Still to answer
+          </h2>
+          <p className="mb-3 text-muted">Where each of these stands shows once you have answered it.</p>
+          <ul className="space-y-2">
+            {toAnswer.map((s) => (
+              <li key={s.id}>
+                <Link to={`/a/${slug}/statements/${s.id}`}>{s.text}</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {GROUPS.map((g) => {
-        const items = data.statements.filter((s) => groupOf(s.status) === g.key);
+        const items = answered.filter((s) => s.status && groupOf(s.status) === g.key);
         return (
           <section key={g.key} aria-labelledby={`group-${g.key}`} className="mt-8">
             <h2 id={`group-${g.key}`} className="mb-3">

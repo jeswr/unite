@@ -6,7 +6,7 @@ import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Field, inputClass } from '../../ui/Field';
 import { checkable } from '../delivery/Decision';
-import type { DecisionRecord, DecisionsResponse } from '../delivery/types';
+import type { DecisionRecord, DecisionsResponse } from '@unite/shared';
 import { messageOf, useAction } from '../delivery/useAction';
 import { objectionsOf, rankedIdsOf, reportsOf, statementsOf, type StatementLite } from './shapes';
 

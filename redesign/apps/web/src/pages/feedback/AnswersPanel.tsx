@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../../ui/Button';
 import { inputClass } from '../../ui/Field';
-import type { FeedbackAnswer } from './types';
+import type { FeedbackAnswer } from '@unite/shared';
 
 interface Props {
   answers: FeedbackAnswer[];

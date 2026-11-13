@@ -2,7 +2,7 @@ import request from 'supertest';
 import { stableId } from '@unite/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { makeObjection, makeReason, makeStatement, makeTheme, react } from '../src/seed/builders.js';
-import type { StatementDetail, StatementsResponse, StatementSummary } from '../src/services/statements/types.js';
+import type { StatementDetail, StatementsResponse, StatementSummary } from '@unite/shared';
 import { DRAFT_STATEMENTS_SYSTEM, REVISE_STATEMENT_SYSTEM } from '../src/ai/prompts.js';
 import type { AiRequest } from '../src/ai/client.js';
 import { fakeRunner, testEnv, type TestEnv } from './helpers.js';
@@ -80,7 +80,58 @@ describe('rule 5: others’ answers are hidden until you answer', () => {
     for (const role of ['steward', 'host'] as const) {
       const s = one(await list(await asRole(env, role)));
       expect(s.results?.overall).toMatchObject({ agree: 3, total: 3 });
+      expect(s.status).toBe('candidate');
     }
+  });
+
+  it('hides the status of a statement I have not answered, on the list and the statement page', async () => {
+    const st = await env.deps.store.get('statements', S1);
+    for (const status of ['common_ground', 'differ', 'not_enough', 'no_agreement', 'candidate'] as const) {
+      await env.deps.store.put('statements', { ...st!, status });
+      const me = await heardPerson(env);
+      const s = one(await list(me.cookie));
+      expect(s).not.toHaveProperty('status');
+      expect(s).not.toHaveProperty('results');
+      const detail = (await request(env.app).get(`/api/statements/${S1}`).set('Cookie', me.cookie)).body as StatementDetail;
+      expect(detail.statement).not.toHaveProperty('status');
+      expect(JSON.stringify(detail)).not.toMatch(/common_ground|differ|not_enough|no_agreement|stillNeeded/);
+    }
+  });
+
+  it('shows the status once I have answered', async () => {
+    await reactAll('agree');
+    const me = await heardPerson(env, [], { invited: true });
+    const res = await request(env.app).post(`/api/statements/${S1}/reactions`).set('Cookie', me.cookie).send({ value: 'agree' });
+    expect(res.body.statement.status).toBe('common_ground');
+    expect(one(await list(me.cookie)).status).toBe('common_ground');
+    const detail = (await request(env.app).get(`/api/statements/${S1}`).set('Cookie', me.cookie)).body as StatementDetail;
+    expect(detail.statement.status).toBe('common_ground');
+  });
+
+  it('shows the status of a decided statement to everyone, but not its totals', async () => {
+    await reactAll('agree');
+    const st = await env.deps.store.get('statements', S1);
+    await env.deps.store.put('statements', { ...st!, status: 'decided' });
+    const me = await heardPerson(env);
+    const s = one(await list(me.cookie));
+    expect(s.status).toBe('decided');
+    expect(s.results).toBeUndefined();
+  });
+
+  it('hides the status in my trace until I answer', async () => {
+    await reactAll('agree');
+    const me = await heardPerson(env, [{ key: 'mine1', type: 'idea', text: 'Classes at night for carers' }]);
+    const theme = await env.deps.store.get('themes', THEME);
+    await env.deps.store.put('themes', { ...theme!, pointIds: [...theme!.pointIds, pid('mine1')] });
+    const st = await env.deps.store.get('statements', S1);
+    await env.deps.store.put('statements', { ...st!, status: 'common_ground' });
+    const trace = async () => (await request(env.app).get('/api/me/trace').set('Cookie', me.cookie)).body.points as { statements: { id: string; status?: string }[] }[];
+    const before = (await trace()).flatMap((p) => p.statements).find((s) => s.id === S1);
+    expect(before).toBeDefined();
+    expect(before).not.toHaveProperty('status');
+    await request(env.app).post(`/api/statements/${S1}/reactions`).set('Cookie', me.cookie).send({ value: 'agree' });
+    const after = (await trace()).flatMap((p) => p.statements).find((s) => s.id === S1);
+    expect(after?.status).toBeDefined();
   });
 });
 

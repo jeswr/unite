@@ -9,7 +9,7 @@ import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
 import { Tag } from '../../ui/Tag';
 import { answersInWords, EvidenceCardView, NotHeardOrError, OutcomeView } from './parts';
-import type { RoomsResponse } from './types';
+import type { RoomsResponse } from '@unite/shared';
 import { timeLeftWords } from './time';
 
 /** "Opens soon", "Running until 10:45 (31 minutes left)", or "Closed". */

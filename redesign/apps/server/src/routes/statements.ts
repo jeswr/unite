@@ -17,7 +17,7 @@ import {
   themesOfPoints,
   type Viewer,
 } from '../services/statements/index.js';
-import type { StatementDetail, StatementsResponse } from '../services/statements/types.js';
+import type { StatementDetail, StatementsResponse } from '@unite/shared';
 import { bumpVersion } from '../version.js';
 import { parseBody } from '../validate.js';
 import { stewardName } from './picture.js';

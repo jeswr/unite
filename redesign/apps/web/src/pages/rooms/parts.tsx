@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import type { EvidenceCard } from '@unite/shared';
 import type { ApiError } from '../../lib/api';
 import { Card } from '../../ui/Card';
-import type { AnswerTotals, RoomOutcome } from './types';
+import type { AnswerTotals, RoomOutcome } from '@unite/shared';
 
 const CONFIDENCE: Record<EvidenceCard['confidence'], string> = {
   low: 'The expert is not very sure of this.',

@@ -12,7 +12,7 @@ import { StillNeeded } from '../../ui/StillNeeded';
 import { Tag } from '../../ui/Tag';
 import { NotHeard, ReportForm, ReportList } from '../picture/parts';
 import { ANSWER_WORDS, AnswerBars, AnswerButtons, GroupBars, SETTLED, STATUS_TONE, STATUS_WORDS } from './parts';
-import type { ObjectionView, ReasonView, StatementDetail } from './types';
+import type { ObjectionView, ReasonView, StatementDetail } from '@unite/shared';
 
 const OBJECTION_STATUS: Record<ObjectionView['status'], string> = {
   open: 'Waiting for a reply',
@@ -167,7 +167,7 @@ export default function Statement() {
   return layout(
     <>
       <p className="mb-6 flex flex-wrap gap-2">
-        <Tag tone={STATUS_TONE[s.status]}>{STATUS_WORDS[s.status]}</Tag>
+        {s.status && <Tag tone={STATUS_TONE[s.status]}>{STATUS_WORDS[s.status]}</Tag>}
         {s.version > 1 && <Tag>Version {s.version}</Tag>}
         {s.mine && <Tag tone="accent">Your wording</Tag>}
       </p>
@@ -177,7 +177,7 @@ export default function Statement() {
           Your answer
         </h2>
         {s.myReaction && <p className="mb-3">You answered: {ANSWER_WORDS[s.myReaction]}. You can change it.</p>}
-        {!SETTLED.has(s.status) ? <AnswerButtons statement={s} size="small" onAnswered={() => reload()} /> : <p className="text-muted">This statement is settled.</p>}
+        {!(s.status && SETTLED.has(s.status)) ? <AnswerButtons statement={s} size="small" onAnswered={() => reload()} /> : <p className="text-muted">This statement is settled.</p>}
       </section>
 
       <section aria-labelledby="needed" className="mb-8">

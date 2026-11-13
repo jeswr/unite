@@ -1,6 +1,6 @@
 import type { DecisionStatus } from '@unite/shared';
 import { Tag } from '../../ui/Tag';
-import type { DecisionCard } from './types';
+import type { DecisionCard } from '@unite/shared';
 import { dueLine, STATUS_TONE, statusWords } from './words';
 
 /** The status in words, in its meaning colour. */

@@ -13,7 +13,7 @@ import {
 } from '@unite/shared';
 import type { Deps } from '../../deps.js';
 import type { Store } from '../../store/types.js';
-import type { GroupResult, ObjectionView, ReasonView, StatementResults, StatementSummary } from './types.js';
+import type { GroupResult, ObjectionView, ReasonView, StatementResults, StatementSummary } from '@unite/shared';
 
 /**
  * Statements (sections 5 and 7). Status is worked out by the shared pure functions from counted
@@ -99,7 +99,7 @@ export async function reclassify(deps: Pick<Deps, 'store' | 'clock'>, assemblyId
 }
 
 /** Whether the viewer may see how others answered this statement (rule 5). */
-export function maySeeResults(statementId: string, data: ReactionData, viewer: Viewer): boolean {
+export function maySeeResults(statementId: string, data: Pick<ReactionData, 'reactions'>, viewer: Viewer): boolean {
   if (viewer.role === 'host' || viewer.role === 'steward') return true;
   return !!viewer.personId && data.reactions.some((r) => r.statementId === statementId && r.personId === viewer.personId);
 }
@@ -119,6 +119,14 @@ export function resultsFor(statement: Statement, data: ReactionData, pledge: Ple
   };
 }
 
+/**
+ * Whether the viewer may see a statement's status (rule 5). The status says how others answered,
+ * so a participant sees it only after answering, except that a decided statement is public.
+ */
+export function maySeeStatus(statement: Pick<Statement, 'id' | 'status'>, data: Pick<ReactionData, 'reactions'>, viewer: Viewer): boolean {
+  return statement.status === 'decided' || maySeeResults(statement.id, data, viewer);
+}
+
 export function summaryOf(statement: Statement, data: ReactionData, pledge: Pledge | null, viewer: Viewer): StatementSummary {
   const my = viewer.personId ? data.reactions.find((r) => r.statementId === statement.id && r.personId === viewer.personId) : undefined;
   return {
@@ -126,7 +134,7 @@ export function summaryOf(statement: Statement, data: ReactionData, pledge: Pled
     text: statement.text,
     version: statement.version,
     ...(statement.previousId ? { previousId: statement.previousId } : {}),
-    status: statement.status,
+    ...(maySeeStatus(statement, data, viewer) ? { status: statement.status } : {}),
     origin: statement.origin,
     mine: !!viewer.personId && statement.authorPersonId === viewer.personId,
     createdAt: statement.createdAt,

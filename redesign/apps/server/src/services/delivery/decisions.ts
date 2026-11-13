@@ -1,16 +1,5 @@
 import { z } from 'zod';
-import {
-  countPeople,
-  IsoDate,
-  newId,
-  type Assembly,
-  type BuildProposal,
-  type Check,
-  type Decision,
-  type DecisionStatus,
-  type DeliveryItem,
-  type Role,
-} from '@unite/shared';
+import { type Assembly, type BuildProposal, type Check, countPeople, type Decision, type DecisionCard, type DecisionRecord, type DecisionStatus, type DeliveryItem, IsoDate, newId, type Role } from '@unite/shared';
 import { getMembership, isHeard } from '../../auth.js';
 import type { Deps } from '../../deps.js';
 import { HttpError, notFound } from '../../errors.js';
@@ -37,34 +26,6 @@ export const CHECK_ONLY_STATUSES: readonly DecisionStatus[] = [
 export interface Viewer {
   role: Role;
   personId?: string;
-}
-
-/** The fields shown on a decision card and in the register. */
-export interface DecisionCard {
-  id: string;
-  number: number;
-  title: string;
-  status: DecisionStatus;
-  dueDate: string;
-  /** Days past the due date while still awaiting an answer; 0 otherwise. */
-  daysLate: number;
-  answer: Decision['answer'] | null;
-}
-
-export interface DecisionRecord {
-  decision: Decision;
-  daysLate: number;
-  assembly: Pick<Assembly, 'slug' | 'title' | 'question' | 'hostName' | 'hostSlug' | 'isExample' | 'stage'> & {
-    checkBody: string;
-  };
-  statement: { id: string; text: string } | null;
-  /** The trail back: the statement's themes by name and how many people's points stand behind it. */
-  trail: { themes: { id: string; name: string }[]; people: number };
-  /** The chosen proposal first, then the rest in the order they came. */
-  proposals: BuildProposal[];
-  deliveryItems: DeliveryItem[];
-  check: Check | null;
-  viewer: { role: Role; heard: boolean; isChecker: boolean };
 }
 
 export async function getDecision(store: Store, id: string): Promise<Decision> {

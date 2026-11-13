@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { Feedback } from '@unite/shared';
+import type { Feedback, FeedbackStatus, FeedbackTheme, FeedbackView, StewardFeedbackItem, StewardFeedbackList } from '@unite/shared';
 import { feedbackPlan, isFinished, type FeedbackPlan } from '../../ai/feedback.js';
 import { FEEDBACK_TOPICS } from '../../ai/prompts.js';
 import { changesSince, loadReleases } from './releases.js';
@@ -10,8 +10,6 @@ import { publicSummaryText, toCsv } from './text.js';
  * long and random, shown only to the person who started it, and never appears in the steward's
  * list or export.
  */
-
-export type FeedbackStatus = Feedback['status'];
 
 /** A new private token: 32 url-safe characters (192 random bits). */
 export const newToken = () => randomBytes(24).toString('base64url');
@@ -33,28 +31,6 @@ export const MODE_WORDS: Record<Feedback['mode'], string> = {
 /** The questions for a record, rebuilt from its mode and version. */
 export function planFor(fb: Pick<Feedback, 'mode' | 'sinceVersion'>): FeedbackPlan {
   return feedbackPlan(fb.mode, fb.mode === 'changes' ? changesSince(loadReleases(), fb.sinceVersion) : [], fb.sinceVersion);
-}
-
-/** What the person who holds the token sees: their own record, never its id or person id. */
-export interface FeedbackView {
-  token: string;
-  path: string;
-  mode: Feedback['mode'];
-  messages: Feedback['messages'];
-  answers: Feedback['answers'];
-  name?: string;
-  contact?: string;
-  screenshot?: string;
-  status: FeedbackStatus;
-  statusLabel: string;
-  statusText: string;
-  statusReason?: string;
-  publicIssue: Feedback['publicIssue'];
-  sinceVersion?: string;
-  createdAt: string;
-  submittedAt?: string;
-  /** True once the interviewer has nothing more to ask. */
-  done: boolean;
 }
 
 export function personView(fb: Feedback): FeedbackView {
@@ -91,26 +67,6 @@ export function refreshPublicIssue(fb: Feedback): Feedback['publicIssue'] {
 
 /* ------------------------------------------------------------------ steward */
 
-/** One record in the steward's list and export: no token, no person id, no transcript. */
-export interface StewardFeedbackItem {
-  id: string;
-  path: string;
-  mode: Feedback['mode'];
-  modeLabel: string;
-  status: FeedbackStatus;
-  statusLabel: string;
-  statusReason?: string;
-  answers: Feedback['answers'];
-  name?: string;
-  contact?: string;
-  screenshot?: string;
-  /** The public summary, only once the person has agreed to it. */
-  publicSummary?: string;
-  sinceVersion?: string;
-  createdAt: string;
-  submittedAt?: string;
-}
-
 export function stewardItem(fb: Feedback, withScreenshot = true): StewardFeedbackItem {
   return {
     id: fb.id,
@@ -129,19 +85,6 @@ export function stewardItem(fb: Feedback, withScreenshot = true): StewardFeedbac
     createdAt: fb.createdAt,
     submittedAt: fb.submittedAt,
   };
-}
-
-export interface FeedbackTheme {
-  key: string;
-  question: string;
-  /** Every answer on this topic, each with the record it came from. */
-  answers: { feedbackId: string; question: string; answer: string }[];
-}
-
-export interface StewardFeedbackList {
-  items: StewardFeedbackItem[];
-  counts: { total: number; byStatus: Record<FeedbackStatus, number>; byMode: Record<Feedback['mode'], number> };
-  themes: FeedbackTheme[];
 }
 
 const TOPIC_ORDER = new Map(FEEDBACK_TOPICS.map((t, i) => [t.key, i]));

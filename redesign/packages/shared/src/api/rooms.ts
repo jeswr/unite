@@ -1,19 +1,10 @@
-import type { EvidenceCard } from '@unite/shared';
+import type { EvidenceCard, Room, RoomAnswer, RoomMessage } from '../schemas.js';
 
-/**
- * Response shapes of the rooms endpoints, as the server sends them (apps/server/src/routes/rooms.ts).
- * Kept here until they move to packages/shared.
- */
+/** Response shapes of the rooms endpoints. */
 
-export type RoomStatus = 'scheduled' | 'open' | 'closed';
-export type AnswerValue = 'agree' | 'disagree' | 'unsure';
-
-export interface RoomOutcome {
-  reasonsFor: string[];
-  reasonsAgainst: string[];
-  proposedWording?: string;
-  questionsForExperts: string[];
-}
+export type RoomStatus = Room['status'];
+export type AnswerValue = RoomAnswer['value'];
+export type RoomOutcome = NonNullable<Room['outcome']>;
 
 export interface AnswerTotals {
   agree: number;
@@ -70,7 +61,7 @@ export interface RoomResponse {
 
 export interface RoomMessageView {
   id: string;
-  authorType: 'person' | 'facilitator' | 'system';
+  authorType: RoomMessage['authorType'];
   author: string;
   mine: boolean;
   text: string;
@@ -83,4 +74,9 @@ export interface MessagesResponse {
   status: RoomStatus;
   endsAt: string | null;
   now: string;
+}
+
+/** POST /api/assemblies/:slug/rooms */
+export interface RoomCreatedResponse {
+  room: Room;
 }

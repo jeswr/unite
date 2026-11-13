@@ -2,7 +2,7 @@ import request from 'supertest';
 import { stableId } from '@unite/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { makeReport, makeStatement, makeTheme } from '../src/seed/builders.js';
-import type { PictureResponse, ThemeView } from '../src/services/picture/types.js';
+import type { PictureResponse, ThemeView } from '@unite/shared';
 import { updatePicture, waitForUpdate } from '../src/services/picture/update.js';
 import { testEnv, type TestEnv } from './helpers.js';
 import { asRole, ctxOf, heardPerson, makeTown, newPerson, pid, speaker, TOWN } from './picture.fixtures.js';

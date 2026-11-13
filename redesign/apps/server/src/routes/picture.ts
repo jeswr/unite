@@ -5,7 +5,7 @@ import { requireHeard, requirePerson, requireRole } from '../auth.js';
 import type { Deps } from '../deps.js';
 import { HttpError, notFound } from '../errors.js';
 import { getAssemblyBySlug } from '../services/assemblies.js';
-import type { PictureResponse, ThemePointsResponse } from '../services/picture/types.js';
+import type { PictureResponse, ThemePointsResponse } from '@unite/shared';
 import { isUpdating, LAZY_UPDATE_THRESHOLD, unthemedPoints, updatePicture } from '../services/picture/update.js';
 import { hardChoices, loadPictureData, namesFor, quotesOf, reportView, sections, whoIsMissing, type Viewer } from '../services/picture/view.js';
 import { bumpVersion } from '../version.js';

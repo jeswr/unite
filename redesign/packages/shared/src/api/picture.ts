@@ -1,9 +1,6 @@
-import type { Report, Theme } from '@unite/shared';
+import type { Report, Theme } from '../schemas.js';
 
-/**
- * Response shapes of the picture and listening endpoints. The web keeps an identical copy in
- * apps/web/src/pages/picture/types.ts until these move to packages/shared.
- */
+/** Response shapes of the picture and open-listening endpoints. */
 
 /** A point someone agreed to show. `name` only when they chose to be named; never a person id. */
 export interface Quote {
@@ -26,6 +23,17 @@ export interface ReportView {
   createdAt: string;
   resolvedAt?: string;
   mine: boolean;
+}
+
+/** A report as the steward sees it in the list: with what it is about. */
+export interface StewardReportView extends ReportView {
+  targetType: Report['targetType'];
+  targetId: string;
+}
+
+/** GET /api/assemblies/:slug/reports */
+export interface ReportsResponse {
+  reports: StewardReportView[];
 }
 
 export interface SentenceView {
@@ -90,12 +98,22 @@ export interface ThemePointsResponse {
   mine: { id: string; text: string }[];
 }
 
+/** Where the people in open listening come from, counted by code from each person's locale. */
+export interface ListeningReach {
+  people: number;
+  /** Distinct regions in people's locales, for example "MX" in "es-MX". */
+  countries: number;
+  /** Distinct languages in people's locales, for example "es" in "es-MX". */
+  languages: number;
+}
+
 /** GET /api/listening */
 export interface ListeningResponse {
   assembly: { slug: string; title: string; question: string; isExample: boolean } | null;
   /** Theme sentences, quotes and good ordinary days are included only when this is true (rule 1). */
   heard: boolean;
   totals: { people: number; points: number };
+  reach: ListeningReach;
   sections: ThemeSection[];
   noHost: { id: string; kind: Theme['kind']; name: string; people: number }[];
   days: { id: string; name: string; people: number; quotes: Quote[] }[];

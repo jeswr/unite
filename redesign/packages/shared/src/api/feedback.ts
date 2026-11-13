@@ -1,15 +1,12 @@
-import type { Feedback } from '@unite/shared';
+import type { Feedback } from '../schemas.js';
 
-/**
- * The shapes the feedback endpoints answer with. They mirror `apps/server/src/services/feedback`
- * and belong in `packages/shared/src/api.ts` (requested at merge).
- */
+/** Response shapes of the feedback endpoints. */
 
 export type FeedbackMode = Feedback['mode'];
 export type FeedbackStatus = Feedback['status'];
 export type FeedbackAnswer = Feedback['answers'][number];
 
-/** GET /api/feedback/:token, and every write's `feedback`. */
+/** What the person who holds the token sees: their own record, never its id or person id. */
 export interface FeedbackView {
   token: string;
   path: string;
@@ -27,27 +24,25 @@ export interface FeedbackView {
   sinceVersion?: string;
   createdAt: string;
   submittedAt?: string;
+  /** True once the interviewer has nothing more to ask. */
   done: boolean;
 }
 
-export interface StartResponse {
+/** POST /api/feedback */
+export interface FeedbackStartResponse {
   token: string;
   question: string;
   feedback: FeedbackView;
 }
 
-export interface TurnResponse {
+/** POST /api/feedback/:token/turns */
+export interface FeedbackTurnResponse {
   reply: string;
   done: boolean;
   feedback: FeedbackView;
 }
 
-export interface Release {
-  version: string;
-  date: string;
-  changes: { text: string; affects: string[]; question?: string }[];
-}
-
+/** One record in the steward's list and export: no token, no person id, no transcript. */
 export interface StewardFeedbackItem {
   id: string;
   path: string;
@@ -60,20 +55,23 @@ export interface StewardFeedbackItem {
   name?: string;
   contact?: string;
   screenshot?: string;
+  /** The public summary, only once the person has agreed to it. */
   publicSummary?: string;
   sinceVersion?: string;
   createdAt: string;
   submittedAt?: string;
 }
 
+export interface FeedbackTheme {
+  key: string;
+  question: string;
+  /** Every answer on this topic, each with the record it came from. */
+  answers: { feedbackId: string; question: string; answer: string }[];
+}
+
+/** GET /api/steward/feedback */
 export interface StewardFeedbackList {
   items: StewardFeedbackItem[];
   counts: { total: number; byStatus: Record<FeedbackStatus, number>; byMode: Record<FeedbackMode, number> };
-  themes: { key: string; question: string; answers: { feedbackId: string; question: string; answer: string }[] }[];
-}
-
-/** "participants, hosts and stewards" */
-export function listInWords(items: string[]): string {
-  if (items.length <= 1) return items.join('');
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+  themes: FeedbackTheme[];
 }

@@ -9,7 +9,7 @@ import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { Layout } from '../../ui/Layout';
 import { NotHeardOrError } from '../rooms/parts';
-import type { PrioritiesResponse } from './types';
+import type { PrioritiesResponse } from '@unite/shared';
 
 export const MAX_CHOICES = 3;
 

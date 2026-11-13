@@ -2,9 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Priorities, { capacityLine } from '../pages/deciding/Priorities';
-import type { PrioritiesResponse } from '../pages/deciding/types';
+import type { PrioritiesResponse } from '@unite/shared';
 
-const st = (n: number) => ({ id: `st_${String(n).padStart(12, '0')}`, text: `Statement number ${n}`, status: 'common_ground' });
+const st = (n: number) => ({ id: `st_${String(n).padStart(12, '0')}`, text: `Statement number ${n}`, status: 'common_ground' as const });
 const body = (over: Partial<PrioritiesResponse> = {}): PrioritiesResponse => ({
   statements: [1, 2, 3, 4, 5].map(st),
   ranked: [1, 2, 3, 4, 5].map((n, i) => ({ statementId: st(n).id, text: st(n).text, status: 'common_ground', round: i + 1, score: 10 - i * 2 })),

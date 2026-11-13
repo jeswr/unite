@@ -1,14 +1,4 @@
-import { findLeadingPhrases } from '@unite/shared';
-
-/**
- * The leading-wording check for a host's question and probes (section 6.3), phrase-list version.
- * It is the fallback for the AI check, `checkLeading` in `ai/synthesis.ts`.
- */
-export interface LeadingCheck {
-  leading: boolean;
-  why: string;
-  suggestion: string;
-}
+import { findLeadingPhrases, type LeadingCheck } from '@unite/shared';
 
 const tidy = (s: string) => {
   const t = s

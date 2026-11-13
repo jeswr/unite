@@ -6,7 +6,7 @@ import { Card } from '../../ui/Card';
 import { EmptyState } from '../../ui/EmptyState';
 import { Field, inputClass } from '../../ui/Field';
 import { Tag } from '../../ui/Tag';
-import type { FeedbackStatus, StewardFeedbackItem, StewardFeedbackList } from './types';
+import type { FeedbackStatus, StewardFeedbackItem, StewardFeedbackList } from '@unite/shared';
 
 /**
  * The steward's feedback view, to be placed in the steward page: counts, the answers grouped by

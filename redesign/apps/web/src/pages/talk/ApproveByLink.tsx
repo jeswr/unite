@@ -7,7 +7,7 @@ import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Layout } from '../../ui/Layout';
 import { AddPointForm, PointCard, type PointDraft } from './PointCard';
-import type { ApproveLinkView, ConversationView } from './types';
+import type { ApproveLinkView, ConversationView } from '@unite/shared';
 
 const errorText = (e: unknown) => (e instanceof ApiError ? e.message : 'That did not go through. Please try again.');
 

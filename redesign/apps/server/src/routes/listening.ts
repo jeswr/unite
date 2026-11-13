@@ -1,12 +1,36 @@
 import { Router } from 'express';
-import { countPeople } from '@unite/shared';
+import { countPeople, type ListeningReach, type Person } from '@unite/shared';
 import { isHeard } from '../auth.js';
 import type { Deps } from '../deps.js';
-import type { ListeningResponse } from '../services/picture/types.js';
+import type { ListeningResponse } from '@unite/shared';
+import type { Store } from '../store/types.js';
 import { loadPictureData, quotesOf, sections } from '../services/picture/view.js';
 
 /** Good ordinary days show at most this many quotes per theme. */
 export const DAY_QUOTES = 6;
+
+/**
+ * How many countries and languages the people who have spoken come from, counted from each
+ * person's locale: the language subtag ("es" in "es-MX") and the region subtag ("MX").
+ * A locale with no region counts toward languages only.
+ */
+export function reachOf(locales: string[]): ListeningReach {
+  const countries = new Set<string>();
+  const languages = new Set<string>();
+  for (const raw of locales) {
+    const parts = raw.trim().split(/[-_]/);
+    const lang = parts[0]?.toLowerCase();
+    if (lang) languages.add(lang);
+    const region = parts.slice(1).find((x) => /^([A-Za-z]{2}|\d{3})$/.test(x));
+    if (region) countries.add(region.toUpperCase());
+  }
+  return { people: locales.length, countries: countries.size, languages: languages.size };
+}
+
+async function reachOfPeople(store: Store, personIds: string[]): Promise<ListeningReach> {
+  const people = await Promise.all([...new Set(personIds)].map((id) => store.get('persons', id)));
+  return reachOf(people.filter((p): p is Person => !!p).map((p) => p.locale));
+}
 
 /**
  * Open listening (section 7): GET /api/listening. Theme names and people counts are open to
@@ -21,7 +45,7 @@ export function listeningRouter(deps: Deps): Router {
   r.get('/listening', async (req, res) => {
     const [assembly] = await store.list('assemblies', { isOpenListening: true }, { limit: 1 });
     if (!assembly) {
-      const empty: ListeningResponse = { assembly: null, heard: false, totals: { people: 0, points: 0 }, sections: [], noHost: [], days: [] };
+      const empty: ListeningResponse = { assembly: null, heard: false, totals: { people: 0, points: 0 }, reach: { people: 0, countries: 0, languages: 0 }, sections: [], noHost: [], days: [] };
       return void res.json(empty);
     }
     const heard = await isHeard(deps, assembly, req.personId, req.role);
@@ -40,6 +64,7 @@ export function listeningRouter(deps: Deps): Router {
       assembly: { slug: assembly.slug, title: assembly.title, question: assembly.question, isExample: assembly.isExample },
       heard,
       totals: { people: countPeople(data.points), points: data.points.length },
+      reach: await reachOfPeople(store, data.points.map((p) => p.personId)),
       sections: secs,
       noHost: data.themes
         .filter((t) => !hosts.has(t.id))

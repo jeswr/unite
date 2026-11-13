@@ -7,7 +7,7 @@ import { Layout } from '../../ui/Layout';
 import { AnswersPanel } from './AnswersPanel';
 import { FeedbackChat } from './FeedbackChat';
 import { AboutYou, PrivateLink, PublicSummary, Screenshot } from './FeedbackExtras';
-import type { FeedbackMode, FeedbackView, StartResponse, TurnResponse } from './types';
+import type { FeedbackMode, FeedbackView, FeedbackStartResponse as StartResponse, FeedbackTurnResponse as TurnResponse } from '@unite/shared';
 
 /** The three ways in, in the words the person sees. */
 export const WAYS_IN: { mode: FeedbackMode; label: string; detail: string }[] = [

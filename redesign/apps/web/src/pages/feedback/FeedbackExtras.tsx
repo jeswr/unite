@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { MAX_SCREENSHOT_CHARS } from '@unite/shared';
 import { Button } from '../../ui/Button';
 import { Field, inputClass } from '../../ui/Field';
-import type { FeedbackView } from './types';
+import type { FeedbackView } from '@unite/shared';
 
 type Patch = (body: Record<string, unknown>) => Promise<void>;
 

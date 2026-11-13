@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Room from '../pages/rooms/Room';
-import type { MessagesResponse, RoomResponse } from '../pages/rooms/types';
+import type { MessagesResponse, RoomResponse } from '@unite/shared';
 
 const NOW = new Date('2026-11-13T09:14:00.000Z');
 

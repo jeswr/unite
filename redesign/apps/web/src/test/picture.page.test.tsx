@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Role } from '@unite/shared';
 import { MeProvider } from '../lib/me';
 import Picture from '../pages/picture/Picture';
-import type { PictureResponse } from '../pages/picture/types';
+import type { PictureResponse } from '@unite/shared';
 
 const picture = (over: Partial<PictureResponse> = {}): PictureResponse => ({
   totals: { people: 3, points: 6 },
