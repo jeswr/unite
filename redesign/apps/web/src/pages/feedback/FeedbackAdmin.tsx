@@ -43,7 +43,7 @@ function StatusControl({ item, onSaved }: { item: StewardFeedbackItem; onSaved: 
     }
   };
   return (
-    <form onSubmit={(e) => void save(e)} className="mt-4 border-t border-line pt-4">
+    <form onSubmit={(e) => void save(e)} className="mt-4 border-t border-line pt-4" noValidate>
       <Field label="Status">
         <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as FeedbackStatus)}>
           {STATUS_CHOICES.map((s) => (
