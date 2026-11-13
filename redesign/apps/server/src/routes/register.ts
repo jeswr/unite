@@ -1,18 +1,25 @@
 import { Router } from 'express';
 import type { Deps } from '../deps.js';
-import { notBuilt } from './notBuilt.js';
+import { hostRecord, register } from '../services/delivery/register.js';
+
+const one = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 
 /**
- * Register. Not built yet: every endpoint answers 501 until its part of the build fills it in.
- * Mounted under /api in app.ts. Endpoints that belong here (section 7):
+ * The public register (section 7).
  *
- *   GET /api/register — ?assembly=&host=&status=: all decisions with assembly and host, days late, registerSummary
- *   GET /api/hosts/:hostSlug — the host record
+ *   GET /api/register — ?assembly=&host=&status=: every decision with its assembly and host, days late, registerSummary
+ *   GET /api/hosts/:hostSlug — the host's record
  */
 export function registerRouter(deps: Deps): Router {
-  void deps;
   const r = Router();
-  r.get('/register', notBuilt);
-  r.get('/hosts/:hostSlug', notBuilt);
+
+  r.get('/register', async (req, res) => {
+    res.json(await register(deps, { assembly: one(req.query.assembly), host: one(req.query.host), status: one(req.query.status) }));
+  });
+
+  r.get('/hosts/:hostSlug', async (req, res) => {
+    res.json(await hostRecord(deps, String(req.params.hostSlug)));
+  });
+
   return r;
 }
