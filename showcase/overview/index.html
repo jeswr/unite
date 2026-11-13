@@ -290,7 +290,7 @@ footer p { margin: 0 0 6px; max-width: 80ch; }
     <p class="vlead">A standing, public picture of the lives people want, built from private conversations with as many people on Earth as will have one, in their own language and their own words, and tested by people drawn by lot. It asks institutions for one thing: answer it in public. It's a public undertaking, closer to a census than to a product. "The Common Picture" is a working name.</p>
     <div class="cta">
       <a class="btn primary" href="https://common-picture.vercel.app/" data-link="cp-app">Try the demonstration →</a>
-      <a class="btn ghost" href="#cp-video">Watch the walkthrough</a>
+      <a class="btn ghost" href="#cp-video">Watch the walkthrough (6 min)</a>
     </div>
 
     <h3>The main features</h3>
@@ -306,12 +306,27 @@ footer p { margin: 0 0 6px; max-width: 80ch; }
     <h3 id="cp-video">Walkthrough: going through it, and leaving feedback</h3>
     <div class="watch">
       <div>
-        <div class="player pending" id="cp-player">
-          <p>The walkthrough video for the Common Picture is being recorded. It will appear here.</p>
+        <div class="player">
+          <video id="v-cp" controls preload="metadata" playsinline poster="media/common-picture-poster.jpg">
+            <source src="media/common-picture-walkthrough.mp4" type="video/mp4">
+            <track kind="captions" srclang="en" label="English" src="media/common-picture-walkthrough.vtt">
+            Your browser can't play this video. <a href="media/common-picture-walkthrough.mp4">Download it</a>.
+          </video>
         </div>
         <p class="vnote">The demonstration, "One good day, five places", uses invented people in five places and languages: Kisumu, Kraków, Medellín, Dhaka and Glasgow, plus an invented Quechua-speaking community near Cusco. Every count is example data, not a finding, and every host is invented.</p>
       </div>
-      <ol class="chapters" aria-label="Chapters" data-video="v-cp" id="cp-chapters" hidden></ol>
+      <ol class="chapters" aria-label="Chapters" data-video="v-cp">
+        <li><button data-t="0"><time>0:00</time>Welcome</button></li>
+        <li><button data-t="32"><time>0:32</time>The conversation</button></li>
+        <li><button data-t="100"><time>1:40</time>Another way in: a phone call</button></li>
+        <li><button data-t="121"><time>2:01</time>The picture</button></li>
+        <li><button data-t="170"><time>2:50</time>Keeping difference</button></li>
+        <li><button data-t="226"><time>3:46</time>Good days from elsewhere</button></li>
+        <li><button data-t="241"><time>4:01</time>Talking across the world</button></li>
+        <li><button data-t="280"><time>4:40</time>Answers in public</button></li>
+        <li><button data-t="318"><time>5:18</time>One person's route</button></li>
+        <li><button data-t="337"><time>5:37</time>Giving feedback</button></li>
+      </ol>
     </div>
 
     <h3>Try it yourself</h3>
