@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+
+/*
+ * Unite's design language (section 3): plain, quiet and readable. White page, near-black text, one
+ * accent for actions and links, meaning colours only where they carry meaning. Hairline borders,
+ * 4px corners, no shadows, no gradients. Base size 18px, so every rem below is 18px.
+ */
+@theme {
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-ink: #111111;
+  --color-muted: #555555;
+  --color-line: #d4d4d4;
+  --color-soft: #f6f6f6;
+  --color-accent: #1f4fd8;
+  --color-accent-dark: #173ea9;
+  --color-accent-soft: #eef2fd;
+  --color-agree: #1a7f4b;
+  --color-disagree: #b3261e;
+  --color-unsure: #8a6d00;
+  --color-warn: #b3261e;
+  --radius-ui: 4px;
+  --container-read: 44rem;
+}
+
+@layer base {
+  html {
+    font-size: 18px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: #ffffff;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  h1,
+  h2,
+  h3 {
+    line-height: 1.25;
+    font-weight: 700;
+    text-wrap: balance;
+  }
+  h1 {
+    font-size: 1.75rem;
+  }
+  h2 {
+    font-size: 1.3rem;
+  }
+  h3 {
+    font-size: 1.05rem;
+  }
+  a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+  a:hover {
+    color: var(--color-accent-dark);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  h1:focus {
+    outline: none;
+  }
+  p,
+  li {
+    overflow-wrap: anywhere;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
