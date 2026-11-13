@@ -85,9 +85,9 @@ export function defaultReasonSide(answer: ReactionValue): 'for' | 'against' | un
   return undefined;
 }
 
-const NOTHING = new Set(['no', 'none', 'nothing']);
+const NOTHING = new Set(['no', 'none', 'nothing', 'nope', 'not really', 'no thanks', 'no thank you', 'nothing else', 'nothing more', 'no that is all', 'that is all']);
 
-/** True for an answer that is only "no", "none" or "nothing" (in any case, with any punctuation). */
+/** True for an answer that only says there is nothing to add: "no", "none", "nothing", "nothing else" and the like (in any case, with any punctuation). */
 export function isNothingAnswer(text: string): boolean {
   const bare = text
     .toLowerCase()
@@ -123,11 +123,13 @@ function keep(text: string | undefined, maxChars: number, maxWords?: number): st
 
 /**
  * The fallback drafts, in the person's own words: the first unskipped step 1 turn as the reason,
- * the last unskipped step 3 turn as the wording, and the step 4 turn as the question, each trimmed
- * to its limit. Nothing for a step that was skipped or answered with only "no", "none" or "nothing".
+ * the last unskipped step 3 turn as the wording, and the last step 4 turn as the question, each
+ * trimmed to its limit. Turns that say only "no", "none" or "nothing" are passed over, so a step
+ * that was skipped or answered only that way gives nothing.
  */
 export function mediationFallback(turns: readonly Pick<MediationTurn, 'role' | 'step' | 'text' | 'skipped'>[]): MediationDraftText {
-  const said = (step: number) => turns.filter((t) => t.role === 'person' && t.step === step && !t.skipped && t.text.trim());
+  // A turn that only says "no" (to "anything you would change?") is not the answer; the one before it is.
+  const said = (step: number) => turns.filter((t) => t.role === 'person' && t.step === step && !t.skipped && t.text.trim() && !isNothingAnswer(t.text));
   const step1 = said(1);
   const step3 = said(3);
   const step4 = said(4);

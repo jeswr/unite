@@ -6,7 +6,7 @@
  * are told. Change PROMPT_VERSION whenever any text here changes.
  */
 
-export const PROMPT_VERSION = "2026-11-13.2";
+export const PROMPT_VERSION = "2026-11-13.3";
 
 /** Shown instead of an AI reply when a person seems to be in distress. */
 export const DISTRESS_MESSAGE =

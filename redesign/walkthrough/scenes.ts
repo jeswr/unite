@@ -582,6 +582,27 @@ export const implemented = {
     await c.d.highlight(tags, 'the new wording, now common ground', 'Version 2, common ground');
   },
 
+  async 'slow-room'(c) {
+    await c.d.clearHighlight();
+    await openPage(c, `${EARNING}/rooms`, 'Rooms', 'the rooms');
+    const slow = section(c, 'Other rooms running or coming up').getByRole('listitem').filter({ hasText: 'Slow room' }).first();
+    await c.d.claimVisible(slow, 'a slow room, open for days');
+    await c.d.claimVisible(slow.getByText(/days? left/), 'the slow room says how many days are left');
+    await c.d.highlight(slow, 'the slow room', 'Open for days');
+    await c.d.pause(3600);
+  },
+
+  async 'talk-it-through'(c) {
+    // The way in shows once she has answered the statement. She is not sure about this one.
+    await openStatement(c, /^Everyone should be taught to use AI tools/, 'the statement on AI tools');
+    await react(c, 'Not sure');
+    const card = section(c, 'Talk it through');
+    await c.d.claimVisible(card.getByText(/A short private conversation with the AI/), 'the way in to talk it through');
+    await c.d.claimVisible(card.getByRole('link', { name: 'Talk it through' }), 'the talk it through button');
+    await c.d.highlight(card, 'talk it through', 'In your own time');
+    await c.d.pause(3800);
+  },
+
   async 'open-statement-rule'(c) {
     await c.d.clearHighlight();
     await openPage(c, `${EARNING}/pledge`, 'The pledge', 'the pledge');

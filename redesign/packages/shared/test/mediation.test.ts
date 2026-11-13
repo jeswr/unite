@@ -84,6 +84,9 @@ describe('the fallback drafts', () => {
     const turns = [t(1, '', true), t(1, 'Nothing.'), t(3, 'None'), t(4, 'no')];
     expect(mediationFallback(turns)).toEqual({ reason: null, wording: null, question: null });
     expect(mediationFallback([t(1, 'skip me', true), t(1, 'Real reason here')]).reason).toBe('Real reason here');
+    // "No" to the follow-up question does not wipe out the wording given before it.
+    expect(mediationFallback([t(3, 'Teach the tools a job already uses.'), t(3, 'No.')]).wording).toBe('Teach the tools a job already uses.');
+    expect(mediationFallback([t(4, 'Who pays?'), t(4, 'Nothing else')]).question).toBe('Who pays?');
   });
 
   it('trims each field to its limit at a word boundary', () => {

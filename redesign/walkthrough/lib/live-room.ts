@@ -1,5 +1,5 @@
 /**
- * The live room the recording shows (chapter "A live room"): the seed's scheduled room on
+ * The live room the recording shows (chapter "Working it through"): the seed's scheduled room on
  * "Everyone should be taught to use AI tools as a basic skill, like reading.", opened while
  * the scene plays, with the viewer and five Riverbend people from the seed in it.
  *

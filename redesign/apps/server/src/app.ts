@@ -41,8 +41,8 @@ function limiter(limit: number, key: (req: Request) => string, skip: (req: Reque
   });
 }
 
-/** Conversation, feedback and intake turns: 20 a minute. */
-const TURN_PATHS = /^\/api\/(conversations\/[^/]+\/turns|feedback\/[^/]+\/turns|host\/intake\/[^/]+\/turns)$/;
+/** Conversation, talk-it-through, feedback and intake turns: 20 a minute. */
+const TURN_PATHS = /^\/api\/(conversations\/[^/]+\/turns|mediations\/[^/]+\/turns|feedback\/[^/]+\/turns|host\/intake\/[^/]+\/turns)$/;
 
 /** Builds the app from its dependencies, so tests can use an in-memory store and a fake AI runner. */
 export function createApp(deps: Deps): express.Express {

@@ -128,7 +128,7 @@ Some statements are common ground. Some aren't, and Unite publishes those just a
 [do: point-reasons]
 Under every statement are reasons for and reasons against, side by side, in the order they arrived. No likes. No replies to people. Just the argument.
 
-## A live room {#room}
+## Working it through {#room}
 
 [do: open-room]
 When people really differ, a few of them are drawn by lot into a live room. Six people who see it differently, and forty-five minutes.
@@ -138,6 +138,12 @@ The facilitator is an AI. It keeps time and turns, and it invites the people who
 
 [do: room-outcome]
 An earlier room came back with new wording: paid learning hours, with the cost shared between the employer and the skills fund. That version became common ground.
+
+[do: slow-room]
+Not everyone can meet at a set time. So a room can also be slow: open for days, where you write where you stand before you can read the others.
+
+[do: talk-it-through]
+And anyone can talk a statement through in private, with the AI as a go-between. It shows what people who answered differently said, in their own words, and asks what wording you could accept.
 
 ## Deciding, and what comes first {#decide}
 
