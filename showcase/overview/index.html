@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unite: two versions</title>
+<meta name="description" content="Unite asks people what a good ordinary day looks like and what gets in the way, at two scales: Unite, for a host with a decision to make, and the Common Picture, for the world. Each has a live demo and a walkthrough video.">
+<meta property="og:title" content="Unite: two versions">
+<meta property="og:description" content="One idea at two scales. A live demo and a walkthrough for each.">
+<meta property="og:image" content="media/unite-poster.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='12' cy='16' r='9' fill='%231f5f73'/%3E%3Ccircle cx='20' cy='16' r='9' fill='%23b4532a' fill-opacity='.85'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --surface-2: #f2efe8;
+  --text: #1d1f21;
+  --muted: #5b5f63;
+  --line: #e2ddd2;
+  --unite: #1f5f73;
+  --unite-soft: #e3eef1;
+  --cp: #a24a24;
+  --cp-soft: #f6e7df;
+  --focus: #2563eb;
+  --radius: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a;
+    --surface: #1d2024;
+    --surface-2: #24282d;
+    --text: #eceae6;
+    --muted: #a6a9ad;
+    --line: #33383e;
+    --unite: #7cc0d3;
+    --unite-soft: #1b3038;
+    --cp: #eb9a73;
+    --cp-soft: #3a2519;
+    --focus: #8ab4ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --surface: #1d2024; --surface-2: #24282d; --text: #eceae6; --muted: #a6a9ad; --line: #33383e;
+  --unite: #7cc0d3; --unite-soft: #1b3038; --cp: #eb9a73; --cp-soft: #3a2519; --focus: #8ab4ff; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 17px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 720px) { .wrap { padding: 0 32px; } }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 16px; top: 12px; background: var(--surface); padding: 8px 12px; z-index: 10; }
+
+header.top { border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 60px; }
+.brand { font-weight: 650; letter-spacing: -0.01em; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+.brand svg { flex: none; }
+nav.jump { display: flex; gap: 18px; font-size: 15px; }
+nav.jump a { text-decoration: none; color: var(--muted); }
+nav.jump a:hover { color: var(--text); }
+
+.hero { padding: 56px 0 28px; }
+.eyebrow { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 18px; font-weight: 700; }
+.lead { font-size: clamp(18px, 2.2vw, 21px); color: var(--muted); max-width: 60ch; margin: 0; }
+.lead strong { color: var(--text); font-weight: 600; }
+
+.pair { display: grid; gap: 16px; margin: 36px 0 12px; }
+@media (min-width: 800px) { .pair { grid-template-columns: 1fr 1fr; } }
+.card {
+  display: block; text-decoration: none; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 24px; position: relative; overflow: hidden;
+}
+.card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--accent); }
+.card:hover { border-color: var(--accent); }
+.card .tag { display: inline-block; font-size: 12.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.card h2 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.015em; line-height: 1.2; }
+.card p { margin: 0 0 14px; color: var(--muted); }
+.card .scale { font-size: 15px; color: var(--text); display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 16px; }
+.card .scale dt { color: var(--muted); }
+.card .scale dd { margin: 0; }
+.card .go { font-weight: 600; color: var(--accent); }
+.unite { --accent: var(--unite); --soft: var(--unite-soft); }
+.cp { --accent: var(--cp); --soft: var(--cp-soft); }
+
+.relate { margin: 28px 0 8px; padding: 22px 24px; border-radius: var(--radius); background: var(--surface-2); }
+.relate h2 { font-size: 18px; margin: 0 0 8px; }
+.relate p { margin: 0 0 8px; max-width: 75ch; }
+.relate p:last-child { margin-bottom: 0; }
+.relate ul { margin: 8px 0 0; padding-left: 20px; }
+
+section.version { padding: 56px 0 24px; border-top: 1px solid var(--line); margin-top: 48px; scroll-margin-top: 8px; }
+.vhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; margin-bottom: 8px; }
+.vhead h2 { font-size: clamp(28px, 4vw, 38px); margin: 0; letter-spacing: -0.02em; line-height: 1.15; }
+.status { font-size: 13.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--soft); color: var(--accent); }
+.vlead { font-size: 19px; color: var(--muted); max-width: 65ch; margin: 6px 0 24px; }
+
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 32px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 10px; font-weight: 600; text-decoration: none;
+  border: 1px solid var(--accent); font-size: 16px;
+}
+.btn.primary { background: var(--accent); color: var(--bg); }
+.btn.ghost { color: var(--accent); background: transparent; }
+.btn[aria-disabled="true"] { opacity: 0.55; pointer-events: none; }
+
+h3 { font-size: 20px; margin: 36px 0 12px; letter-spacing: -0.01em; }
+.features { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+@media (min-width: 640px) { .features { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 980px) { .features { grid-template-columns: 1fr 1fr 1fr; } }
+.features li { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.features b { display: block; margin-bottom: 4px; color: var(--accent); font-size: 16px; }
+.features span { color: var(--muted); font-size: 15.5px; line-height: 1.5; display: block; }
+
+.watch { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 900px) { .watch { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } }
+.player { background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; }
+.player video { width: 100%; height: 100%; display: block; }
+.player.pending { background: var(--surface-2); display: grid; place-items: center; color: var(--muted); text-align: center; padding: 24px; border: 1px dashed var(--line); }
+.chapters { margin: 0; padding: 0; list-style: none; font-size: 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); max-height: 420px; overflow: auto; }
+.chapters li + li { border-top: 1px solid var(--line); }
+.chapters button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 12px; width: 100%; padding: 9px 14px; }
+.chapters button:hover { background: var(--soft); }
+.chapters button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.chapters time { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.vnote { font-size: 14.5px; color: var(--muted); margin: 10px 0 0; }
+
+ol.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+ol.steps li { counter-increment: s; position: relative; padding: 12px 16px 12px 52px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+ol.steps li::before { content: counter(s); position: absolute; left: 14px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--soft); color: var(--accent); font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+
+.notshown { columns: 1; padding-left: 20px; margin: 0; }
+@media (min-width: 800px) { .notshown { columns: 2; column-gap: 40px; } }
+.notshown li { break-inside: avoid; margin-bottom: 8px; }
+.closing { font-style: italic; color: var(--muted); margin-top: 12px; }
+.more { font-size: 15.5px; color: var(--muted); margin-top: 20px; }
+
+footer { border-top: 1px solid var(--line); margin-top: 64px; padding: 28px 0 48px; color: var(--muted); font-size: 14.5px; }
+footer p { margin: 0 0 6px; max-width: 80ch; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Unite: two versions, back to top">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><circle cx="12" cy="16" r="9" fill="var(--unite)"/><circle cx="20" cy="16" r="9" fill="var(--cp)" fill-opacity=".85"/></svg>
+      Unite: two versions
+    </a>
+    <nav class="jump" aria-label="Sections">
+      <a href="#unite">Unite</a>
+      <a href="#common-picture">The Common Picture</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap" id="top">
+  <section class="hero" aria-labelledby="h-hero">
+    <p class="eyebrow">Participatory design, at two scales</p>
+    <h1 id="h-hero">One idea, two versions</h1>
+    <p class="lead">Both versions start from the same question: <strong>what does a good ordinary day look like for you, and what gets in the way?</strong> People answer in a private conversation, in their own words. What they say becomes a picture everyone can check, and the people with power are asked to answer it in public. We've built the idea at two scales and kept them apart on purpose, so neither weakens the other.</p>
+
+    <div class="pair">
+      <a class="card unite" href="#unite">
+        <span class="tag">Built · live demo</span>
+        <h2>Unite</h2>
+        <p>For a host with a decision to make: a council, a college, a company or a standards group. One question, one host, and a written promise to act.</p>
+        <dl class="scale">
+          <dt>Scale</dt><dd>Hundreds to thousands of people</dd>
+          <dt>Ends in</dt><dd>A decision, delivered and checked</dd>
+        </dl>
+        <span class="go">See Unite ↓</span>
+      </a>
+      <a class="card cp" href="#common-picture">
+        <span class="tag">Designed · clickable demonstration</span>
+        <h2>The Common Picture</h2>
+        <p>For the world: a standing, public picture of the lives people want, built from conversations in every language and tested by people drawn by lot.</p>
+        <dl class="scale">
+          <dt>Scale</dt><dd>Places, countries and the world</dd>
+          <dt>Ends in</dt><dd>Many institutions answering it in public</dd>
+        </dl>
+        <span class="go">See the Common Picture ↓</span>
+      </a>
+    </div>
+
+    <div class="relate">
+      <h2>How the two fit together</h2>
+      <p><strong>The Common Picture says what matters. Unite is one way a particular host promises to act on it.</strong> The picture never needs Unite to exist, and Unite is useful without the picture.</p>
+      <p>Underneath, both run on one open engine: the same code, the same method and an open data format. Above that, they have separate names, front doors, governance, money and data. Only two things ever cross between them, and both happen in the open:</p>
+      <ul>
+        <li>a person can choose to carry their own approved words up from a Unite assembly into the Common Picture;</li>
+        <li>any host can open a Unite assembly on something the Common Picture shows.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ UNITE ============ -->
+  <section class="version unite" id="unite" aria-labelledby="h-unite">
+    <div class="vhead">
+      <h2 id="h-unite">Unite</h2>
+      <span class="status">Built · running on invented examples</span>
+    </div>
+    <p class="vlead">A place where people say, in a private conversation, what a good ordinary life looks like for them, see an honest picture of what everyone said, work through the disagreements together, decide by a rule agreed in advance, and then see what was decided get built, or get a public reason why not. Nothing is asked of anyone unless a named host has already promised to answer.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://unite-assemblies.vercel.app/" data-link="unite-app">Try the Unite demo →</a>
+      <a class="btn ghost" href="#unite-video">Watch the walkthrough (11 min)</a>
+    </div>
+
+    <h3>The main features</h3>
+    <ul class="features">
+      <li><b>The pledge comes first</b><span>An assembly is one question, one host and one written pledge: what the host has set aside, how the decision will be made, and the date every priority gets an answer. No pledge, no assembly.</span></li>
+      <li><b>Listen: one conversation</b><span>A private interview about a real day, not opinions. It follows words like "too expensive" down to what actually happens. Then "here is what I heard": you keep, fix or drop each point.</span></li>
+      <li><b>See: the picture</b><span>Themes with counts and real quotes, where people differ, and who hasn't been heard yet. You only see it after you've given your own view.</span></li>
+      <li><b>Talk: statements and rooms</b><span>Statements built from people's points, with reasons for and against. Small live rooms, plus slow rooms and "talk it through" for people who'd rather take their time.</span></li>
+      <li><b>Decide, then prioritise at once</b><span>The decision rule is fixed in the pledge before anyone speaks. Agreement leads straight into choosing what comes first.</span></li>
+      <li><b>Deliver and check</b><span>The host answers every priority by the date: accepted, changed, delayed or refused, with reasons. A public register and an independent check panel follow it through.</span></li>
+    </ul>
+
+    <h3 id="unite-video">Walkthrough: going through it, and leaving feedback</h3>
+    <div class="watch">
+      <div>
+        <div class="player">
+          <video id="v-unite" controls preload="metadata" playsinline poster="media/unite-poster.jpg">
+            <source src="media/unite-walkthrough.mp4" type="video/mp4">
+            <track kind="captions" srclang="en" label="English" src="media/unite-walkthrough.vtt">
+            Your browser can't play this video. <a href="media/unite-walkthrough.mp4">Download it</a>.
+          </video>
+        </div>
+        <p class="vnote" id="unite-vnote">The walkthrough follows one invented person, Amina, through an invented council's assembly on jobs and skills, from the conversation to the register. The second-to-last chapter shows how to tell us what's wrong.</p>
+      </div>
+      <ol class="chapters" aria-label="Chapters" data-video="v-unite">
+        <li><button data-t="0"><time>0:00</time>Why Unite</button></li>
+        <li><button data-t="38"><time>0:38</time>The question, and the pledge</button></li>
+        <li><button data-t="88"><time>1:28</time>One conversation</button></li>
+        <li><button data-t="195"><time>3:15</time>Here is what I heard</button></li>
+        <li><button data-t="233"><time>3:53</time>The picture</button></li>
+        <li><button data-t="287"><time>4:47</time>Statements and reasons</button></li>
+        <li><button data-t="330"><time>5:30</time>Working it through</button></li>
+        <li><button data-t="406"><time>6:46</time>Deciding, and what comes first</button></li>
+        <li><button data-t="448"><time>7:28</time>The host answers</button></li>
+        <li><button data-t="481"><time>8:01</time>From a decision to a working tool</button></li>
+        <li><button data-t="525"><time>8:45</time>The register</button></li>
+        <li><button data-t="566"><time>9:26</time>Listening to the world</button></li>
+        <li><button data-t="611"><time>10:11</time>Tell us what's wrong</button></li>
+        <li><button data-t="658"><time>10:58</time>What comes next</button></li>
+      </ol>
+    </div>
+
+    <h3>Try it yourself</h3>
+    <ol class="steps">
+      <li><a href="https://unite-assemblies.vercel.app/" data-link="unite-app">Open the Unite demo</a>. It comes with four invented example assemblies, each at a different stage, so every screen has something to show.</li>
+      <li>Have the conversation yourself, or use the role switcher at the top to see an assembly as a participant, the host or a steward.</li>
+      <li>Follow one assembly round the loop: the pledge, the picture, a room, the decision, the host's answers and the register.</li>
+      <li>Press <strong>Give feedback</strong>, at the top of every page, whenever something surprises you, good or bad. It's a short conversation, and you can stop whenever you like.</li>
+    </ol>
+    <p class="more">The demo resets from time to time, so anything you add may disappear. Feedback is kept separately and isn't lost.</p>
+
+    <h3>Designed and planned, but not shown on the site</h3>
+    <ul class="notshown">
+      <li>The live AI interviewer. The demo asks a fixed set of questions; with the AI switched on it follows what you actually said.</li>
+      <li>Taking part by phone or messaging apps, and the routes for people who don't use the web.</li>
+      <li>Translating quotes between languages in the picture.</li>
+      <li>Spoken rooms and large scheduled sessions (the demo's rooms are typed).</li>
+      <li>The strongest level of decision (level 4), for binding choices.</li>
+      <li>Coding agents wired in to build the software a decision asks for.</li>
+      <li>Signing in with Google or GitHub, and host organisations with several staff.</li>
+      <li>Marking up a screenshot when you give feedback.</li>
+      <li>Tools for the stewards' council, and several independent operators running Unite.</li>
+      <li>A real first assembly. The plan is Unite's own feedback assembly first, then a host working on jobs and skills.</li>
+    </ul>
+    <p class="more">The full design, including the evidence behind each choice, is in <a href="https://github.com/jeswr/unite/blob/claude/unite-redesign/redesign/docs/DESIGN.md">the Unite design document</a>.</p>
+  </section>
+
+  <!-- ============ COMMON PICTURE ============ -->
+  <section class="version cp" id="common-picture" aria-labelledby="h-cp">
+    <div class="vhead">
+      <h2 id="h-cp">The Common Picture</h2>
+      <span class="status">Designed · clickable demonstration</span>
+    </div>
+    <p class="vlead">A standing, public picture of the lives people want, built from private conversations with as many people on Earth as will have one, in their own language and their own words, and tested by people drawn by lot. It asks institutions for one thing: answer it in public. It's a public undertaking, closer to a census than to a product. "The Common Picture" is a working name.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://common-picture.vercel.app/" data-link="cp-app">Try the demonstration →</a>
+      <a class="btn ghost" href="#cp-video">Watch the walkthrough</a>
+    </div>
+
+    <h3>The main features</h3>
+    <ul class="features">
+      <li><b>One conversation, many ways in</b><span>The same private conversation about a real day, by web, voice notes, an ordinary phone call that calls you back for free, or a human listener. Your words are read back in your own language and you keep, change or drop each point.</span></li>
+      <li><b>A picture for every layer</b><span>A picture for each place, then each country, region and the world, built upward from each layer's own words rather than averaged into one pot.</span></li>
+      <li><b>Five parts, two counts</b><span>Said almost everywhere, said differently, said here, in tension, and not yet heard. Every finding shows both the share of people and the share of places and groups.</span></li>
+      <li><b>Keeping difference</b><span>Sets of statements rather than one text, standing statements a community writes for itself, a published test of how many minority themes survive each layer, and "this is not what was said" on every summary.</span></li>
+      <li><b>Talking across the world</b><span>Slow rooms of people drawn by lot across places, where each message shows the original beside the translation, and "talk it through" for reasons from people who answered differently.</span></li>
+      <li><b>Answers in public</b><span>Hosts such as cities, ministries and pension funds pledge to answer within their own remit. A public register shows each answer, and a check panel drawn by lot judges it.</span></li>
+    </ul>
+
+    <h3 id="cp-video">Walkthrough: going through it, and leaving feedback</h3>
+    <div class="watch">
+      <div>
+        <div class="player pending" id="cp-player">
+          <p>The walkthrough video for the Common Picture is being recorded. It will appear here.</p>
+        </div>
+        <p class="vnote">The demonstration, "One good day, five places", uses invented people in five places and languages: Kisumu, Kraków, Medellín, Dhaka and Glasgow, plus an invented Quechua-speaking community near Cusco. Every count is example data, not a finding, and every host is invented.</p>
+      </div>
+      <ol class="chapters" aria-label="Chapters" data-video="v-cp" id="cp-chapters" hidden></ol>
+    </div>
+
+    <h3>Try it yourself</h3>
+    <ol class="steps">
+      <li><a href="https://common-picture.vercel.app/" data-link="cp-app">Open the demonstration</a>.</li>
+      <li>Have the conversation, or click through with the example answers, and see how your words are read back to you.</li>
+      <li>Open the picture and switch between the world and each place. Compare the open door with the drawn sample, and open a finding to see the original words behind it.</li>
+      <li>Visit the slow room, the pledges and register, and one person's route by basic phone.</li>
+      <li>Press <strong>Give feedback</strong>, at the top of every page. A few guided questions take about four minutes, or just tell us one thing.</li>
+    </ol>
+
+    <h3>What this demonstration does not show</h3>
+    <ul class="notshown">
+      <li>That the picture is representative, or the drawn sample working at real scale.</li>
+      <li>The phone and radio routes working for real. Those screens are mock-ups.</li>
+      <li>Resistance to manipulation and flooding.</li>
+      <li>Proof that each voice is one real person.</li>
+      <li>How good the interview is in less-proven languages. The Quechua and Bengali here are illustrative, not validated.</li>
+      <li>That any institution will answer.</li>
+      <li>Privacy, and the federation of independent operators who would run listening in each country.</li>
+      <li>What it costs at scale.</li>
+      <li>The Global Assembly, the charter and the stewards drawn by lot. These are in the design, not the demonstration.</li>
+    </ul>
+    <p class="closing">A demonstration of method and nothing more.</p>
+  </section>
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Everything in both demos is invented: the people, the hosts, the places' views and every number. Neither is a live consultation, so please don't enter anything confidential.</p>
+    <p>Questions or thoughts? Use <strong>Give feedback</strong> in either demo, or reply to whoever sent you this link.</p>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('.chapters').forEach(function (list) {
+  list.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-t]');
+    if (!b) return;
+    var v = document.getElementById(list.dataset.video);
+    if (!v) return;
+    v.currentTime = Number(b.dataset.t);
+    v.play().catch(function () {});
+    v.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>
