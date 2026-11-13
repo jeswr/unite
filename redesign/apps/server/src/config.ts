@@ -44,14 +44,22 @@ export interface Config {
   rateLimits: boolean;
   /** Test-only routes (signing in as a seeded person): on only when NODE_ENV is "test". */
   testRoutes: boolean;
+  /** Vercel Blob token (BLOB_READ_WRITE_TOKEN). Set: each sent feedback is also kept as a JSON file there. */
+  blobToken?: string;
 }
 
-/** All configuration comes from the environment (section 2). Production refuses to start without its secrets. */
+/**
+ * All configuration comes from the environment (section 2). Production refuses to start without its
+ * secrets; in demo mode the host and steward passcodes default to the public demo ones.
+ */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const production = env.NODE_ENV === 'production';
-  const required = (name: string, devValue: string) => {
+  const demo = bool(env.UNITE_DEMO, !production);
+  /** Required in production; `demoValue` also stands in production when demo mode is on. */
+  const required = (name: string, devValue: string, demoValue?: string) => {
     const v = env[name]?.trim();
     if (v) return v;
+    if (production && demo && demoValue !== undefined) return demoValue;
     if (production) throw new Error(`${name} must be set in production.`);
     return devValue;
   };
@@ -68,12 +76,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     databaseUrl: env.DATABASE_URL?.trim() || undefined,
     dataDir: dataDir === 'memory' ? 'memory' : path.resolve(dataDir),
     secret: required('UNITE_SECRET', 'unite-dev-only-secret-change-me'),
-    hostCode: required('UNITE_HOST_CODE', 'host'),
-    stewardCode: required('UNITE_STEWARD_CODE', 'steward'),
-    demo: bool(env.UNITE_DEMO, !production),
+    // In demo mode the role switcher signs in with these public passcodes, so they default to them.
+    hostCode: required('UNITE_HOST_CODE', 'host', 'host'),
+    stewardCode: required('UNITE_STEWARD_CODE', 'steward', 'steward'),
+    demo,
     now,
     webDist: path.join(rootDir, 'apps/web/dist'),
     rateLimits: bool(env.UNITE_RATE_LIMITS, true),
     testRoutes: env.NODE_ENV === 'test',
+    blobToken: env.BLOB_READ_WRITE_TOKEN?.trim() || undefined,
   };
 }

@@ -6,6 +6,7 @@ import { feedbackTurn, openingTurn } from '../ai/feedback.js';
 import { currentPerson } from '../auth.js';
 import type { Deps } from '../deps.js';
 import { HttpError } from '../errors.js';
+import { archiveFeedback } from '../services/feedback/archive.js';
 import { newToken, personView, planFor, refreshPublicIssue } from '../services/feedback/index.js';
 import { feedbackLimiters } from '../services/feedback/limits.js';
 import { loadReleases } from '../services/feedback/releases.js';
@@ -22,6 +23,9 @@ import { parseBody } from '../validate.js';
  *   POST /api/feedback/:token/submit — allowed with any number of answers
  *   GET /api/feedback/:token — your feedback and its status
  *   GET /api/releases — RELEASES.json, newest first
+ *
+ * With BLOB_READ_WRITE_TOKEN set, a copy of the record goes to Vercel Blob when it is sent and when
+ * a sent record is changed (services/feedback/archive.ts), without waiting for it.
  */
 
 const Version = z.string().regex(/^\d+\.\d+\.\d+$/, 'must be a version like 0.1.0');
@@ -161,12 +165,14 @@ export function feedbackRouter(deps: Deps): Router {
       }
       return tx.put('feedback', fb);
     });
+    if (saved.status !== 'draft') void archiveFeedback(deps.config, saved, new Date().toISOString());
     res.json({ feedback: personView(saved) });
   });
 
   r.post('/feedback/:token/submit', async (req, res) => {
     const fb = await byToken(req.params.token);
     const saved = fb.status === 'draft' ? await deps.store.put('feedback', { ...fb, status: 'received', submittedAt: deps.clock.iso() }) : fb;
+    if (fb.status === 'draft') void archiveFeedback(deps.config, saved, new Date().toISOString());
     res.json({ feedback: personView(saved) });
   });
 

@@ -41,12 +41,14 @@ All optional; see `.env.example`.
 | `UNITE_AI_DAILY_USD` / `UNITE_AI_MONTHLY_USD` | `5` / `40` | Spending caps. Over the cap means scripted mode |
 | `DATABASE_URL` | unset | Postgres. Unset means PGlite at `UNITE_DATA_DIR` (default `redesign/.data`), or in memory when `UNITE_DATA_DIR=memory` |
 | `UNITE_SECRET` | dev value | Signs the session cookie. Required in production |
-| `UNITE_HOST_CODE` / `UNITE_STEWARD_CODE` | `host` / `steward` in dev; required in production | Passcodes for the host and steward consoles |
-| `UNITE_DEMO` | `1` in dev | Seeds the examples on an empty store and shows the role switcher |
+| `UNITE_HOST_CODE` / `UNITE_STEWARD_CODE` | `host` / `steward` in dev and in demo mode; otherwise required in production | Passcodes for the host and steward consoles |
+| `UNITE_DEMO` | `1` in dev | Seeds the examples on an empty store, shows the demonstration banner and the role switcher. On Vercel it also allows running with no `DATABASE_URL`, in memory |
+| `BLOB_READ_WRITE_TOKEN` | unset | Vercel Blob (a private store): each sent feedback is also kept there as JSON |
+| `VITE_OVERVIEW_URL` | `https://unite-overview.vercel.app/#unite` | Build time: where the banner's "Watch the walkthrough" goes |
 | `UNITE_NOW` | unset | Fixed clock (ISO date-time) for tests and the video |
 | `PORT` | `4310` | Server port |
 
-Production is `NODE_ENV=production`, which refuses to start without `UNITE_SECRET` and the two passcodes.
+Production is `NODE_ENV=production`, which refuses to start without `UNITE_SECRET` and (unless `UNITE_DEMO=1`) the two passcodes.
 
 ## Folders
 
@@ -58,4 +60,4 @@ Production is `NODE_ENV=production`, which refuses to start without `UNITE_SECRE
 | `e2e` | Playwright tests against the built app |
 | `docs` | Design and build specification |
 | `RELEASES.json` | What changed in each release, read by the feedback pages |
-| `vercel.json`, `api/`, `apps/server/src/vercel.ts` | A Vercel entry, kept ready but not deployed |
+| `vercel.json`, `api/`, `apps/server/src/vercel.ts` | The Vercel entry. `docs/DEPLOY-DEMO.md` deploys the demo with no database |

@@ -48,4 +48,18 @@ describe('Layout', () => {
     renderAt('/how', true);
     expect(screen.getByRole('button', { name: 'Steward' })).toBeTruthy();
   });
+
+  it('shows the demonstration banner, with the walkthrough and feedback links, only in demo mode', () => {
+    const { unmount } = renderAt('/how');
+    expect(screen.queryByRole('note', { name: 'Demonstration' })).toBeNull();
+    unmount();
+    renderAt('/how', true);
+    const banner = screen.getByRole('note', { name: 'Demonstration' });
+    expect(banner.textContent).toContain('This is a demonstration with invented examples. Anything you add may be reset.');
+    const links = [...banner.querySelectorAll('a')].map((a) => [a.textContent, a.getAttribute('href')]);
+    expect(links).toEqual([
+      ['Watch the walkthrough', 'https://unite-overview.vercel.app/#unite'],
+      ['Give feedback', '/feedback?from=%2Fhow'],
+    ]);
+  });
 });

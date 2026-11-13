@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import type { Assembly } from '@unite/shared';
+import { DemoBanner } from './DemoBanner';
 import { ExampleBanner } from './ExampleBanner';
 import { FeedbackButton } from './FeedbackButton';
 import { RoleSwitcher } from './RoleSwitcher';
@@ -27,7 +28,7 @@ interface Props {
   kicker?: ReactNode;
 }
 
-/** Every page: header, the example banner where it applies, one h1, the page, the footer with "Give feedback". */
+/** Every page: the demo banner and role switcher in demo mode, header, the example banner where it applies, one h1, the page, the footer with "Give feedback". */
 export function Layout({ title, children, assembly, kicker }: Props) {
   const { pathname } = useLocation();
   const h1 = useRef<HTMLHeadingElement>(null);
@@ -41,6 +42,7 @@ export function Layout({ title, children, assembly, kicker }: Props) {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-20 focus:bg-white focus:p-2">
         Skip to the page
       </a>
+      <DemoBanner />
       <RoleSwitcher />
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-read items-baseline gap-x-4 px-4 py-1.5 sm:flex-wrap sm:gap-x-6 sm:gap-y-1 sm:py-3">
