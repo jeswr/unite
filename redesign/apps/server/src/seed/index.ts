@@ -5,6 +5,7 @@ import { SEED_NOW, seedAssemblies } from './assemblies.js';
 import type { SeedCtx } from './builders.js';
 import { seedEarning } from './earning.js';
 import { seedFeedbackAssembly } from './feedbackAssembly.js';
+import { seedMediations } from './mediations.js';
 import { seedOpen } from './open.js';
 import { seedVolunteering } from './volunteering.js';
 
@@ -18,6 +19,7 @@ export async function seed(deps: Pick<Deps, 'store'>): Promise<void> {
     await seedAssemblies(ctx);
     await seedOpen(ctx);
     await seedEarning(ctx);
+    await seedMediations(ctx);
     await seedVolunteering(ctx);
     await seedAiAndCare(ctx);
     await seedFeedbackAssembly(ctx);
